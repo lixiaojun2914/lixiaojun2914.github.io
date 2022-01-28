@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on My Blog</title>
+    <link>https://lixiaojun2914.github.io/post/</link>
+    <description>Recent content in Posts on My Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 28 Jan 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://lixiaojun2914.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Hugo Blog搭建过程</title>
+      <link>https://lixiaojun2914.github.io/p/test-post/</link>
+      <pubDate>Fri, 28 Jan 2022 00:00:00 +0000</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/test-post/</guid>
+      <description>hugo博客搭建过程 安装hugo choco install hugo-extended -confirm 安装stack主题 hugo new site blog cd blog git clone https://github.com/CaiJimmy/hugo-theme-stack/ themes/hugo-theme-stack cp -r themes/hugo-theme-stack/exampleSite/content ./content cp themes/hugo-theme-stack/config.yaml ./config.yaml 修改配置文件 baseurl:https://lixiaojun2914.github.iolanguageCode:zh-cntheme:hugo-theme-stackpaginate:5title:My Blog# Change it to your Disqus shortname before usingdisqusShortname:hugo-theme-stack# GA Tracking IDgoogleAnalytics:# Theme i18n support# Available values: en, fr, id, ja, ko, pt-br, zh-cn, zh-tw, es, de, nl, it, th, el, ukDefaultContentLanguage:zh-cn# Set hasCJKLanguage to true if DefaultContentLanguage is in [zh-cn ja ko]# This will make .</description>
+    </item>
+    
+    <item>
+      <title>Rich Content</title>
+      <link>https://lixiaojun2914.github.io/p/rich-content/</link>
+      <pubDate>Sun, 10 Mar 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/rich-content/</guid>
+      <description>&lt;p&gt;Hugo ships with several &lt;a class=&#34;link&#34; href=&#34;https://gohugo.io/content-management/shortcodes/#use-hugo-s-built-in-shortcodes&#34;  target=&#34;_blank&#34; rel=&#34;noopener&#34;
+    &gt;Built-in Shortcodes&lt;/a&gt; for rich content, along with a &lt;a class=&#34;link&#34; href=&#34;https://gohugo.io/about/hugo-and-gdpr/&#34;  target=&#34;_blank&#34; rel=&#34;noopener&#34;
+    &gt;Privacy Config&lt;/a&gt; and a set of Simple Shortcodes that enable static and no-JS versions of various social media embeds.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>Math Typesetting</title>
+      <link>https://lixiaojun2914.github.io/p/math-typesetting/</link>
+      <pubDate>Fri, 08 Mar 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/math-typesetting/</guid>
+      <description>&lt;p&gt;Mathematical notation in a Hugo project can be enabled by using third party JavaScript libraries.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>C语言标准库常用字符串处理函数</title>
+      <link>https://lixiaojun2914.github.io/p/c-lang/</link>
+      <pubDate>Thu, 14 Feb 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/c-lang/</guid>
+      <description>string.h string.h中定义了各种操作字符数组的函数，分为以mem开头和以str开头的两种。以mem开头的函数以给定长度为标准对字符串内存进行操作，以str开头的函数，以&#39;\0&amp;rsquo;为结尾对字符数组进行操作。
+chr结尾的函数 //在参数str所指向的字符串内存的前n个字节中搜索第一次出现字符c的位置 void *memchr(const void *str, int c, size_t n) //在参数str所指向的字符串中搜索第一次出现字符c的位置 char *strchr(const char *str, int c) //在参数str所指向的字符串中搜索最后一次出现字符c的位置 char *strrchr(const char *str, int c) cpy结尾的函数 //从src复制n个字符到dest void *memcpy(void *dest, const void *src, size_t n) //把src所指向的字符串复制到dest char *strcpy(char *dest, const char *src) //把src所指向的字符串复制到dest，最多复制n个字符 char *strncpy(char *dest, const char *src, size_t n) 在使用cpy函数时，一定要注意判断源字符串和目的字符串的长度，否则会发生缓冲区溢出。
+cmp结尾的函数 //把str1和str2的前n个字节进行比较 int memcmp(const void *str1, const void *str2, size_t n) //把str1所指向的字符串和str2所指向的字符串进行比较 int strcmp(const char *str1, const char *str2) //把str1和str2进行比较，最多比较前n个字节 int strncmp(const char *str1, const char *str2, size_t n) 以cat结尾的函数 //把src所指向的字符串追加到dest所指向的字符串的结尾 char *strcat(char *dest, const char *src) //把src所指向的字符串追加到dest 所指向的字符串的结尾，直到n字符长度为止 char *strncat(char *dest, const char *src, size_t n) memset //复制字符c到参数str所指向的字符串的前n个字符 void *memset(void *str, int c, size_t n) 使用memset填充数组时，应当理解memset是以字节为单位进行赋值的，例如memset(a,1,20),若a为int数组，在32位计算机中，a中每个数组元素的值都为0x01010101,即16843009</description>
+    </item>
+    
+    <item>
+      <title>hexo-indigo&#43;github&#43;nginx博客搭建过程</title>
+      <link>https://lixiaojun2914.github.io/p/%E5%93%88%E5%93%88%E5%93%88%E5%93%88/</link>
+      <pubDate>Mon, 21 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/%E5%93%88%E5%93%88%E5%93%88%E5%93%88/</guid>
+      <description>安装node.js apt-get -y install nodejs 安装git apt-get -y install git 安装nginx apt-get -y install nginx 安装hexo npm install -g hexo-cli 配置hexo  新建hexo项目  mkdir ~/bash hexo init ~/bash cd ~/bash npm install  安装indigo主题  # 下载主题 git clone git@github.com:yscoder/hexo-theme-indigo.git themes/indigo # 安装相关依赖 npm install hexo-renderer-less --save npm install hexo-generator-feed --save npm install hexo-generator-json-content --save npm install hexo-helper-qrcode --save # 开启tags页面 hexo new page tags  配置hexo的_config.yml 以下只列出修改的位置  # 设置博客相关信息title:夜航的小王子subtitle:记录学习的技能和遇到的问题description:keywords:author:Li Xiaojunlanguage:zh-Hanstimezone:Asia/Shanghai# URLurl:http://www.</description>
+    </item>
+    
+  </channel>
+</rss>

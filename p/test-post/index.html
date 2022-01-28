@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='hugo博客搭建'><title>Hugo Blog搭建过程</title>
+
+<link rel='canonical' href='https://lixiaojun2914.github.io/p/test-post/'>
+
+<link rel="stylesheet" href="/scss/style.min.690a283bac9f967161eea605d3ab2ebc0b689da41a8b82c681a9dd82668ccf94.css"><meta property='og:title' content='Hugo Blog搭建过程'>
+<meta property='og:description' content='hugo博客搭建'>
+<meta property='og:url' content='https://lixiaojun2914.github.io/p/test-post/'>
+<meta property='og:site_name' content='My Blog'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='Hugo' /><meta property='article:tag' content='Stack' /><meta property='article:published_time' content='2022-01-28T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2022-01-28T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="Hugo Blog搭建过程">
+<meta name="twitter:description" content="hugo博客搭建">
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="/" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>返回</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="main-article">
+    <header class="article-header">
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/%E5%8D%9A%E5%AE%A2/" >
+                博客
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/test-post/">Hugo Blog搭建过程</a>
+    </h2>
+
+    
+    <h3 class="article-subtitle">
+        hugo博客搭建
+    </h3>
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Jan 28, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 2 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <h1 id="hugo博客搭建过程">hugo博客搭建过程</h1>
+<h2 id="安装hugo">安装hugo</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">choco</span> <span class="n">install</span> <span class="nb">hugo-extended</span> <span class="n">-confirm</span>
+</code></pre></div><h2 id="安装stack主题">安装stack主题</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">hugo</span> <span class="n">new</span> <span class="n">site</span> <span class="n">blog</span>
+<span class="nb">cd </span><span class="n">blog</span>
+<span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="err">:</span><span class="p">//</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">CaiJimmy</span><span class="p">/</span><span class="nb">hugo-theme</span><span class="n">-stack</span><span class="p">/</span> <span class="n">themes</span><span class="p">/</span><span class="nb">hugo-theme</span><span class="n">-stack</span>
+<span class="nb">cp </span><span class="n">-r</span> <span class="n">themes</span><span class="p">/</span><span class="nb">hugo-theme</span><span class="n">-stack</span><span class="p">/</span><span class="n">exampleSite</span><span class="p">/</span><span class="n">content</span> <span class="p">./</span><span class="n">content</span>
+<span class="nb">cp </span><span class="n">themes</span><span class="p">/</span><span class="nb">hugo-theme</span><span class="n">-stack</span><span class="p">/</span><span class="n">config</span><span class="p">.</span><span class="n">yaml</span> <span class="p">./</span><span class="n">config</span><span class="p">.</span><span class="n">yaml</span>
+</code></pre></div><h2 id="修改配置文件">修改配置文件</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">baseurl</span><span class="p">:</span><span class="w"> </span><span class="l">https://lixiaojun2914.github.io</span><span class="w">
+</span><span class="w"></span><span class="nt">languageCode</span><span class="p">:</span><span class="w"> </span><span class="l">zh-cn</span><span class="w">
+</span><span class="w"></span><span class="nt">theme</span><span class="p">:</span><span class="w"> </span><span class="l">hugo-theme-stack</span><span class="w">
+</span><span class="w"></span><span class="nt">paginate</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">My Blog</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># Change it to your Disqus shortname before using</span><span class="w">
+</span><span class="w"></span><span class="nt">disqusShortname</span><span class="p">:</span><span class="w"> </span><span class="l">hugo-theme-stack</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># GA Tracking ID</span><span class="w">
+</span><span class="w"></span><span class="nt">googleAnalytics</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># Theme i18n support</span><span class="w">
+</span><span class="w"></span><span class="c"># Available values: en, fr, id, ja, ko, pt-br, zh-cn, zh-tw, es, de, nl, it, th, el, uk</span><span class="w">
+</span><span class="w"></span><span class="nt">DefaultContentLanguage</span><span class="p">:</span><span class="w"> </span><span class="l">zh-cn</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># Set hasCJKLanguage to true if DefaultContentLanguage is in [zh-cn ja ko]</span><span class="w">
+</span><span class="w"></span><span class="c"># This will make .Summary and .WordCount behave correctly for CJK languages.</span><span class="w">
+</span><span class="w"></span><span class="nt">hasCJKLanguage</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">permalinks</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">post</span><span class="p">:</span><span class="w"> </span><span class="l">/p/:slug/</span><span class="w">
+</span><span class="w">    </span><span class="nt">page</span><span class="p">:</span><span class="w"> </span><span class="l">/:slug/</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">params</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">mainSections</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="l">post</span><span class="w">
+</span><span class="w">    </span><span class="nt">featuredImageField</span><span class="p">:</span><span class="w"> </span><span class="l">image</span><span class="w">
+</span><span class="w">    </span><span class="nt">rssFullContent</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">    </span><span class="nt">favicon</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">footer</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">since</span><span class="p">:</span><span class="w"> </span><span class="m">2020</span><span class="w">
+</span><span class="w">        </span><span class="nt">customText</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">dateFormat</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="l">Jan 02, 2006</span><span class="w">
+</span><span class="w">        </span><span class="nt">lastUpdated</span><span class="p">:</span><span class="w"> </span><span class="l">Jan 02, 2006 15:04 MST</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">sidebar</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">emoji</span><span class="p">:</span><span class="w"> </span><span class="l">🍥</span><span class="w">
+</span><span class="w">        </span><span class="nt">subtitle</span><span class="p">:</span><span class="w"> </span><span class="l">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</span><span class="w">
+</span><span class="w">        </span><span class="nt">avatar</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">            </span><span class="nt">local</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">            </span><span class="nt">src</span><span class="p">:</span><span class="w"> </span><span class="l">img/avatar.png</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">article</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">math</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">toc</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">readingTime</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">license</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">            </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l">Licensed under CC BY-NC-SA 4.0</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">comments</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l">waline</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">disqusjs</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">shortname</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">apiUrl</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">apiKey</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">admin</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">adminLabel</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">utterances</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">repo</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">issueTerm</span><span class="p">:</span><span class="w"> </span><span class="l">pathname</span><span class="w">
+</span><span class="w">            </span><span class="nt">label</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">remark42</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">host</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">site</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">locale</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">vssue</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">platform</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">owner</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">repo</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">clientId</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">clientSecret</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">autoCreateIssue</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="c"># Waline client configuration see: https://waline.js.org/en/reference/client.html</span><span class="w">
+</span><span class="w">        </span><span class="nt">waline</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">serverURL</span><span class="p">:</span><span class="w"> </span><span class="l">https://blog-waline-lixiaojun2914.vercel.app</span><span class="w">
+</span><span class="w">            </span><span class="nt">lang</span><span class="p">:</span><span class="w"> </span><span class="l">zh-CN</span><span class="w">
+</span><span class="w">            </span><span class="nt">visitor</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">            </span><span class="nt">avatar</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">emoji</span><span class="p">:</span><span class="w">
+</span><span class="w">                </span>- <span class="l">https://cdn.jsdelivr.net/gh/walinejs/emojis/weibo</span><span class="w">
+</span><span class="w">            </span><span class="nt">requiredMeta</span><span class="p">:</span><span class="w">
+</span><span class="w">                </span>- <span class="l">name</span><span class="w">
+</span><span class="w">                </span>- <span class="l">email</span><span class="w">
+</span><span class="w">            </span><span class="nt">placeholder</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">locale</span><span class="p">:</span><span class="w">
+</span><span class="w">                </span><span class="nt">admin</span><span class="p">:</span><span class="w"> </span><span class="l">Admin</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">twikoo</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">envId</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">region</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">path</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">lang</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="c"># See https://cactus.chat/docs/reference/web-client/#configuration for description of the various options</span><span class="w">
+</span><span class="w">        </span><span class="nt">cactus</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">defaultHomeserverUrl</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://matrix.cactus.chat:8448&#34;</span><span class="w">
+</span><span class="w">            </span><span class="nt">serverName</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;cactus.chat&#34;</span><span class="w">
+</span><span class="w">            </span><span class="nt">siteName</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w"> </span><span class="c"># You must insert a unique identifier here matching the one you registered (See https://cactus.chat/docs/getting-started/quick-start/#register-your-site)</span><span class="w">
+</span><span class="w">            
+</span><span class="w">        </span><span class="nt">giscus</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">repo</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">repoID</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">category</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">categoryID</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">mapping</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">lightTheme</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">darkTheme</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">reactionsEnabled</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
+</span><span class="w">            </span><span class="nt">emitMetadata</span><span class="p">:</span><span class="w"> </span><span class="m">0</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">gitalk</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">owner</span><span class="p">:</span><span class="w"> 
+</span><span class="w">            </span><span class="nt">admin</span><span class="p">:</span><span class="w">  
+</span><span class="w">            </span><span class="nt">repo</span><span class="p">:</span><span class="w"> 
+</span><span class="w">            </span><span class="nt">clientID</span><span class="p">:</span><span class="w"> 
+</span><span class="w">            </span><span class="nt">clientSecret</span><span class="p">:</span><span class="w"> 
+</span><span class="w">        
+</span><span class="w">        </span><span class="nt">cusdis</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">host</span><span class="p">:</span><span class="w"> 
+</span><span class="w">            </span><span class="nt">id</span><span class="p">:</span><span class="w"> 
+</span><span class="w">    </span><span class="nt">widgets</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span>- <span class="l">search</span><span class="w">
+</span><span class="w">            </span>- <span class="l">archives</span><span class="w">
+</span><span class="w">            </span>- <span class="l">tag-cloud</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">archives</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">limit</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="nt">tagCloud</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">limit</span><span class="p">:</span><span class="w"> </span><span class="m">10</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">opengraph</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">twitter</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="c"># Your Twitter username</span><span class="w">
+</span><span class="w">            </span><span class="nt">site</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">            </span><span class="c"># Available values: summary, summary_large_image</span><span class="w">
+</span><span class="w">            </span><span class="nt">card</span><span class="p">:</span><span class="w"> </span><span class="l">summary_large_image</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">defaultImage</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">opengraph</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">            </span><span class="nt">local</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">            </span><span class="nt">src</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">colorScheme</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="c"># Display toggle</span><span class="w">
+</span><span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span><span class="c"># Available values: auto, light, dark</span><span class="w">
+</span><span class="w">        </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l">auto</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">imageProcessing</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">cover</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c">### Custom menu</span><span class="w">
+</span><span class="w"></span><span class="c">### See https://docs.stack.jimmycai.com/configuration/custom-menu.html</span><span class="w">
+</span><span class="w"></span><span class="c">### To remove about, archive and search page menu item, remove `menu` field from their FrontMatter</span><span class="w">
+</span><span class="w"></span><span class="nt">menu</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">main</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">identifier</span><span class="p">:</span><span class="w"> </span><span class="l">home</span><span class="w">
+</span><span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Home</span><span class="w">
+</span><span class="w">          </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l">/</span><span class="w">
+</span><span class="w">          </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span>-<span class="m">100</span><span class="w">
+</span><span class="w">          </span><span class="nt">params</span><span class="p">:</span><span class="w">
+</span><span class="w">              </span><span class="c">### For demonstration purpose, the home link will be open in a new tab</span><span class="w">
+</span><span class="w">              </span><span class="nt">newTab</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">              </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l">home</span><span class="w">
+</span><span class="w">    
+</span><span class="w">    </span><span class="nt">social</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">identifier</span><span class="p">:</span><span class="w"> </span><span class="l">github</span><span class="w">
+</span><span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">GitHub</span><span class="w">
+</span><span class="w">          </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l">https://github.com/lixiaojun2914</span><span class="w">
+</span><span class="w">          </span><span class="nt">params</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l">brand-github</span><span class="w">
+</span><span class="w">            
+</span><span class="w"></span><span class="nt">related</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">includeNewer</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="m">60</span><span class="w">
+</span><span class="w">    </span><span class="nt">toLower</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">    </span><span class="nt">indices</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">tags</span><span class="w">
+</span><span class="w">          </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="m">100</span><span class="w">
+</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">categories</span><span class="w">
+</span><span class="w">          </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="m">200</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">markup</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">goldmark</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">renderer</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="c">## Set to true if you have HTML content inside Markdown</span><span class="w">
+</span><span class="w">            </span><span class="nt">unsafe</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">    </span><span class="nt">tableOfContents</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">endLevel</span><span class="p">:</span><span class="w"> </span><span class="m">4</span><span class="w">
+</span><span class="w">        </span><span class="nt">ordered</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">startLevel</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="w">
+</span><span class="w">    </span><span class="nt">highlight</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">noClasses</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">
+</span></code></pre></div><h2 id="添加文章">添加文章</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">hugo</span> <span class="n">new</span> <span class="n">post</span><span class="p">/</span><span class="n">new_article</span><span class="p">/</span><span class="n">index</span><span class="p">.</span><span class="nb">md
+</span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">---
+title: &#34;测试文章&#34;
+description: &#34;文章简介&#34;
+date: &#34;2020-08-10 01:00:00+0200&#34;
+slug: &#34;test-post&#34;
+image: &#34;cover.jpg&#34;
+categories:
+    <span class="k">-</span> 博客
+tags:
+    <span class="k">-</span> Hugo
+    <span class="k">-</span> Stack
+---
+
+![<span class="nt">图片 1</span>](<span class="na">Design-V1.jpg</span>)   
+
+![<span class="nt">图片 2</span>](<span class="na">Design-V2.jpg</span>)
+</code></pre></div><h2 id="生成静态文件">生成静态文件</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">hugo</span> <span class="n">-D</span>
+</code></pre></div>
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/hugo/">Hugo</a>
+        
+            <a href="/tags/stack/">Stack</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    <aside class="related-contents--wrapper">
+    
+    
+</aside>
+
+     
+    
+        
+    <script src='//cdn.jsdelivr.net/npm/@waline/client/dist/Waline.min.js'></script>
+<div id="waline" class="waline-container"></div>
+<style>
+    .waline-container {
+        background-color: var(--card-background);
+        border-radius: var(--card-border-radius);
+        box-shadow: var(--shadow-l1);
+        padding: var(--card-padding);
+    }
+    .waline-container .vcount {
+        color: var(--card-text-color-main);
+    }
+</style><script>
+    
+    new Waline({"dark":"html[data-scheme=\"dark\"]","el":"#waline","emoji":["https://cdn.jsdelivr.net/gh/walinejs/emojis/weibo"],"lang":"zh-CN","locale":{"admin":"Admin"},"requiredMeta":["name","email"],"serverURL":"https://blog-waline-lixiaojun2914.vercel.app","visitor":true});
+</script>
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2020 - 
+        
+        2022 My Blog
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.7.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">目录</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#安装hugo">安装hugo</a></li>
+    <li><a href="#安装stack主题">安装stack主题</a></li>
+    <li><a href="#修改配置文件">修改配置文件</a></li>
+    <li><a href="#添加文章">添加文章</a></li>
+    <li><a href="#生成静态文件">生成静态文件</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>
