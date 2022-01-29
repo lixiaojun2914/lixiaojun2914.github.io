@@ -161,7 +161,6 @@
 <span class="o">...</span>         <span class="k">else</span><span class="p">:</span>
 <span class="o">...</span>             <span class="n">x</span> <span class="o">=</span> <span class="n">y</span>
 <span class="o">...</span>
-
 <span class="o">&gt;&gt;&gt;</span> <span class="n">g</span> <span class="o">=</span> <span class="n">test</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="nb">next</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
 <span class="mi">10</span>
@@ -172,42 +171,32 @@
 <span class="o">&gt;&gt;&gt;</span> <span class="nb">next</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
 <span class="mi">2</span>
 </code></pre></div><h2 id="函数式编程">函数式编程</h2>
-<ul>
-<li>
-<p>map</p>
+<h3 id="map">map</h3>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
 <span class="o">...</span>     <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
 <span class="o">...</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">])</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="nb">list</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
 <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">36</span><span class="p">,</span> <span class="mi">49</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">81</span><span class="p">]</span>
-</code></pre></div></li>
-<li>
-<p>reduce</p>
+</code></pre></div><h3 id="reduce">reduce</h3>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
 <span class="o">...</span>     <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
 <span class="o">...</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">reduce</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">])</span>
 <span class="mi">25</span>
-</code></pre></div></li>
-<li>
-<p>filter</p>
+</code></pre></div><h3 id="filter">filter</h3>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">is_odd</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
 <span class="o">...</span>     <span class="k">return</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span>
 <span class="o">...</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">is_odd</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">]))</span>
 <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">15</span><span class="p">]</span>
-</code></pre></div></li>
-<li>
-<p>lambda</p>
+</code></pre></div><h3 id="lambda">lambda</h3>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="o">&gt;&gt;&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">f</span>
 <span class="o">&lt;</span><span class="n">function</span> <span class="o">&lt;</span><span class="k">lambda</span><span class="o">&gt;</span> <span class="n">at</span> <span class="mh">0x101c6ef28</span><span class="o">&gt;</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">f</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
 <span class="mi">25</span>
-</code></pre></div></li>
-<li>
-<p>装饰器</p>
+</code></pre></div><h3 id="装饰器">装饰器</h3>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
 
 <span class="c1"># 定义装饰器函数</span>
@@ -250,12 +239,8 @@
 <span class="n">wrap_func</span>
 <span class="mi">9</span>
 <span class="n">add</span>
-</code></pre></div></li>
-<li>
-<p>自带装饰器函数</p>
-<ol>
-<li>
-<p>@property</p>
+</code></pre></div><h3 id="自带装饰器函数">自带装饰器函数</h3>
+<h4 id="property">@property</h4>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">C</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="kc">None</span>
@@ -281,9 +266,7 @@
 <span class="c1"># output</span>
 <span class="mi">123</span>
 
-</code></pre></div></li>
-<li>
-<p>@classmethod</p>
+</code></pre></div><h4 id="classmethod">@classmethod</h4>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
 <span class="n">number</span> <span class="o">=</span> <span class="mi">10</span>
 
@@ -307,9 +290,7 @@
 <span class="n">这是类属性</span><span class="p">:</span> <span class="mi">10</span>
 <span class="n">这是类本身</span><span class="err">：</span> <span class="o">&lt;</span><span class="k">class</span> <span class="err">&#39;</span><span class="nc">__main__</span><span class="o">.</span><span class="sa">B</span><span class="s1">&#39;&gt;</span>
 <span class="n">这是类属性</span><span class="p">:</span> <span class="mi">20</span>
-</code></pre></div></li>
-<li>
-<p>@staticmethod</p>
+</code></pre></div><h4 id="staticmethod">@staticmethod</h4>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
 <span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">static_func</span><span class="p">():</span>
@@ -326,20 +307,14 @@
 <span class="c1"># output</span>
 <span class="k">class</span> <span class="nc">name</span><span class="p">:</span> <span class="n">A</span>
 <span class="k">class</span> <span class="nc">name</span><span class="p">:</span> <span class="n">A</span>
-</code></pre></div></li>
-</ol>
-</li>
-<li>
-<p>偏函数</p>
+</code></pre></div><h3 id="偏函数">偏函数</h3>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">functools</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">int2</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">int2</span><span class="p">(</span><span class="s1">&#39;1000000&#39;</span><span class="p">)</span>
 <span class="mi">64</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">int2</span><span class="p">(</span><span class="s1">&#39;1010101&#39;</span><span class="p">)</span>
 <span class="mi">85</span>
-</code></pre></div></li>
-</ul>
-
+</code></pre></div>
 </section>
 
 
@@ -582,7 +557,23 @@
   <ol>
     <li><a href="#列表生成式">列表生成式</a></li>
     <li><a href="#生成器">生成器</a></li>
-    <li><a href="#函数式编程">函数式编程</a></li>
+    <li><a href="#函数式编程">函数式编程</a>
+      <ol>
+        <li><a href="#map">map</a></li>
+        <li><a href="#reduce">reduce</a></li>
+        <li><a href="#filter">filter</a></li>
+        <li><a href="#lambda">lambda</a></li>
+        <li><a href="#装饰器">装饰器</a></li>
+        <li><a href="#自带装饰器函数">自带装饰器函数</a>
+          <ol>
+            <li><a href="#property">@property</a></li>
+            <li><a href="#classmethod">@classmethod</a></li>
+            <li><a href="#staticmethod">@staticmethod</a></li>
+          </ol>
+        </li>
+        <li><a href="#偏函数">偏函数</a></li>
+      </ol>
+    </li>
   </ol>
 </nav>
                 </div>
