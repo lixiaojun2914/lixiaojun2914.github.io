@@ -13,7 +13,7 @@
       <pubDate>Fri, 28 Jan 2022 21:12:48 +0800</pubDate>
       
       <guid>https://lixiaojun2914.github.io/p/python/</guid>
-      <description>asdf dfds    </description>
+      <description>Pyhton语法笔记 列表生成式 # 列表生成式即List Comprehensions, 用来生成特定的列表 # 在列表生成式中，可以使用条件判断语句 # if放在for前面是表达式，可以使用else # if放在for后面是过滤条件，不可使用else [x if x % 2 == 0 else -x for x in range(1, 11)] [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10] # 列表生成式可以嵌套使用 &amp;gt;&amp;gt;&amp;gt; [m + n for m in &#39;ABC&#39; for n in &#39;XYZ&#39;] [&#39;AX&#39;, &#39;AY&#39;, &#39;AZ&#39;, &#39;BX&#39;, &#39;BY&#39;, &#39;BZ&#39;, &#39;CX&#39;, &#39;CY&#39;, &#39;CZ&#39;] 生成器 # 可以和列表生成式类似，使用()代替[]来生成generator &amp;gt;&amp;gt;&amp;gt; g = (x * x for x in range(3)) # 使用next调用generator生成下一个数据 &amp;gt;&amp;gt;&amp;gt; next(g) 0 &amp;gt;&amp;gt;&amp;gt; next(g) 1 # 使用for遍历generator &amp;gt;&amp;gt;&amp;gt; for n in g: .</description>
     </item>
     
   </channel>

@@ -250,11 +250,223 @@ ___
         <pubDate>Fri, 28 Jan 2022 21:12:48 +0800</pubDate>
         
         <guid>https://lixiaojun2914.github.io/p/python/</guid>
-        <description>&lt;h1 id=&#34;asdf&#34;&gt;asdf&lt;/h1&gt;
-&lt;h2 id=&#34;dfds&#34;&gt;dfds&lt;/h2&gt;
+        <description>&lt;h1 id=&#34;pyhton语法笔记&#34;&gt;Pyhton语法笔记&lt;/h1&gt;
+&lt;h2 id=&#34;列表生成式&#34;&gt;列表生成式&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;# 列表生成式即List Comprehensions, 用来生成特定的列表
+# 在列表生成式中，可以使用条件判断语句
+# if放在for前面是表达式，可以使用else
+# if放在for后面是过滤条件，不可使用else
+ [x if x % 2 == 0 else -x for x in range(1, 11)]
+ [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10]
+
+# 列表生成式可以嵌套使用
+&amp;gt;&amp;gt;&amp;gt; [m + n for m in &#39;ABC&#39; for n in &#39;XYZ&#39;]
+[&#39;AX&#39;, &#39;AY&#39;, &#39;AZ&#39;, &#39;BX&#39;, &#39;BY&#39;, &#39;BZ&#39;, &#39;CX&#39;, &#39;CY&#39;, &#39;CZ&#39;]
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id=&#34;生成器&#34;&gt;生成器&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;# 可以和列表生成式类似，使用()代替[]来生成generator
+&amp;gt;&amp;gt;&amp;gt; g = (x * x for x in range(3))
+# 使用next调用generator生成下一个数据
+&amp;gt;&amp;gt;&amp;gt; next(g)
+0
+&amp;gt;&amp;gt;&amp;gt; next(g)
+1
+# 使用for遍历generator
+&amp;gt;&amp;gt;&amp;gt; for n in g:
+...    print(n)
+...
+0
+1
+4
+
+# 在函数中可使用yield生成generator，yield和return类似。
+# 下次函数调用会从yield以后开始执行，且此时的yield返回为None。
+# 可以使用send来让yield返回特定的值。
+&amp;gt;&amp;gt;&amp;gt; def test(x):
+...     while True:
+...         y = yield x
+...         if y == None:
+...             x = x + 1
+...         else:
+...             x = y
+...
+
+&amp;gt;&amp;gt;&amp;gt; g = test(10)
+&amp;gt;&amp;gt;&amp;gt; next(g)
+10
+&amp;gt;&amp;gt;&amp;gt; next(g)
+11
+&amp;gt;&amp;gt;&amp;gt; g.send(1)
+1
+&amp;gt;&amp;gt;&amp;gt; next(g)
+2
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id=&#34;函数式编程&#34;&gt;函数式编程&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;map&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;&amp;gt;&amp;gt;&amp;gt; def f(x):
+...     return x * x
+...
+&amp;gt;&amp;gt;&amp;gt; r = map(f, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+&amp;gt;&amp;gt;&amp;gt; list(r)
+[1, 4, 9, 16, 25, 36, 49, 64, 81]
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;reduce&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;&amp;gt;&amp;gt;&amp;gt; def add(x, y):
+...     return x + y
+...
+&amp;gt;&amp;gt;&amp;gt; reduce(add, [1, 3, 5, 7, 9])
+25
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;filter&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;o&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;is_odd&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;n&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;span class=&#34;o&#34;&gt;...&lt;/span&gt;     &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;n&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;
+&lt;span class=&#34;o&#34;&gt;...&lt;/span&gt;
+&lt;span class=&#34;o&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;nb&#34;&gt;list&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;filter&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;is_odd&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;4&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;5&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;6&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;9&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;15&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]))&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;5&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;9&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;15&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;lambda&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;&amp;gt;&amp;gt;&amp;gt; f = lambda x: x * x
+&amp;gt;&amp;gt;&amp;gt; f
+&amp;lt;function &amp;lt;lambda&amp;gt; at 0x101c6ef28&amp;gt;
+&amp;gt;&amp;gt;&amp;gt; f(5)
+25
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;装饰器&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;from functools import wraps
+
+# 定义装饰器函数
+# 参数为要装饰的函数
+# 返回装饰后的函数
+def square(func):
+    def wrap_func(a, b):
+        c = func(a, b)
+        return pow(c, 2)
+    return wrap_func
+
+# 使用wraps装饰器包装装饰器函数
+# 使用wraps后，被装饰的函数的__name__属性返回被装饰的函数名称而不是装饰器函数
+def square2(func):
+    @wraps(func)
+    def decorated(a, b):
+        c = func(a, b)
+        return pow(c, 2)
+    return decorated
+
+
+@square
+def add(a, b):
+    return a + b
+
+
+print(add(1, 2))
+print(add.__name__)
+
+@square2
+def add(a, b):
+    return a + b
+
+
+print(add(1, 2))
+print(add.__name__)
+
+# output:
+9
+wrap_func
+9
+add
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;自带装饰器函数&lt;/p&gt;
 &lt;ol&gt;
-&lt;li&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;@property&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;C&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;fm&#34;&gt;__init__&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;_x&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;None&lt;/span&gt;
+
+    &lt;span class=&#34;nd&#34;&gt;@property&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;_x&lt;/span&gt;
+
+    &lt;span class=&#34;nd&#34;&gt;@x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;setter&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;value&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;_x&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;value&lt;/span&gt;
+
+    &lt;span class=&#34;nd&#34;&gt;@x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;deleter&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;del&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;_x&lt;/span&gt;
+
+
+&lt;span class=&#34;n&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;C&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;123&lt;/span&gt;
+&lt;span class=&#34;nb&#34;&gt;print&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;k&#34;&gt;del&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;# output&lt;/span&gt;
+&lt;span class=&#34;mi&#34;&gt;123&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;@classmethod&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;number&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;10&lt;/span&gt;
+
+&lt;span class=&#34;nd&#34;&gt;@classmethod&lt;/span&gt;
+&lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;get_a&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;cls&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;  &lt;span class=&#34;c1&#34;&gt;# cls 接收的是当前类，类在使用时会将自身传入到类方法的第一个参数&lt;/span&gt;
+    &lt;span class=&#34;nb&#34;&gt;print&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s1&#34;&gt;&amp;#39;这是类本身：&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;cls&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;  &lt;span class=&#34;c1&#34;&gt;# 如果子类调用，则传入的是子类&lt;/span&gt;
+    &lt;span class=&#34;nb&#34;&gt;print&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s1&#34;&gt;&amp;#39;这是类属性:&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;cls&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;number&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+
+&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;B&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+    &lt;span class=&#34;n&#34;&gt;number&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;20&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;pass&lt;/span&gt;
+
+
+&lt;span class=&#34;c1&#34;&gt;# 调用类方法 不需要实例化可以执行调用类方法&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;get_a&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;B&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;get_a&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;# output&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;这是类本身&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;：&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;err&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;nc&#34;&gt;__main__&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;s1&#34;&gt;&amp;#39;&amp;gt;&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;这是类属性&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;10&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;这是类本身&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;：&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;err&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;nc&#34;&gt;__main__&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;sa&#34;&gt;B&lt;/span&gt;&lt;span class=&#34;s1&#34;&gt;&amp;#39;&amp;gt;&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;这是类属性&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;20&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;@staticmethod&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+&lt;span class=&#34;nd&#34;&gt;@staticmethod&lt;/span&gt;
+&lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;static_func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;():&lt;/span&gt;
+    &lt;span class=&#34;nb&#34;&gt;print&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s1&#34;&gt;&amp;#39;class name: &amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;vm&#34;&gt;__name__&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+
+&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;B&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;pass&lt;/span&gt;
+
+
+&lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;static_func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;n&#34;&gt;B&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;static_func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;# output&lt;/span&gt;
+&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;
+&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;A&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
 &lt;/ol&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;偏函数&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-ipython&#34; data-lang=&#34;ipython&#34;&gt;&amp;gt;&amp;gt;&amp;gt; import functools
+&amp;gt;&amp;gt;&amp;gt; int2 = functools.partial(int, base=2)
+&amp;gt;&amp;gt;&amp;gt; int2(&#39;1000000&#39;)
+64
+&amp;gt;&amp;gt;&amp;gt; int2(&#39;1010101&#39;)
+85
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ul&gt;
 </description>
         </item>
         <item>

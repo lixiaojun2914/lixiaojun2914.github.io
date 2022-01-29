@@ -14,7 +14,7 @@
 <meta name="twitter:description" content="学习记录Python语言">
     </head>
     <body class="
-    article-page 
+    article-page has-toc
 ">
     <script>
         (function() {
@@ -40,193 +40,22 @@
 </script>
 <div class="container main-container flex 
     
-        on-phone--column extended
+        extended
     
 ">
     
-        <aside class="sidebar left-sidebar sticky">
-    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="切换菜单">
-        <span class="hamburger-box">
-            <span class="hamburger-inner"></span>
-        </span>
-    </button>
-
-    <header class="site-info">
-        
-            
-            <figure class="site-avatar">
-                <a href="/">
-                
-                    
-                    
-                    
-                        
-                        <img src="/img/avatar_hubaead2ca22f3574062570cfe90b74dd1_387483_300x0_resize_box_3.png" width="300"
-                            height="300" class="site-logo" loading="lazy" alt="Avatar">
-                    
-                
-                </a>
-                
-                    <span class="emoji">🍥</span>
-                
-            </figure>
-            
-        
-        
-        <h1 class="site-name"><a href="/">My Blog</a></h1>
-        <h2 class="site-description">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</h2><ol class="social-menu">
-                
-                    <li>
-                        <a 
-                            href='https://github.com/lixiaojun2914'
-                            target="_blank"
-                            title="GitHub"
-                        >
-                            
-                            
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
-</svg>
-
-
-
-                            
-                        </a>
-                    </li>
-                
-            </ol></header>
-
-    <ol class="menu" id="main-menu">
-        
-        
-        
-
-        <li >
-            <a href='/' target="_blank">
-                
-                
-                
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-home" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <div id="article-toolbar">
+            <a href="/" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <path stroke="none" d="M0 0h24v24H0z"/>
-  <polyline points="5 12 3 12 12 3 21 12 19 12" />
-  <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
-  <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+  <polyline points="15 6 9 12 15 18" />
 </svg>
 
 
 
-                
-                <span>Home</span>
+                <span>返回</span>
             </a>
-        </li>
-        
-        
-
-        <li >
-            <a href='/about/' >
-                
-                
-                
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z"/>
-  <circle cx="12" cy="7" r="4" />
-  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-</svg>
-
-
-
-                
-                <span>About</span>
-            </a>
-        </li>
-        
-        
-
-        <li >
-            <a href='/archives/' >
-                
-                
-                
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z"/>
-  <rect x="3" y="4" width="18" height="4" rx="2" />
-  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
-  <line x1="10" y1="12" x2="14" y2="12" />
-</svg>
-
-
-
-                
-                <span>Archives</span>
-            </a>
-        </li>
-        
-        
-
-        <li >
-            <a href='/search/' >
-                
-                
-                
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z"/>
-  <circle cx="10" cy="10" r="7" />
-  <line x1="21" y1="21" x2="15" y2="15" />
-</svg>
-
-
-
-                
-                <span>Search</span>
-            </a>
-        </li>
-        
-        
-
-        <li >
-            <a href='/links/' >
-                
-                
-                
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z"/>
-  <path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" />
-  <path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" />
-</svg>
-
-
-
-                
-                <span>Links</span>
-            </a>
-        </li>
-        
-
-        
-            <li id="dark-mode-toggle">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z"/>
-  <circle cx="8" cy="12" r="2" />
-  <rect x="2" y="6" width="20" height="12" rx="6" />
-</svg>
-
-
-
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z"/>
-  <circle cx="16" cy="12" r="2" />
-  <rect x="2" y="6" width="20" height="12" rx="6" />
-</svg>
-
-
-
-                <span>暗色模式</span>
-            </li>
-        
-    </ol>
-</aside>
-
+        </div>
     
 <main class="main full-width">
     <article class="main-article">
@@ -281,7 +110,7 @@
 
 
                 <time class="article-time--reading">
-                    阅读时长: 1 分钟
+                    阅读时长: 3 分钟
                 </time>
             </div>
         
@@ -293,11 +122,223 @@
     <section class="article-content">
     
     
-    <h1 id="asdf">asdf</h1>
-<h2 id="dfds">dfds</h2>
+    <h1 id="pyhton语法笔记">Pyhton语法笔记</h1>
+<h2 id="列表生成式">列表生成式</h2>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython"># 列表生成式即List Comprehensions, 用来生成特定的列表
+# 在列表生成式中，可以使用条件判断语句
+# if放在for前面是表达式，可以使用else
+# if放在for后面是过滤条件，不可使用else
+ [x if x % 2 == 0 else -x for x in range(1, 11)]
+ [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10]
+
+# 列表生成式可以嵌套使用
+&gt;&gt;&gt; [m + n for m in 'ABC' for n in 'XYZ']
+['AX', 'AY', 'AZ', 'BX', 'BY', 'BZ', 'CX', 'CY', 'CZ']
+</code></pre><h2 id="生成器">生成器</h2>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython"># 可以和列表生成式类似，使用()代替[]来生成generator
+&gt;&gt;&gt; g = (x * x for x in range(3))
+# 使用next调用generator生成下一个数据
+&gt;&gt;&gt; next(g)
+0
+&gt;&gt;&gt; next(g)
+1
+# 使用for遍历generator
+&gt;&gt;&gt; for n in g:
+...    print(n)
+...
+0
+1
+4
+
+# 在函数中可使用yield生成generator，yield和return类似。
+# 下次函数调用会从yield以后开始执行，且此时的yield返回为None。
+# 可以使用send来让yield返回特定的值。
+&gt;&gt;&gt; def test(x):
+...     while True:
+...         y = yield x
+...         if y == None:
+...             x = x + 1
+...         else:
+...             x = y
+...
+
+&gt;&gt;&gt; g = test(10)
+&gt;&gt;&gt; next(g)
+10
+&gt;&gt;&gt; next(g)
+11
+&gt;&gt;&gt; g.send(1)
+1
+&gt;&gt;&gt; next(g)
+2
+</code></pre><h2 id="函数式编程">函数式编程</h2>
+<ul>
+<li>
+<p>map</p>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython">&gt;&gt;&gt; def f(x):
+...     return x * x
+...
+&gt;&gt;&gt; r = map(f, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+&gt;&gt;&gt; list(r)
+[1, 4, 9, 16, 25, 36, 49, 64, 81]
+</code></pre></li>
+<li>
+<p>reduce</p>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython">&gt;&gt;&gt; def add(x, y):
+...     return x + y
+...
+&gt;&gt;&gt; reduce(add, [1, 3, 5, 7, 9])
+25
+</code></pre></li>
+<li>
+<p>filter</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">is_odd</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="o">...</span>     <span class="k">return</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="o">...</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">is_odd</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">]))</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">15</span><span class="p">]</span>
+</code></pre></div></li>
+<li>
+<p>lambda</p>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython">&gt;&gt;&gt; f = lambda x: x * x
+&gt;&gt;&gt; f
+&lt;function &lt;lambda&gt; at 0x101c6ef28&gt;
+&gt;&gt;&gt; f(5)
+25
+</code></pre></li>
+<li>
+<p>装饰器</p>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython">from functools import wraps
+
+# 定义装饰器函数
+# 参数为要装饰的函数
+# 返回装饰后的函数
+def square(func):
+    def wrap_func(a, b):
+        c = func(a, b)
+        return pow(c, 2)
+    return wrap_func
+
+# 使用wraps装饰器包装装饰器函数
+# 使用wraps后，被装饰的函数的__name__属性返回被装饰的函数名称而不是装饰器函数
+def square2(func):
+    @wraps(func)
+    def decorated(a, b):
+        c = func(a, b)
+        return pow(c, 2)
+    return decorated
+
+
+@square
+def add(a, b):
+    return a + b
+
+
+print(add(1, 2))
+print(add.__name__)
+
+@square2
+def add(a, b):
+    return a + b
+
+
+print(add(1, 2))
+print(add.__name__)
+
+# output:
+9
+wrap_func
+9
+add
+</code></pre></li>
+<li>
+<p>自带装饰器函数</p>
 <ol>
-<li></li>
+<li>
+<p>@property</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">C</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span>
+
+    <span class="nd">@x</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="nd">@x</span><span class="o">.</span><span class="n">deleter</span>
+    <span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span>
+
+
+<span class="n">c</span> <span class="o">=</span> <span class="n">C</span><span class="p">()</span>
+<span class="n">c</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">123</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+<span class="k">del</span> <span class="n">c</span><span class="o">.</span><span class="n">x</span>
+
+<span class="c1"># output</span>
+<span class="mi">123</span>
+
+</code></pre></div></li>
+<li>
+<p>@classmethod</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+<span class="n">number</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">get_a</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>  <span class="c1"># cls 接收的是当前类，类在使用时会将自身传入到类方法的第一个参数</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;这是类本身：&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span>  <span class="c1"># 如果子类调用，则传入的是子类</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;这是类属性:&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="n">number</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="k">pass</span>
+
+
+<span class="c1"># 调用类方法 不需要实例化可以执行调用类方法</span>
+<span class="n">A</span><span class="o">.</span><span class="n">get_a</span><span class="p">()</span>
+<span class="n">B</span><span class="o">.</span><span class="n">get_a</span><span class="p">()</span>
+
+<span class="c1"># output</span>
+<span class="n">这是类本身</span><span class="err">：</span> <span class="o">&lt;</span><span class="k">class</span> <span class="err">&#39;</span><span class="nc">__main__</span><span class="o">.</span><span class="n">A</span><span class="s1">&#39;&gt;</span>
+<span class="n">这是类属性</span><span class="p">:</span> <span class="mi">10</span>
+<span class="n">这是类本身</span><span class="err">：</span> <span class="o">&lt;</span><span class="k">class</span> <span class="err">&#39;</span><span class="nc">__main__</span><span class="o">.</span><span class="sa">B</span><span class="s1">&#39;&gt;</span>
+<span class="n">这是类属性</span><span class="p">:</span> <span class="mi">20</span>
+</code></pre></div></li>
+<li>
+<p>@staticmethod</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+<span class="nd">@staticmethod</span>
+<span class="k">def</span> <span class="nf">static_func</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;class name: &#39;</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="n">A</span><span class="o">.</span><span class="n">static_func</span><span class="p">()</span>
+<span class="n">B</span><span class="o">.</span><span class="n">static_func</span><span class="p">()</span>
+
+<span class="c1"># output</span>
+<span class="k">class</span> <span class="nc">name</span><span class="p">:</span> <span class="n">A</span>
+<span class="k">class</span> <span class="nc">name</span><span class="p">:</span> <span class="n">A</span>
+</code></pre></div></li>
 </ol>
+</li>
+<li>
+<p>偏函数</p>
+<pre tabindex="0"><code class="language-ipython" data-lang="ipython">&gt;&gt;&gt; import functools
+&gt;&gt;&gt; int2 = functools.partial(int, base=2)
+&gt;&gt;&gt; int2('1000000')
+64
+&gt;&gt;&gt; int2('1010101')
+85
+</code></pre></li>
+</ul>
 
 </section>
 
@@ -519,6 +560,34 @@
             >
 
             </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">目录</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#列表生成式">列表生成式</a></li>
+    <li><a href="#生成器">生成器</a></li>
+    <li><a href="#函数式编程">函数式编程</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
     
 
         </div>
