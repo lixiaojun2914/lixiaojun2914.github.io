@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Python语法 on My Blog</title>
+    <link>https://lixiaojun2914.github.io/tags/python%E8%AF%AD%E6%B3%95/</link>
+    <description>Recent content in Python语法 on My Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 28 Jan 2022 21:12:48 +0800</lastBuildDate><atom:link href="https://lixiaojun2914.github.io/tags/python%E8%AF%AD%E6%B3%95/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Python笔记</title>
+      <link>https://lixiaojun2914.github.io/p/python/</link>
+      <pubDate>Fri, 28 Jan 2022 21:12:48 +0800</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/python/</guid>
+      <description>asdf dfds    </description>
+    </item>
+    
+  </channel>
+</rss>

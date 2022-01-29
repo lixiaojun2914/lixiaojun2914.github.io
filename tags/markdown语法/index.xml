@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Markdown语法 on My Blog</title>
+    <link>https://lixiaojun2914.github.io/tags/markdown%E8%AF%AD%E6%B3%95/</link>
+    <description>Recent content in Markdown语法 on My Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sat, 29 Jan 2022 10:04:53 +0800</lastBuildDate><atom:link href="https://lixiaojun2914.github.io/tags/markdown%E8%AF%AD%E6%B3%95/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Markdown笔记</title>
+      <link>https://lixiaojun2914.github.io/p/markdown/</link>
+      <pubDate>Sat, 29 Jan 2022 10:04:53 +0800</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/markdown/</guid>
+      <description>标题语法 # level1 ## level2 ### level3 #### level4 ##### level5 ###### level6 level1 level2 level3 level4 level5 level6 段落语法 段落中间用一个空行将不同的段落分割
+I really like using Markdown. I think I&amp;#39;ll use it to format all of my documents. I really like using Markdown.
+I think I&amp;rsquo;ll use it to format all of my documents.
+换行语法 换行可用两个空格或者html中的&amp;lt;br&amp;gt;进行换行
+First line with two space after. And the next line. First line with html tag after.</description>
+    </item>
+    
+  </channel>
+</rss>

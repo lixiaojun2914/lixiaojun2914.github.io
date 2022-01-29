@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='markdown语法笔记'><title>Markdown笔记</title>
+
+<link rel='canonical' href='https://lixiaojun2914.github.io/p/markdown/'>
+
+<link rel="stylesheet" href="/scss/style.min.690a283bac9f967161eea605d3ab2ebc0b689da41a8b82c681a9dd82668ccf94.css"><meta property='og:title' content='Markdown笔记'>
+<meta property='og:description' content='markdown语法笔记'>
+<meta property='og:url' content='https://lixiaojun2914.github.io/p/markdown/'>
+<meta property='og:site_name' content='My Blog'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='Markdown语法' /><meta property='article:published_time' content='2022-01-29T10:04:53&#43;08:00'/><meta property='article:modified_time' content='2022-01-29T10:04:53&#43;08:00'/>
+<meta name="twitter:title" content="Markdown笔记">
+<meta name="twitter:description" content="markdown语法笔记">
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="/" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>返回</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="main-article">
+    <header class="article-header">
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/markdown/" >
+                Markdown
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/markdown/">Markdown笔记</a>
+    </h2>
+
+    
+    <h3 class="article-subtitle">
+        markdown语法笔记
+    </h3>
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Jan 29, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 2 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <h1 id="标题语法">标题语法</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="gh"># level1
+</span><span class="gh"></span><span class="gu">## level2
+</span><span class="gu">### level3
+</span><span class="gu">#### level4
+</span><span class="gu">##### level5
+</span><span class="gu">###### level6
+</span></code></pre></div><h1 id="level1">level1</h1>
+<h2 id="level2">level2</h2>
+<h3 id="level3">level3</h3>
+<h4 id="level4">level4</h4>
+<h5 id="level5">level5</h5>
+<h6 id="level6">level6</h6>
+<h1 id="段落语法">段落语法</h1>
+<p>段落中间用一个空行将不同的段落分割</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">I really like using Markdown.
+
+I think I&#39;ll use it to format all of my documents.
+</code></pre></div><p>I really like using Markdown.</p>
+<p>I think I&rsquo;ll use it to format all of my documents.</p>
+<h1 id="换行语法">换行语法</h1>
+<p>换行可用两个空格或者html中的&lt;br&gt;进行换行</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">First line with two space after.  
+And the next line.
+First line with html tag after.<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
+</code></pre></div><p>First line with two space after.<br>
+And the next line.
+First line with html tag after.<!-- raw HTML omitted --></p>
+<h1 id="强调语法">强调语法</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">**bold text**  
+<span class="ge">*italicized text*</span>  
+<span class="ge">**</span>*bold and italicized***  
+<span class="gd">~~delete line~~</span>
+</code></pre></div><p><strong>bold text</strong><br>
+<em>italicized text</em><br>
+<em><strong>bold and italicized</strong></em><br>
+<del>delete line</del></p>
+<h1 id="引用语法">引用语法</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">&gt;This is a reference.
+<span class="k">&gt; </span><span class="ge"># This is another reference.
+</span></code></pre></div><blockquote>
+<p>This is a reference.</p>
+<h1 id="this-is-another-reference">This is another reference.</h1>
+</blockquote>
+<h1 id="列表语法">列表语法</h1>
+<h2 id="有序列表">有序列表</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="k">1.</span> first
+<span class="k">2.</span> second
+<span class="k">1.</span> third
+<span class="k">8.</span> fourth
+</code></pre></div><ol>
+<li>first</li>
+<li>second</li>
+<li>third</li>
+<li>fourth</li>
+</ol>
+<h2 id="无序列表">无序列表</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="k">-</span> first
+<span class="k">*</span> second
++ third
+</code></pre></div><ul>
+<li>first</li>
+</ul>
+<ul>
+<li>second</li>
+</ul>
+<ul>
+<li>third</li>
+</ul>
+<h2 id="任务列表">任务列表</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="k">- [x]</span> first
+<span class="k">- [ ]</span> second
+<span class="k">- [ ]</span> third
+</code></pre></div><ul>
+<li><input checked="" disabled="" type="checkbox"> first</li>
+<li><input disabled="" type="checkbox"> second</li>
+<li><input disabled="" type="checkbox"> third</li>
+</ul>
+<h2 id="列表中添加其他元素">列表中添加其他元素</h2>
+<h3 id="嵌套段落">嵌套段落</h3>
+<p>嵌套段落，应将元素缩进4个空格或一个制表符</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="k">-</span> This is the first item.
+<span class="k">-</span> This is the second item.  
+    Another paragraph below the second item.
+<span class="k">-</span> This is the third item.
+</code></pre></div><ul>
+<li>This is the first item.</li>
+<li>This is the second item.<br>
+Another paragraph below the second item.</li>
+<li>This is the third item.</li>
+</ul>
+<h3 id="嵌套代码块">嵌套代码块</h3>
+<p>嵌套代码块，应将元素缩进8个空格或两个制表符,同时增加一个空行</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="k">1.</span> Open the file.
+<span class="k">2.</span> Find the follow block  
+
+        <span class="p">&lt;</span><span class="nt">html</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+                <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>Test<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+            <span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+<span class="k">3.</span> Update the title to match.
+</code></pre></div><ol>
+<li>
+<p>Open the file.</p>
+</li>
+<li>
+<p>Find the follow block</p>
+<pre><code> &lt;html&gt;
+     &lt;head&gt;
+         &lt;title&gt;Test&lt;/title&gt;
+     &lt;/head&gt;
+ &lt;/html&gt;
+</code></pre>
+</li>
+<li>
+<p>Update the title to match.</p>
+</li>
+</ol>
+<h1 id="代码语法">代码语法</h1>
+<ul>
+<li>要将短语标注为代码，将其包裹在反引号( ` )中
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">type <span class="sb">`nano`</span>
+</code></pre></div>type <code>nano</code></li>
+<li>如果代码中包含反引号，将其包裹在双反引号( `` )中
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">type `` <span class="sb">`nano`</span> ``
+</code></pre></div>type <code>`nano`</code></li>
+</ul>
+<h1 id="分隔线语法">分隔线语法</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">***
+---
+___
+</code></pre></div><hr>
+<hr>
+<hr>
+<h1 id="链接语法">链接语法</h1>
+<ul>
+<li>链接
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">[<span class="nt">Blog</span>](<span class="na">https://lixiaojun2914.github.io &#34;我的博客地址&#34;</span>)
+</code></pre></div><a class="link" href="https://lixiaojun2914.github.io"  title="我的博客地址"
+     target="_blank" rel="noopener"
+    >Blog</a></li>
+<li>网址和email地址
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="p">&lt;</span><span class="nt">https:</span><span class="err">//</span><span class="na">lixiaojun2914</span><span class="err">.</span><span class="na">github</span><span class="err">.</span><span class="na">io</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">982090951</span><span class="err">@</span><span class="na">qq</span><span class="err">.</span><span class="na">com</span><span class="p">&gt;</span>
+</code></pre></div><a class="link" href="https://lixiaojun2914.github.io"  target="_blank" rel="noopener"
+    >https://lixiaojun2914.github.io</a><br>
+<a class="link" href="mailto:982090951@qq.com" >982090951@qq.com</a></li>
+</ul>
+<h1 id="图片语法">图片语法</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">![<span class="nt">This is a image</span>](<span class="na">https://tenfei04.cfp.cn/creative/vcg/800/new/VCG211291536009.jpg &#34;have fun&#34;</span>)
+</code></pre></div><p><figure 
+	>
+	<a href="https://tenfei04.cfp.cn/creative/vcg/800/new/VCG211291536009.jpg" >
+		<img src="https://tenfei04.cfp.cn/creative/vcg/800/new/VCG211291536009.jpg"
+			
+			
+			
+			loading="lazy"
+			alt="This is a image">
+	</a>
+	
+	<figcaption>This is a image</figcaption>
+	
+</figure></p>
+<h1 id="表格语法">表格语法</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">| Syntax    | Description | test |
+| :-------- | :---------: | ---: |
+| Header    |    Title    | test |
+| Paragraph |    Text     | test |
+</code></pre></div><div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align:left">Syntax</th>
+<th style="text-align:center">Description</th>
+<th style="text-align:right">test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Header</td>
+<td style="text-align:center">Title</td>
+<td style="text-align:right">test</td>
+</tr>
+<tr>
+<td style="text-align:left">Paragraph</td>
+<td style="text-align:center">Text</td>
+<td style="text-align:right">test</td>
+</tr>
+</tbody>
+</table></div>
+<h1 id="围栏代码块">围栏代码块</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">```json
+{
+    &#34;test&#34;: 123,
+    &#34;age&#34;: 25
+}
+\```
+</code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="p">{</span>
+    <span class="nt">&#34;test&#34;</span><span class="p">:</span> <span class="mi">123</span><span class="p">,</span>
+    <span class="nt">&#34;age&#34;</span><span class="p">:</span> <span class="mi">25</span>
+<span class="p">}</span>
+</code></pre></div><h1 id="emoji">emoji</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md">:tent: :joy:
+</code></pre></div><p>:tent: :joy:</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/markdown%E8%AF%AD%E6%B3%95/">Markdown语法</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    <aside class="related-contents--wrapper">
+    
+    
+</aside>
+
+     
+    
+        
+    <script src='//cdn.jsdelivr.net/npm/@waline/client/dist/Waline.min.js'></script>
+<div id="waline" class="waline-container"></div>
+<style>
+    .waline-container {
+        background-color: var(--card-background);
+        border-radius: var(--card-border-radius);
+        box-shadow: var(--shadow-l1);
+        padding: var(--card-padding);
+    }
+    .waline-container .vcount {
+        color: var(--card-text-color-main);
+    }
+</style><script>
+    
+    new Waline({"dark":"html[data-scheme=\"dark\"]","el":"#waline","emoji":["https://cdn.jsdelivr.net/gh/walinejs/emojis/weibo"],"lang":"zh-CN","locale":{"admin":"Admin"},"requiredMeta":["name","email"],"serverURL":"https://blog-waline-lixiaojun2914.vercel.app","visitor":true});
+</script>
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2020 - 
+        
+        2022 My Blog
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.7.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">目录</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#level2">level2</a>
+      <ol>
+        <li><a href="#level3">level3</a>
+          <ol>
+            <li><a href="#level4">level4</a></li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+  </ol>
+
+  <ol>
+    <li><a href="#有序列表">有序列表</a></li>
+    <li><a href="#无序列表">无序列表</a></li>
+    <li><a href="#任务列表">任务列表</a></li>
+    <li><a href="#列表中添加其他元素">列表中添加其他元素</a>
+      <ol>
+        <li><a href="#嵌套段落">嵌套段落</a></li>
+        <li><a href="#嵌套代码块">嵌套代码块</a></li>
+      </ol>
+    </li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

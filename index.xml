@@ -6,7 +6,257 @@
         <description>Recent content on My Blog</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>zh-cn</language>
-        <lastBuildDate>Fri, 28 Jan 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://lixiaojun2914.github.io/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Sat, 29 Jan 2022 10:04:53 +0800</lastBuildDate><atom:link href="https://lixiaojun2914.github.io/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Markdown笔记</title>
+        <link>https://lixiaojun2914.github.io/p/markdown/</link>
+        <pubDate>Sat, 29 Jan 2022 10:04:53 +0800</pubDate>
+        
+        <guid>https://lixiaojun2914.github.io/p/markdown/</guid>
+        <description>&lt;h1 id=&#34;标题语法&#34;&gt;标题语法&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;gh&#34;&gt;# level1
+&lt;/span&gt;&lt;span class=&#34;gh&#34;&gt;&lt;/span&gt;&lt;span class=&#34;gu&#34;&gt;## level2
+&lt;/span&gt;&lt;span class=&#34;gu&#34;&gt;### level3
+&lt;/span&gt;&lt;span class=&#34;gu&#34;&gt;#### level4
+&lt;/span&gt;&lt;span class=&#34;gu&#34;&gt;##### level5
+&lt;/span&gt;&lt;span class=&#34;gu&#34;&gt;###### level6
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;level1&#34;&gt;level1&lt;/h1&gt;
+&lt;h2 id=&#34;level2&#34;&gt;level2&lt;/h2&gt;
+&lt;h3 id=&#34;level3&#34;&gt;level3&lt;/h3&gt;
+&lt;h4 id=&#34;level4&#34;&gt;level4&lt;/h4&gt;
+&lt;h5 id=&#34;level5&#34;&gt;level5&lt;/h5&gt;
+&lt;h6 id=&#34;level6&#34;&gt;level6&lt;/h6&gt;
+&lt;h1 id=&#34;段落语法&#34;&gt;段落语法&lt;/h1&gt;
+&lt;p&gt;段落中间用一个空行将不同的段落分割&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;I really like using Markdown.
+
+I think I&amp;#39;ll use it to format all of my documents.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I really like using Markdown.&lt;/p&gt;
+&lt;p&gt;I think I&amp;rsquo;ll use it to format all of my documents.&lt;/p&gt;
+&lt;h1 id=&#34;换行语法&#34;&gt;换行语法&lt;/h1&gt;
+&lt;p&gt;换行可用两个空格或者html中的&amp;lt;br&amp;gt;进行换行&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;First line with two space after.  
+And the next line.
+First line with html tag after.&lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;br&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;First line with two space after.&lt;br&gt;
+And the next line.
+First line with html tag after.&lt;!-- raw HTML omitted --&gt;&lt;/p&gt;
+&lt;h1 id=&#34;强调语法&#34;&gt;强调语法&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;**bold text**  
+&lt;span class=&#34;ge&#34;&gt;*italicized text*&lt;/span&gt;  
+&lt;span class=&#34;ge&#34;&gt;**&lt;/span&gt;*bold and italicized***  
+&lt;span class=&#34;gd&#34;&gt;~~delete line~~&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;bold text&lt;/strong&gt;&lt;br&gt;
+&lt;em&gt;italicized text&lt;/em&gt;&lt;br&gt;
+&lt;em&gt;&lt;strong&gt;bold and italicized&lt;/strong&gt;&lt;/em&gt;&lt;br&gt;
+&lt;del&gt;delete line&lt;/del&gt;&lt;/p&gt;
+&lt;h1 id=&#34;引用语法&#34;&gt;引用语法&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&amp;gt;This is a reference.
+&lt;span class=&#34;k&#34;&gt;&amp;gt; &lt;/span&gt;&lt;span class=&#34;ge&#34;&gt;# This is another reference.
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;blockquote&gt;
+&lt;p&gt;This is a reference.&lt;/p&gt;
+&lt;h1 id=&#34;this-is-another-reference&#34;&gt;This is another reference.&lt;/h1&gt;
+&lt;/blockquote&gt;
+&lt;h1 id=&#34;列表语法&#34;&gt;列表语法&lt;/h1&gt;
+&lt;h2 id=&#34;有序列表&#34;&gt;有序列表&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;k&#34;&gt;1.&lt;/span&gt; first
+&lt;span class=&#34;k&#34;&gt;2.&lt;/span&gt; second
+&lt;span class=&#34;k&#34;&gt;1.&lt;/span&gt; third
+&lt;span class=&#34;k&#34;&gt;8.&lt;/span&gt; fourth
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ol&gt;
+&lt;li&gt;first&lt;/li&gt;
+&lt;li&gt;second&lt;/li&gt;
+&lt;li&gt;third&lt;/li&gt;
+&lt;li&gt;fourth&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;无序列表&#34;&gt;无序列表&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;k&#34;&gt;-&lt;/span&gt; first
+&lt;span class=&#34;k&#34;&gt;*&lt;/span&gt; second
++ third
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;first&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;second&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;third&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;任务列表&#34;&gt;任务列表&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;k&#34;&gt;- [x]&lt;/span&gt; first
+&lt;span class=&#34;k&#34;&gt;- [ ]&lt;/span&gt; second
+&lt;span class=&#34;k&#34;&gt;- [ ]&lt;/span&gt; third
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;&lt;input checked=&#34;&#34; disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; first&lt;/li&gt;
+&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; second&lt;/li&gt;
+&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; third&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;列表中添加其他元素&#34;&gt;列表中添加其他元素&lt;/h2&gt;
+&lt;h3 id=&#34;嵌套段落&#34;&gt;嵌套段落&lt;/h3&gt;
+&lt;p&gt;嵌套段落，应将元素缩进4个空格或一个制表符&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;k&#34;&gt;-&lt;/span&gt; This is the first item.
+&lt;span class=&#34;k&#34;&gt;-&lt;/span&gt; This is the second item.  
+    Another paragraph below the second item.
+&lt;span class=&#34;k&#34;&gt;-&lt;/span&gt; This is the third item.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;This is the first item.&lt;/li&gt;
+&lt;li&gt;This is the second item.&lt;br&gt;
+Another paragraph below the second item.&lt;/li&gt;
+&lt;li&gt;This is the third item.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;嵌套代码块&#34;&gt;嵌套代码块&lt;/h3&gt;
+&lt;p&gt;嵌套代码块，应将元素缩进8个空格或两个制表符,同时增加一个空行&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;k&#34;&gt;1.&lt;/span&gt; Open the file.
+&lt;span class=&#34;k&#34;&gt;2.&lt;/span&gt; Find the follow block  
+
+        &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;html&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;head&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+                &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;title&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;Test&lt;span class=&#34;p&#34;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;title&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&#34;p&#34;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;head&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;html&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&#34;k&#34;&gt;3.&lt;/span&gt; Update the title to match.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Open the file.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Find the follow block&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt; &amp;lt;html&amp;gt;
+     &amp;lt;head&amp;gt;
+         &amp;lt;title&amp;gt;Test&amp;lt;/title&amp;gt;
+     &amp;lt;/head&amp;gt;
+ &amp;lt;/html&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Update the title to match.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h1 id=&#34;代码语法&#34;&gt;代码语法&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;要将短语标注为代码，将其包裹在反引号( ` )中
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;type &lt;span class=&#34;sb&#34;&gt;`nano`&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;type &lt;code&gt;nano&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;如果代码中包含反引号，将其包裹在双反引号( `` )中
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;type `` &lt;span class=&#34;sb&#34;&gt;`nano`&lt;/span&gt; ``
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;type &lt;code&gt;`nano`&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;分隔线语法&#34;&gt;分隔线语法&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;***
+---
+___
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;hr&gt;
+&lt;hr&gt;
+&lt;hr&gt;
+&lt;h1 id=&#34;链接语法&#34;&gt;链接语法&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;链接
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;[&lt;span class=&#34;nt&#34;&gt;Blog&lt;/span&gt;](&lt;span class=&#34;na&#34;&gt;https://lixiaojun2914.github.io &amp;#34;我的博客地址&amp;#34;&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;a class=&#34;link&#34; href=&#34;https://lixiaojun2914.github.io&#34;  title=&#34;我的博客地址&#34;
+     target=&#34;_blank&#34; rel=&#34;noopener&#34;
+    &gt;Blog&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;网址和email地址
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;&lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;https:&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;//&lt;/span&gt;&lt;span class=&#34;na&#34;&gt;lixiaojun2914&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;na&#34;&gt;github&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;na&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;nt&#34;&gt;982090951&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;@&lt;/span&gt;&lt;span class=&#34;na&#34;&gt;qq&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;na&#34;&gt;com&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;a class=&#34;link&#34; href=&#34;https://lixiaojun2914.github.io&#34;  target=&#34;_blank&#34; rel=&#34;noopener&#34;
+    &gt;https://lixiaojun2914.github.io&lt;/a&gt;&lt;br&gt;
+&lt;a class=&#34;link&#34; href=&#34;mailto:982090951@qq.com&#34; &gt;982090951@qq.com&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;图片语法&#34;&gt;图片语法&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;![&lt;span class=&#34;nt&#34;&gt;This is a image&lt;/span&gt;](&lt;span class=&#34;na&#34;&gt;https://tenfei04.cfp.cn/creative/vcg/800/new/VCG211291536009.jpg &amp;#34;have fun&amp;#34;&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;figure 
+	&gt;
+	&lt;a href=&#34;https://tenfei04.cfp.cn/creative/vcg/800/new/VCG211291536009.jpg&#34; &gt;
+		&lt;img src=&#34;https://tenfei04.cfp.cn/creative/vcg/800/new/VCG211291536009.jpg&#34;
+			
+			
+			
+			loading=&#34;lazy&#34;
+			alt=&#34;This is a image&#34;&gt;
+	&lt;/a&gt;
+	
+	&lt;figcaption&gt;This is a image&lt;/figcaption&gt;
+	
+&lt;/figure&gt;&lt;/p&gt;
+&lt;h1 id=&#34;表格语法&#34;&gt;表格语法&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;| Syntax    | Description | test |
+| :-------- | :---------: | ---: |
+| Header    |    Title    | test |
+| Paragraph |    Text     | test |
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th style=&#34;text-align:left&#34;&gt;Syntax&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;Description&lt;/th&gt;
+&lt;th style=&#34;text-align:right&#34;&gt;test&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:left&#34;&gt;Header&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;Title&lt;/td&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;test&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:left&#34;&gt;Paragraph&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;Text&lt;/td&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;test&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h1 id=&#34;围栏代码块&#34;&gt;围栏代码块&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;```json
+{
+    &amp;#34;test&amp;#34;: 123,
+    &amp;#34;age&amp;#34;: 25
+}
+\```
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-json&#34; data-lang=&#34;json&#34;&gt;&lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nt&#34;&gt;&amp;#34;test&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;123&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;
+    &lt;span class=&#34;nt&#34;&gt;&amp;#34;age&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;25&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;emoji&#34;&gt;emoji&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-md&#34; data-lang=&#34;md&#34;&gt;:tent: :joy:
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;:tent: :joy:&lt;/p&gt;
+</description>
+        </item>
+        <item>
+        <title>Pytorch笔记</title>
+        <link>https://lixiaojun2914.github.io/p/pytorch/</link>
+        <pubDate>Fri, 28 Jan 2022 21:13:18 +0800</pubDate>
+        
+        <guid>https://lixiaojun2914.github.io/p/pytorch/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>Matplotlib笔记</title>
+        <link>https://lixiaojun2914.github.io/p/matplotlib/</link>
+        <pubDate>Fri, 28 Jan 2022 21:13:09 +0800</pubDate>
+        
+        <guid>https://lixiaojun2914.github.io/p/matplotlib/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>Numpy笔记</title>
+        <link>https://lixiaojun2914.github.io/p/numpy/</link>
+        <pubDate>Fri, 28 Jan 2022 21:12:59 +0800</pubDate>
+        
+        <guid>https://lixiaojun2914.github.io/p/numpy/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>Python笔记</title>
+        <link>https://lixiaojun2914.github.io/p/python/</link>
+        <pubDate>Fri, 28 Jan 2022 21:12:48 +0800</pubDate>
+        
+        <guid>https://lixiaojun2914.github.io/p/python/</guid>
+        <description>&lt;h1 id=&#34;asdf&#34;&gt;asdf&lt;/h1&gt;
+&lt;h2 id=&#34;dfds&#34;&gt;dfds&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        </item>
+        <item>
         <title>Hugo Blog搭建过程</title>
         <link>https://lixiaojun2914.github.io/p/test-post/</link>
         <pubDate>Fri, 28 Jan 2022 00:00:00 +0000</pubDate>

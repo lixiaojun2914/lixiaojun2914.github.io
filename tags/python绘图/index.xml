@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>python绘图 on My Blog</title>
+    <link>https://lixiaojun2914.github.io/tags/python%E7%BB%98%E5%9B%BE/</link>
+    <description>Recent content in python绘图 on My Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 28 Jan 2022 21:13:18 +0800</lastBuildDate><atom:link href="https://lixiaojun2914.github.io/tags/python%E7%BB%98%E5%9B%BE/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Pytorch笔记</title>
+      <link>https://lixiaojun2914.github.io/p/pytorch/</link>
+      <pubDate>Fri, 28 Jan 2022 21:13:18 +0800</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/pytorch/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Matplotlib笔记</title>
+      <link>https://lixiaojun2914.github.io/p/matplotlib/</link>
+      <pubDate>Fri, 28 Jan 2022 21:13:09 +0800</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/matplotlib/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Numpy笔记</title>
+      <link>https://lixiaojun2914.github.io/p/numpy/</link>
+      <pubDate>Fri, 28 Jan 2022 21:12:59 +0800</pubDate>
+      
+      <guid>https://lixiaojun2914.github.io/p/numpy/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>
