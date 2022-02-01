@@ -31,7 +31,7 @@
       <pubDate>Fri, 28 Jan 2022 21:12:59 +0800</pubDate>
       
       <guid>https://lixiaojun2914.github.io/p/numpy/</guid>
-      <description></description>
+      <description>Numpy笔记 ndarray ndarray的属性 import numpy as np a = np.arange(6).reshape(2, 3) print(a) # 维度 print(f&amp;#39;shape: {a.shape}&amp;#39;) # 轴 print(f&amp;#39;ndim: {a.ndim}&amp;#39;) # 元素大小 print(f&amp;#39;itemsize: {a.itemsize}&amp;#39;) # 元素个数 print(f&amp;#39;size: {a.size}&amp;#39;) # 元素类型 print(f&amp;#39;dtype: {a.dtype}&amp;#39;) # 元数据 print(f&amp;#39;data: {a.data}&amp;#39;) 数组创建 # 定义数组形状 &amp;gt;&amp;gt;&amp;gt; s = (3, 3) # 创建全为零的数组 &amp;gt;&amp;gt;&amp;gt; np.zeros(s) array([[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]]) # 创建全为一的数组 &amp;gt;&amp;gt;&amp;gt; np.ones(s) array([[1., 1., 1.], [1., 1., 1.], [1., 1., 1.]]) # 创建空数组，元素用随机数填充 &amp;gt;&amp;gt;&amp;gt; np.</description>
     </item>
     
   </channel>
