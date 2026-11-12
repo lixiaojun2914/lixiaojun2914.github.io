@@ -8,7 +8,7 @@
     "content/post/C语言标准库常用字符串处理函数/index.md": "6966926bb474916946613a5f0da36c1b3ba69da69c3d420bc36a6a332f44d051",
     "content/post/blog搭建过程/index.md": "2eb9dc3848614ffc31ae882457f9e33829ef0d4559c985e03b1ebc692d1d6137",
     "content/post/blog搭建过程/pawel-czerwinski-8uZPynIu-rQ-unsplash.jpg": "51e5d61163e6cb609898132fa7a7866db3aa59d14adc6fc7288e1035bc2ddcbf",
-    "content/post/hugo-blog搭建过程/index.md": "db3c7668ba872d9bb99dc9d6d6955adc43ce62de9a1a8bf0d6f7f5ac97000e4b",
+    "content/post/hugo-blog搭建过程/index.md": "7f1e5a9885096a1ea972d266bef1a1c9a2ef76ee6fbe7cbf0334b5a3dd33c31d",
     "content/post/markdown笔记/index.md": "7cc6c9ab5385ea0c917b2d4d96e4a4b395b43efdc3d9863b2d6c64444263d1a7",
     "content/post/numpy笔记/index.md": "9f439e3019e9a3e158fe465a58c4ae364820e4278ee44ac265dc8cb47fdb4f0b",
     "content/post/python笔记/index.md": "b04d55e4d51c0ea2c27ddc3904ca11cde8a6e90c77aece6aee12549cd831c8c9",
@@ -133,5 +133,14 @@
     "/tags/矩阵计算/index.html",
     "/tags/矩阵计算/index.xml",
     "/tags/矩阵计算/page/1/index.html"
+  ],
+  "revisions": [
+    {
+      "path": "content/post/hugo-blog搭建过程/index.md",
+      "date": "2026-11-12",
+      "previous_sha256": "db3c7668ba872d9bb99dc9d6d6955adc43ce62de9a1a8bf0d6f7f5ac97000e4b",
+      "sha256": "7f1e5a9885096a1ea972d266bef1a1c9a2ef76ee6fbe7cbf0334b5a3dd33c31d",
+      "reason": "Rewrite the outdated Hugo guide to match the deployed Hugo/Stack/Actions/Giscus setup, as requested by the blog owner."
+    }
   ]
 }

@@ -27,7 +27,7 @@ python3 scripts/verify_comments.py
 node scripts/verify_giscus_theme.cjs
 ```
 
-校验脚本检查原始文件哈希；以后主动修改历史文章时，需要同步更新 `docs/migration-manifest.json` 中对应的 SHA-256。新增文章不会受历史哈希限制。
+校验脚本检查迁移及后续明确更新的文件快照哈希；以后主动修改历史文章时，需要同步更新 `docs/migration-manifest.json` 中对应的 SHA-256。新增文章不会受历史哈希限制。
 
 ## 目录与配置
 
@@ -51,7 +51,7 @@ themes/hugo-theme-stack/ 完整的上游主题（含 LICENSE）
 ### 写文章
 
 ```bash
-hugo new content post/my-new-note/index.md
+hugo new content --kind post post/my-new-note
 ```
 
 编辑 Front Matter 的标题、slug、分类、标签，并将 `draft` 改为 `false` 后发布。配图直接放在同一目录。文章 URL 为 `/p/:slug/`，发布后尽量不改 slug；确需修改时，为旧地址添加 `aliases`。

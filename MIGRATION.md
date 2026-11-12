@@ -3,7 +3,7 @@
 ## 来源与保留内容
 
 - 发布仓库只有 Hugo 0.92.0 + Stack 3.7.0 的生成结果，没有完整配置与主题源码。
-- 文章仓库 `lixiaojun2914/blog` 包含 8 篇 Markdown、2 张配图。原始文件逐字保留，哈希记录在 `docs/migration-manifest.json`。
+- 文章仓库 `lixiaojun2914/blog` 包含 8 篇 Markdown、2 张配图。初次迁移时原始文件逐字保留，哈希记录在 `docs/migration-manifest.json`。
 - 从旧发布站恢复头像、About 正文、链接页数据、Test 分类说明及图片、旧图片 URL。
 - 保留所有文章日期、标题、slug、分类和标签。`C-lang` 仍输出 `/p/c-lang/`；中文 `/p/哈哈哈哈/` 也保持原样。
 - `/about-us/`、`/about-hugo/`、`/contact/` 仍跳转到 `/about/`。
@@ -40,7 +40,7 @@
 2. **失效图片**：Markdown 笔记引用 `tenfei04.cfp.cn/.../VCG211291536009.jpg`，检查时 DNS 解析失败。保留原文与 URL，外链图片不参与构建期下载，避免阻塞部署。该图片在浏览器中仍可能无法显示；需要找回原图才能完整修复。
 3. **空白文章**：`Pytorch笔记` 原文仅有元数据，描述和标签写的是 matplotlib；按原样保留，未凭空添加内容。
 4. **主题示例**：Rich Content、Test 分类和 About 的 Hugo 介绍属于历史示例内容；保留 URL 与正文，后续可以自行清理。
-5. **旧教程**：《Hugo Blog搭建过程》内的命令与 YAML 是历史正文，按原样保留；当前操作请用 README，避免误把旧配置复制回新项目。
+5. **旧教程**：《Hugo Blog搭建过程》在初次迁移时按原样保留；随后按站主要求于 2026-11-12 重写为当前 Hugo/Stack/Actions/Giscus 教程，保留原日期和 slug，新增 lastmod，并在快照清单中记录修订前后的哈希。
 6. **浏览器外部依赖**：主题的图片灯箱、公式和 Bilibili 嵌入仍依赖对应 CDN/第三方站点，未声称完全离线可用。
 
 ## 验证方式

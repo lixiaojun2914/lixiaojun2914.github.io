@@ -21,7 +21,7 @@ for name, digest in manifest["files"].items():
     check(p.is_file(), "Missing source: " + name)
     if p.is_file():
         check(hashlib.sha256(p.read_bytes()).hexdigest() == digest,
-              "Original content changed: " + name + " (update manifest after intentional edits)")
+              "Tracked content changed: " + name + " (update manifest after intentional edits)")
 
 for path in manifest["legacy_routes"]:
     check((PUBLIC / path.lstrip("/")).is_file(), "Missing legacy URL: " + path)
@@ -71,5 +71,5 @@ if index.is_file():
 if errors:
     print("FAILED:", *sorted(set(errors)), sep="\n- ")
     sys.exit(1)
-print(f"PASS: {len(manifest['files'])} original source files unchanged; "
+print(f"PASS: {len(manifest['files'])} tracked source snapshots match manifest; "
       f"{len(manifest['legacy_routes'])} legacy URLs; {len(pages)} HTML pages/local assets; all 8 original posts searchable")
