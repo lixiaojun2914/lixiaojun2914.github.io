@@ -1,0 +1,20 @@
+baseURL = "https://lixiaojun2914.github.io/"
+title = "My Blog"
+locale = "zh-CN"
+defaultContentLanguage = "zh"
+hasCJKLanguage = true
+timeZone = "Asia/Shanghai"
+theme = "hugo-theme-stack"
+enableEmoji = true
+enableRobotsTXT = true
+
+[pagination]
+    pagerSize = 5
+
+[permalinks.page]
+    post = "/p/:slug/"
+    page = "/:slug/"
+
+[taxonomies]
+    category = "categories"
+    tag = "tags"

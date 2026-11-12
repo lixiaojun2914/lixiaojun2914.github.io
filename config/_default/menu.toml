@@ -1,0 +1,37 @@
+[[main]]
+    identifier = "home"
+    name = "首页"
+    url = "/"
+    weight = -100
+    [main.params]
+        icon = "home"
+
+[[main]]
+    identifier = "categories"
+    name = "分类"
+    url = "/categories/"
+    weight = -65
+    [main.params]
+        icon = "categories"
+
+[[main]]
+    identifier = "tags"
+    name = "标签"
+    url = "/tags/"
+    weight = -64
+    [main.params]
+        icon = "tag"
+
+[[social]]
+    identifier = "github"
+    name = "GitHub"
+    url = "https://github.com/lixiaojun2914"
+    [social.params]
+        icon = "brand-github"
+
+[[social]]
+    identifier = "rss"
+    name = "RSS"
+    url = "/index.xml"
+    [social.params]
+        icon = "rss"

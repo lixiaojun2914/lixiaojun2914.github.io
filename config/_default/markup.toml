@@ -1,0 +1,20 @@
+[goldmark.renderer]
+    # Original Markdown examples contain raw HTML such as <br>.
+    unsafe = true
+
+[goldmark.extensions.passthrough]
+    enable = true
+    [goldmark.extensions.passthrough.delimiters]
+        block = [["\\[", "\\]"], ["$$", "$$"]]
+        inline = [["\\(", "\\)"]]
+
+[tableOfContents]
+    startLevel = 2
+    endLevel = 4
+    ordered = true
+
+[highlight]
+    noClasses = false
+    lineNos = true
+    lineNumbersInTable = true
+    tabWidth = 4

@@ -1,0 +1,7 @@
+{{- $sass := resources.Get "scss/style.scss" -}}
+{{/* Stack 4.0.3 uses legacy Sass imports/functions; keep upstream intact.
+     These two deprecations remain compatible with the pinned Dart Sass 1.x. */}}
+{{- $opts := dict "transpiler" "dartsass" "outputStyle" "compressed"
+    "silenceDeprecations" (slice "import" "global-builtin") -}}
+{{- $style := $sass | css.Sass $opts | minify | fingerprint "sha256" -}}
+<link rel="stylesheet" href="{{ $style.RelPermalink }}" integrity="{{ $style.Data.Integrity }}" crossorigin="anonymous">
