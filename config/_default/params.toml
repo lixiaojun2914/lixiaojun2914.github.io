@@ -38,12 +38,21 @@ favicon = "img/avatar.png"
     default = "auto"
 
 [comments]
-    # Old Waline returns HTTP 500: LeanCloud app archived. Restore it before enabling.
-    enabled = false
-    provider = "waline"
+    enabled = true
+    provider = "giscus"
 
-    [comments.waline]
-        serverURL = "https://blog-waline-lixiaojun2914.vercel.app"
+    [comments.giscus]
+        repo = "lixiaojun2914/lixiaojun2914.github.io"
+        repoID = "R_kgDOGwEMGg"
+        category = "Announcements"
+        # Announcements category returned by the official Giscus API.
+        categoryID = "DIC_kwDOGwEMGs4DK-ki"
+        mapping = "pathname"
+        strict = 1
+        reactionsEnabled = 1
+        emitMetadata = 0
+        inputPosition = "top"
+        lightTheme = "light"
+        darkTheme = "dark_dimmed"
         lang = "zh-CN"
-        requiredMeta = ["name", "email"]
-        emoji = ["https://cdn.jsdelivr.net/gh/walinejs/emojis/weibo"]
+        loading = "lazy"

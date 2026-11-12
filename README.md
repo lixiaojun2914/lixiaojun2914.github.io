@@ -23,6 +23,8 @@ hugo server --bind 127.0.0.1
 ```bash
 hugo --gc --minify --panicOnWarning
 python3 scripts/verify_site.py
+python3 scripts/verify_comments.py
+node scripts/verify_giscus_theme.cjs
 ```
 
 校验脚本检查原始文件哈希；以后主动修改历史文章时，需要同步更新 `docs/migration-manifest.json` 中对应的 SHA-256。新增文章不会受历史哈希限制。
@@ -70,3 +72,16 @@ hugo new content post/my-new-note/index.md
 当前 Stack 仍含 Sass `@import` 和旧全局函数：样式覆盖只对这两类已知弃用提示做定向静默，版本固定在 Dart Sass 1.x；并不代表已将上游 SCSS 重写为 Sass 3 模块系统。
 
 迁移细节和外部服务问题见 [MIGRATION.md](MIGRATION.md)。
+
+## 评论系统（Giscus）
+
+评论存储在本仓库 GitHub Discussions 中，读者使用 GitHub 登录后发表评论。配置在 `config/_default/params.toml` 的 `[comments.giscus]`。
+
+- 使用 `pathname` + 严格匹配关联文章，修改标题不影响讨论；请保持已发布文章路径稳定。
+- 使用公告类型的讨论分类，首次留言或反应时由 Giscus 自动创建对应讨论。
+- 简体中文、明暗主题切换、表情反应与懒加载已启用。
+- 关于、归档、搜索与链接页仍不显示评论。
+- Giscus 应用仅需安装在这个仓库；它需要 Discussions 写入权限以管理评论。
+- 原 Waline/LeanCloud 数据没有被删除，但不会自动迁入 GitHub。恢复旧应用后应先导出备份，再单独评估历史评论迁移。
+
+主题的 Giscus 消息监听通过 `layouts/_partials/comments/provider/giscus.html` 作兼容覆盖，修正旧模板依赖全局 `event` 的问题；不修改主题本体。`scripts/verify_giscus_theme.cjs` 仅用 Node 内置模块检查主题切换，不会发送测试留言。

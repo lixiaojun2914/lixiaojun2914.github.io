@@ -36,7 +36,7 @@
 
 ## 外部服务与历史内容注意事项
 
-1. **Waline**：旧地址仍在，但 2026-11-12 读取 `/comment` 返回 HTTP 500，提示 LeanCloud 应用已归档。`/api/comment` 则为 404（旧版接口路径）。因此保留地址并将 `comments.enabled` 暂设为 `false`。旧评论存储未迁移、未删除。恢复后需要验证服务端与 Stack 所用客户端的版本兼容，再开启评论。
+1. **Waline**：旧地址仍在，但 2026-11-12 读取 `/comment` 返回 HTTP 500，提示 LeanCloud 应用已归档。`/api/comment` 则为 404（旧版接口路径）。已由 Giscus 替代，旧地址记录在此以便找回历史评论。旧评论存储未迁移、未删除，数据库实际完整性尚未确认。
 2. **失效图片**：Markdown 笔记引用 `tenfei04.cfp.cn/.../VCG211291536009.jpg`，检查时 DNS 解析失败。保留原文与 URL，外链图片不参与构建期下载，避免阻塞部署。该图片在浏览器中仍可能无法显示；需要找回原图才能完整修复。
 3. **空白文章**：`Pytorch笔记` 原文仅有元数据，描述和标签写的是 matplotlib；按原样保留，未凭空添加内容。
 4. **主题示例**：Rich Content、Test 分类和 About 的 Hugo 介绍属于历史示例内容；保留 URL 与正文，后续可以自行清理。
@@ -49,3 +49,9 @@
 - `hugo --gc --minify --panicOnWarning` 检查当前适配后的构建。
 - `python3 scripts/verify_site.py` 检查原始文件哈希、旧 HTML/XML/图片路径、全部生成 HTML 的站内链接/资源以及 8 篇文章的中文全文搜索数据。
 - 线上部署需要完整源码位于原仓库的 main 分支，并选择 GitHub Actions 作为 Pages 来源；migration/** 分支仅执行构建与校验。
+
+## Giscus 替换 Waline
+
+使用当前博客仓库的 GitHub Discussions 保存新评论；按 pathname 严格关联文章，简体中文，自动适配浅色/深色主题。Giscus 替换只影响新评论入口，不会将 LeanCloud 数据自动转换成 GitHub 评论。
+
+额外验证：8 篇文章均加载唯一 Giscus 客户端，工具页无评论入口；仓库 ID、讨论分类 ID 与映射正确；无 Waline 初始化脚本；主题同步测试覆盖外来消息过滤、深色初始化与浅色切换。
