@@ -4,9 +4,11 @@ date: 2022-01-28T21:12:48+08:00
 description: 学习记录Python语言
 slug: python
 categories:
-    - Python
+    - 编程语言
 tags:
-    - Python语法
+    - Python
+    - 生成器
+    - 函数式编程
 ---
 
 # Pyhton语法笔记

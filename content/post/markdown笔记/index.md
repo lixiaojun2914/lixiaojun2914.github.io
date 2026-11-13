@@ -4,9 +4,9 @@ date: 2022-01-29T10:04:53+08:00
 description: markdown语法笔记
 slug: markdown
 categories:
-    - Markdown
+    - 工具与效率
 tags:
-    - Markdown语法
+    - Markdown
 ---
 # Markdown语法笔记
 ## 标题语法

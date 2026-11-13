@@ -1,13 +1,15 @@
 ---
 title: C语言标准库常用字符串处理函数
 date: "2019-02-14"
-tags: 
-    - C语言
 description: C语言知识
 slug: C-lang
 image: 006w8JsJly4gv4r2dpemlj61ao0t6agw02.jpg
 categories:
-    - C语言
+    - 编程语言
+tags:
+    - C
+    - 字符串
+    - 标准库
 ---
 
 # string.h

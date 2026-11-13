@@ -1,14 +1,14 @@
 ---
 title: hexo-indigo+github+nginx博客搭建过程
 date: 2019-01-21
-categories:
-    - 博客搭建
 description: 旧博客搭建
 slug: 哈哈哈哈
 image: pawel-czerwinski-8uZPynIu-rQ-unsplash.jpg
-tags:    
-    - blog
-    - hexo
+categories:
+    - 博客建设
+tags:
+    - Hexo
+    - Nginx
 ---
 # 安装node.js
 ```bash

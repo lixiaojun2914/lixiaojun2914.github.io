@@ -5,7 +5,7 @@ lastmod: "2026-11-12"
 description: "使用 Hugo 0.169.0、Stack 4.0.3、Dart Sass、GitHub Actions 与 Giscus 搭建和维护个人博客。"
 slug: "test-post"
 categories:
-    - 博客搭建
+    - 博客建设
 tags:
     - Hugo
     - Stack

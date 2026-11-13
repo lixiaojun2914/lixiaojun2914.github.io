@@ -4,13 +4,12 @@ date: 2022-01-28T21:12:59+08:00
 description: Numpy笔记
 slug: numpy
 categories:
-    - Python
-    - Data Processing
-    - Machine Learning
-    - Deep Learning
+    - 数据与计算
 tags:
+    - Python
+    - NumPy
     - 数值计算
-    - 矩阵计算
+    - 数组
 ---
 
 # Numpy笔记

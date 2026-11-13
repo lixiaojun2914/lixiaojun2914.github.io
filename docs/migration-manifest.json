@@ -5,15 +5,15 @@
   "dart_sass": "1.108.2",
   "files": {
     "content/post/C语言标准库常用字符串处理函数/006w8JsJly4gv4r2dpemlj61ao0t6agw02.jpg": "853576f4f5fa4c9810576059eb2479cb82b14431972e27d679fdcb850860497e",
-    "content/post/C语言标准库常用字符串处理函数/index.md": "6966926bb474916946613a5f0da36c1b3ba69da69c3d420bc36a6a332f44d051",
-    "content/post/blog搭建过程/index.md": "2eb9dc3848614ffc31ae882457f9e33829ef0d4559c985e03b1ebc692d1d6137",
+    "content/post/C语言标准库常用字符串处理函数/index.md": "78323bfa9d995619443091c5b18ee8465ced8aabd7a68ecd45bd3aa5b90dea1c",
+    "content/post/blog搭建过程/index.md": "a6fee7fdf5dc9640975ff0725efcacd74980532f632113160df2005d3544c891",
     "content/post/blog搭建过程/pawel-czerwinski-8uZPynIu-rQ-unsplash.jpg": "51e5d61163e6cb609898132fa7a7866db3aa59d14adc6fc7288e1035bc2ddcbf",
-    "content/post/hugo-blog搭建过程/index.md": "7f1e5a9885096a1ea972d266bef1a1c9a2ef76ee6fbe7cbf0334b5a3dd33c31d",
-    "content/post/markdown笔记/index.md": "7cc6c9ab5385ea0c917b2d4d96e4a4b395b43efdc3d9863b2d6c64444263d1a7",
-    "content/post/numpy笔记/index.md": "9f439e3019e9a3e158fe465a58c4ae364820e4278ee44ac265dc8cb47fdb4f0b",
-    "content/post/python笔记/index.md": "b04d55e4d51c0ea2c27ddc3904ca11cde8a6e90c77aece6aee12549cd831c8c9",
-    "content/post/pytorch笔记/index.md": "517753bb0e6a68e0c40c563f5c7320804b0de543abe5af82498a62e1c1c9453b",
-    "content/post/rich-content/index.md": "d6d8fb51c0fda952c3382554778af7d2774a262bb015c83b94e2082aa1630e69"
+    "content/post/hugo-blog搭建过程/index.md": "edbb72287420db17da7d15c32d4dbd925085e4b220e156eeda56ca8f815eb863",
+    "content/post/markdown笔记/index.md": "8d5ca90d6139f613114d1ced707fc3045414fed9556e4feed75b49446ed56b11",
+    "content/post/numpy笔记/index.md": "ec8c724c53d7f3361f8d2a0fab75b60f67a7782d27c47dfe6a3ce50806ec5838",
+    "content/post/python笔记/index.md": "e19fc275f231bce81d65a02f81bbe0dbbcb9721e1d91c0af6bcd68444b70a4b3",
+    "content/post/pytorch笔记/index.md": "cd969384c7b58bb9205ab7b1385728753c6bf408cd2570764f09b8d60a19a1a9",
+    "content/post/rich-content/index.md": "dd03ec824ced55b33f76b3be4112252abd91bde15c3b771dea13d326d0b72885"
   },
   "legacy_routes": [
     "/404.html",
@@ -141,6 +141,125 @@
       "previous_sha256": "db3c7668ba872d9bb99dc9d6d6955adc43ce62de9a1a8bf0d6f7f5ac97000e4b",
       "sha256": "7f1e5a9885096a1ea972d266bef1a1c9a2ef76ee6fbe7cbf0334b5a3dd33c31d",
       "reason": "Rewrite the outdated Hugo guide to match the deployed Hugo/Stack/Actions/Giscus setup, as requested by the blog owner."
+    },
+    {
+      "path": "content/post/numpy笔记/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "9f439e3019e9a3e158fe465a58c4ae364820e4278ee44ac265dc8cb47fdb4f0b",
+      "sha256": "ec8c724c53d7f3361f8d2a0fab75b60f67a7782d27c47dfe6a3ce50806ec5838",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/python笔记/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "b04d55e4d51c0ea2c27ddc3904ca11cde8a6e90c77aece6aee12549cd831c8c9",
+      "sha256": "e19fc275f231bce81d65a02f81bbe0dbbcb9721e1d91c0af6bcd68444b70a4b3",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/C语言标准库常用字符串处理函数/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "6966926bb474916946613a5f0da36c1b3ba69da69c3d420bc36a6a332f44d051",
+      "sha256": "78323bfa9d995619443091c5b18ee8465ced8aabd7a68ecd45bd3aa5b90dea1c",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/markdown笔记/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "7cc6c9ab5385ea0c917b2d4d96e4a4b395b43efdc3d9863b2d6c64444263d1a7",
+      "sha256": "8d5ca90d6139f613114d1ced707fc3045414fed9556e4feed75b49446ed56b11",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/hugo-blog搭建过程/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "7f1e5a9885096a1ea972d266bef1a1c9a2ef76ee6fbe7cbf0334b5a3dd33c31d",
+      "sha256": "edbb72287420db17da7d15c32d4dbd925085e4b220e156eeda56ca8f815eb863",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/blog搭建过程/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "2eb9dc3848614ffc31ae882457f9e33829ef0d4559c985e03b1ebc692d1d6137",
+      "sha256": "a6fee7fdf5dc9640975ff0725efcacd74980532f632113160df2005d3544c891",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/pytorch笔记/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "517753bb0e6a68e0c40c563f5c7320804b0de543abe5af82498a62e1c1c9453b",
+      "sha256": "cd969384c7b58bb9205ab7b1385728753c6bf408cd2570764f09b8d60a19a1a9",
+      "reason": "Normalize category and tags; preserve article body, date and slug."
+    },
+    {
+      "path": "content/post/rich-content/index.md",
+      "date": "2026-11-13",
+      "previous_sha256": "d6d8fb51c0fda952c3382554778af7d2774a262bb015c83b94e2082aa1630e69",
+      "sha256": "dd03ec824ced55b33f76b3be4112252abd91bde15c3b771dea13d326d0b72885",
+      "reason": "Remove sample tags; keep original example article and URL."
     }
-  ]
+  ],
+  "taxonomy_policy": {
+    "categories": [
+      "编程语言",
+      "数据与计算",
+      "工具与效率",
+      "博客建设"
+    ],
+    "notes": "Old taxonomy HTML pages redirect to their replacement; obsolete feed URLs show a subscription-moved notice. Future topic pages will be added when implemented."
+  },
+  "taxonomy_redirects": {
+    "/categories/c语言/index.html": "/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/",
+    "/categories/c语言/index.xml": "/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/index.xml",
+    "/categories/c语言/page/1/index.html": "/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/",
+    "/categories/data-processing/index.html": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/",
+    "/categories/data-processing/index.xml": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/index.xml",
+    "/categories/data-processing/page/1/index.html": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/",
+    "/categories/deep-learning/index.html": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/",
+    "/categories/deep-learning/index.xml": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/index.xml",
+    "/categories/deep-learning/page/1/index.html": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/",
+    "/categories/machine-learning/index.html": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/",
+    "/categories/machine-learning/index.xml": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/index.xml",
+    "/categories/machine-learning/page/1/index.html": "/categories/%E6%95%B0%E6%8D%AE%E4%B8%8E%E8%AE%A1%E7%AE%97/",
+    "/categories/markdown/index.html": "/categories/%E5%B7%A5%E5%85%B7%E4%B8%8E%E6%95%88%E7%8E%87/",
+    "/categories/markdown/index.xml": "/categories/%E5%B7%A5%E5%85%B7%E4%B8%8E%E6%95%88%E7%8E%87/index.xml",
+    "/categories/markdown/page/1/index.html": "/categories/%E5%B7%A5%E5%85%B7%E4%B8%8E%E6%95%88%E7%8E%87/",
+    "/categories/page/2/index.html": "/categories/",
+    "/categories/python/index.html": "/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/",
+    "/categories/python/index.xml": "/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/index.xml",
+    "/categories/python/page/1/index.html": "/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/",
+    "/categories/test/index.html": "/categories/",
+    "/categories/test/index.xml": "/categories/index.xml",
+    "/categories/test/page/1/index.html": "/categories/",
+    "/categories/博客搭建/index.html": "/categories/%E5%8D%9A%E5%AE%A2%E5%BB%BA%E8%AE%BE/",
+    "/categories/博客搭建/index.xml": "/categories/%E5%8D%9A%E5%AE%A2%E5%BB%BA%E8%AE%BE/index.xml",
+    "/categories/博客搭建/page/1/index.html": "/categories/%E5%8D%9A%E5%AE%A2%E5%BB%BA%E8%AE%BE/",
+    "/tags/blog/index.html": "/tags/hugo/",
+    "/tags/blog/index.xml": "/tags/hugo/index.xml",
+    "/tags/blog/page/1/index.html": "/tags/hugo/",
+    "/tags/c语言/index.html": "/tags/c/",
+    "/tags/c语言/index.xml": "/tags/c/index.xml",
+    "/tags/c语言/page/1/index.html": "/tags/c/",
+    "/tags/markdown语法/index.html": "/tags/markdown/",
+    "/tags/markdown语法/index.xml": "/tags/markdown/index.xml",
+    "/tags/markdown语法/page/1/index.html": "/tags/markdown/",
+    "/tags/privacy/index.html": "/tags/",
+    "/tags/privacy/index.xml": "/tags/index.xml",
+    "/tags/privacy/page/1/index.html": "/tags/",
+    "/tags/python绘图/index.html": "/tags/",
+    "/tags/python绘图/index.xml": "/tags/index.xml",
+    "/tags/python绘图/page/1/index.html": "/tags/",
+    "/tags/python语法/index.html": "/tags/python/",
+    "/tags/python语法/index.xml": "/tags/python/index.xml",
+    "/tags/python语法/page/1/index.html": "/tags/python/",
+    "/tags/shortcodes/index.html": "/tags/",
+    "/tags/shortcodes/index.xml": "/tags/index.xml",
+    "/tags/shortcodes/page/1/index.html": "/tags/",
+    "/tags/数据可视化/index.html": "/tags/",
+    "/tags/数据可视化/index.xml": "/tags/index.xml",
+    "/tags/数据可视化/page/1/index.html": "/tags/",
+    "/tags/矩阵计算/index.html": "/tags/numpy/",
+    "/tags/矩阵计算/index.xml": "/tags/numpy/index.xml",
+    "/tags/矩阵计算/page/1/index.html": "/tags/numpy/"
+  }
 }
