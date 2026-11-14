@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 350" role="img" aria-labelledby="title">
+<title id="title">同一棵目录树中的不同挂载</title>
+<rect width="800" height="350" rx="18" fill="#f1f5f9"/>
+<g fill="none" stroke="#64748b" stroke-width="2"><path d="M400 78v28M110 106h580M110 106v28M300 106v28M500 106v28M690 106v28M300 205v55M690 205v55"/></g>
+<g fill="#dbeafe" stroke="#93b5de"><rect x="304" y="18" width="192" height="60" rx="10"/><rect x="217" y="134" width="166" height="71" rx="10"/><rect x="417" y="134" width="166" height="71" rx="10"/><rect x="607" y="134" width="166" height="71" rx="10"/><rect x="217" y="260" width="166" height="71" rx="10"/><rect x="607" y="260" width="166" height="71" rx="10"/></g>
+<rect x="27" y="134" width="166" height="71" rx="10" fill="#fff" stroke="#94a3b8"/>
+<g font-family="Menlo, monospace" text-anchor="middle" fill="#172c46">
+<text x="400" y="43" font-size="22">/</text><text x="400" y="65" font-size="15">ext4 · LVM</text>
+<text x="110" y="163" font-size="20">/etc</text><text x="110" y="188" font-size="14">same mount as /</text>
+<text x="300" y="163" font-size="20">/boot</text><text x="300" y="188" font-size="15">ext4</text>
+<text x="500" y="163" font-size="20">/proc</text><text x="500" y="188" font-size="15">procfs</text>
+<text x="690" y="163" font-size="20">/dev</text><text x="690" y="188" font-size="15">devtmpfs</text>
+<text x="300" y="289" font-size="20">/boot/efi</text><text x="300" y="314" font-size="15">vfat</text>
+<text x="690" y="289" font-size="20">/dev/pts</text><text x="690" y="314" font-size="15">devpts</text>
+</g></svg>
