@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 356" role="img" aria-labelledby="t d">
+<title id="t">删除最后一个名字前后</title><desc id="d">删除前，文件名和已打开的描述符都可访问 inode；删除后，只剩描述符路径可用。</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#377468"/></marker></defs>
+<rect width="800" height="356" rx="18" fill="#f1f5f9"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#182c42">
+<rect x="15" y="15" width="770" height="155" rx="12" fill="white"/>
+<text x="33" y="46" font-size="22" font-weight="700">删除前</text>
+<rect x="33" y="62" width="156" height="43" rx="7" fill="#e0f0eb"/>
+<text x="45" y="90" font-size="17" font-weight="600">路径 a.txt</text>
+<rect x="33" y="116" width="156" height="43" rx="7" fill="#e0f0eb"/>
+<text x="45" y="144" font-size="17" font-weight="600">进程的 fd 3</text>
+<rect x="264" y="116" width="180" height="43" rx="7" fill="#e0f0eb"/>
+<text x="276" y="144" font-size="17" font-weight="600">struct file</text>
+<rect x="565" y="89" width="196" height="43" rx="7" fill="#e0f0eb"/>
+<text x="577" y="117" font-size="17" font-weight="600">同一个 inode</text>
+<text x="578" y="154" font-size="16" font-weight="400">i_nlink = 1</text>
+<path d="M189 137H264" fill="none" stroke="#377468" stroke-width="2.5" marker-end="url(#arr)"/>
+<path d="M444 137H508V121H565" fill="none" stroke="#377468" stroke-width="2.5" marker-end="url(#arr)"/>
+<path d="M189 83H508V100H565" fill="none" stroke="#377468" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="15" y="185" width="770" height="155" rx="12" fill="white"/>
+<text x="33" y="216" font-size="22" font-weight="700">删除最后一个名字后</text>
+<rect x="33" y="232" width="156" height="43" rx="7" fill="#f8e1df"/>
+<text x="45" y="260" font-size="17" font-weight="600">路径 a.txt</text>
+<rect x="33" y="286" width="156" height="43" rx="7" fill="#e0f0eb"/>
+<text x="45" y="314" font-size="17" font-weight="600">进程的 fd 3</text>
+<rect x="264" y="286" width="180" height="43" rx="7" fill="#e0f0eb"/>
+<text x="276" y="314" font-size="17" font-weight="600">struct file</text>
+<rect x="565" y="259" width="196" height="43" rx="7" fill="#e0f0eb"/>
+<text x="577" y="287" font-size="17" font-weight="600">同一个 inode</text>
+<text x="578" y="324" font-size="16" font-weight="400">i_nlink = 0</text>
+<path d="M189 307H264" fill="none" stroke="#377468" stroke-width="2.5" marker-end="url(#arr)"/>
+<path d="M444 307H508V291H565" fill="none" stroke="#377468" stroke-width="2.5" marker-end="url(#arr)"/>
+<text x="219" y="261" font-size="17" font-weight="400">目录项已移除，找不到原路径</text>
+</g></svg>
