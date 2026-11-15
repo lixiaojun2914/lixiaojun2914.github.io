@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 444" role="img" aria-labelledby="title desc"><title id="title">openat 调用路径</title><desc id="desc">预留描述符，分配打开对象并解析路径，完成打开后安装描述符。</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#426583"/></marker></defs>
+<rect width="680" height="444" rx="16" fill="#f1f5f9"/>
+<text x="32" y="44" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="26" fill="#172b43">openat：从路径到文件描述符</text>
+<rect x="32" y="62" width="616" height="58" rx="9" fill="#dcebf8"/>
+<text x="44" y="86" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">openat → do_sys_open → do_sys_openat2</text>
+<text x="44" y="108" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">进入内核，整理打开参数</text>
+<path d="M340 120v19" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="32" y="139" width="616" height="58" rx="9" fill="#dcebf8"/>
+<text x="44" y="163" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">get_unused_fd_flags</text>
+<text x="44" y="185" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">预留 fd 编号</text>
+<path d="M340 197v19" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="32" y="216" width="616" height="58" rx="9" fill="#dcebf8"/>
+<text x="44" y="240" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">do_filp_open → path_openat</text>
+<text x="44" y="262" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">分配 struct file，解析路径</text>
+<path d="M340 274v19" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="32" y="293" width="616" height="58" rx="9" fill="#dcebf8"/>
+<text x="44" y="317" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">do_open → vfs_open → do_dentry_open</text>
+<text x="44" y="339" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">关联 inode 和操作表，完成打开</text>
+<path d="M340 351v19" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="32" y="370" width="616" height="58" rx="9" fill="#deefe8"/>
+<text x="44" y="394" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">fd_install</text>
+<text x="44" y="416" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">把打开对象装进预留的槽位</text>
+</svg>

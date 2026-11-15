@@ -28,7 +28,7 @@ Linux 解析路径时会结合挂载关系，所以目录树的上下级关系�
 
 本篇只建立对目录树和挂载的认识。`stat` 显示的 inode 编号和链接数从哪里来、`ls` 又怎样向内核读取目录项，留给后续文章，结合实验结果和对应版本的源码展开。
 
-## 从 `/` 看目录树和挂载
+## 一、从 `/` 看目录树和挂载 {#从--看目录树和挂载}
 
 **`/etc` 和 `/proc` 都是目录，但它们的内容来自不同的文件系统。** 在这台 Ubuntu 虚拟机上，用 `stat` 看类型，再用 `findmnt -T` 看每个路径落在哪个挂载里：
 
@@ -49,7 +49,7 @@ findmnt -n -T /proc -o TARGET,FSTYPE
 
 `/etc` 由挂载在 `/` 的 ext4 文件系统提供；访问 `/proc` 时则进入 procfs，读到的是内核提供的进程和系统信息。两者看起来都像普通目录，这正是只用 `ls` 或 `stat` 判断不了的地方。
 
-### 挂载点也可以嵌套
+### 1.1 挂载点也可以嵌套 {#挂载点也可以嵌套}
 
 ![本机挂载示意：蓝色卡片是挂载点，白色的 /etc 仍在根文件系统内](ubuntu-mount-overview.svg)
 
@@ -67,7 +67,7 @@ findmnt -n -T /proc -o TARGET,FSTYPE
 
 > 目录树回答“这个路径在哪里”，挂载表回答“访问这个路径时进入哪个文件系统”。
 
-### 本机观察：`*.usr-is-merged` 为什么会出现？
+### 1.2 本机观察：`*.usr-is-merged` 为什么会出现？ {#本机观察usr-is-merged-为什么会出现}
 这台 Ubuntu 上，`/bin`、`/lib`、`/sbin` 分别指向 `/usr/bin`、`/usr/lib`、`/usr/sbin`。这种布局常称为 **merged-/usr**：常用程序和库集中在 `/usr` 下，旧路径靠链接继续可用。
 
 旁边的 `/bin.usr-is-merged`、`/lib.usr-is-merged`、`/sbin.usr-is-merged` 是另一套机制。它们在这台机器上都是空目录，既不是符号链接指向的位置，也不是合并前那批程序的备份。可以用下面的命令确认：
@@ -79,7 +79,7 @@ dpkg-divert --list '*.usr-is-merged'
 
 第二条命令显示 `base-files` 为这些路径登记了 **diversion（路径改道）**，例如 `/bin` 对应 `/bin.usr-is-merged`。这是包管理器处理旧目录路径与合并后符号链接冲突的安排：普通进程访问 `/bin` 时，仍然沿链接走到 `/usr/bin`。所以看到这些空目录不代表迁移失败，也没必要因为它们为空就删掉（背景见 [Debian merged-/usr 的 base-files 实现讨论](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1064459)）。
 
-### 查阅：本机完整目录图与常用入口
+### 1.3 查阅：本机完整目录图与常用入口 {#查阅本机完整目录图与常用入口}
 
 想从头看这台机器有哪些目录，可以先切到 `/`，再列出第一层：
 
@@ -103,7 +103,7 @@ ls -l /
 | 进程的文件描述符、网络接口 | `/proc/self/fd`、`/sys/class/net` |
 | 伪终端、共享内存和运行时数据 | `/dev/pts`、`/dev/shm`、`/run/systemd` |
 
-### 根目录里的其他入口
+### 1.4 根目录里的其他入口 {#根目录里的其他入口}
 
 
 下表说的是目录的常见用途。比如 `/mnt` 通常用来临时挂载，但光看目录名判断不了它现在有没有挂载，还得查 `findmnt`（依据见[文件系统层次标准](https://specifications.freedesktop.org/fhs/latest/rootFilesystem.html)）。

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 395" role="img" aria-labelledby="title desc"><title id="title">打开状态与偏移的对比</title><desc id="desc">独立打开时偏移分别为 1、0；复制描述符时共享偏移 1。</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#426583"/></marker></defs>
+<rect width="680" height="395" rx="16" fill="#f1f5f9"/>
+<text x="26" y="34" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="24" fill="#172b43">两次 openat：两个打开对象</text>
+<rect x="26" y="54" width="98" height="58" rx="9" fill="#dcebf8"/>
+<text x="38" y="90" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">fd 3</text>
+<rect x="26" y="119" width="98" height="58" rx="9" fill="#dcebf8"/>
+<text x="38" y="155" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">fd 4</text>
+<rect x="210" y="54" width="216" height="58" rx="9" fill="#deefe8"/>
+<text x="222" y="78" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">struct file A</text>
+<text x="222" y="100" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">f_pos = 1</text>
+<rect x="210" y="119" width="216" height="58" rx="9" fill="#deefe8"/>
+<text x="222" y="143" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">struct file B</text>
+<text x="222" y="165" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">f_pos = 0</text>
+<rect x="518" y="87" width="136" height="58" rx="9" fill="#dcebf8"/>
+<text x="530" y="123" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">同一 inode</text>
+<path d="M124 83H210" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<path d="M124 148H210" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<path d="M426 83H475V105H518" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<path d="M426 148H475V128H518" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<text x="26" y="229" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="24" fill="#172b43">openat 后 dup：共享打开对象</text>
+<rect x="26" y="249" width="98" height="58" rx="9" fill="#dcebf8"/>
+<text x="38" y="285" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">fd 3</text>
+<rect x="26" y="314" width="98" height="58" rx="9" fill="#dcebf8"/>
+<text x="38" y="350" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">fd 4</text>
+<rect x="210" y="282" width="216" height="58" rx="9" fill="#deefe8"/>
+<text x="222" y="306" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">struct file A</text>
+<text x="222" y="328" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="16" fill="#172b43">f_pos = 1</text>
+<rect x="518" y="282" width="136" height="58" rx="9" fill="#dcebf8"/>
+<text x="530" y="318" font-family="PingFang SC,Noto Sans CJK SC,sans-serif" font-size="19" fill="#172b43">同一 inode</text>
+<path d="M124 278H166V304H210" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<path d="M124 343H166V321H210" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<path d="M426 311H518" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+</svg>

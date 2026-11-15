@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 505" role="img" aria-labelledby="title"><title id="title">从 task 到打开对象与文件系统</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#426583"/></marker></defs>
+<rect width="720" height="505" rx="16" fill="#f1f5f9"/>
+<text x="26" y="36" font-size="25" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">从 task_struct 到 struct file</text>
+<rect x="26" y="55" width="245" height="54" rx="8" fill="#dcebf8"/>
+<text x="37" y="77" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">task_struct</text>
+<text x="37" y="98" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">files 指向文件表</text>
+<path d="M149 109v28" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="26" y="137" width="245" height="54" rx="8" fill="#dcebf8"/>
+<text x="37" y="159" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">files_struct</text>
+<text x="37" y="180" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">fdt 指向当前表</text>
+<path d="M149 191v28" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="26" y="219" width="245" height="54" rx="8" fill="#dcebf8"/>
+<text x="37" y="241" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">fdtable</text>
+<text x="37" y="262" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">数组和三个位图</text>
+<path d="M149 273v28" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="26" y="301" width="245" height="54" rx="8" fill="#dcebf8"/>
+<text x="37" y="323" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">fd[]</text>
+<text x="37" y="344" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">用 fd 编号索引</text>
+<path d="M149 355v28" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="26" y="383" width="245" height="54" rx="8" fill="#deefe8"/>
+<text x="37" y="405" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">struct file</text>
+<text x="37" y="426" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">一次打开 · 持有 f_pos</text>
+<rect x="343" y="241" width="350" height="54" rx="8" fill="#dcebf8"/>
+<text x="354" y="263" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">vfsmount + dentry</text>
+<text x="354" y="284" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">f_path：文件所在的路径</text>
+<path d="M271 410H307V268H343" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="343" y="321" width="350" height="54" rx="8" fill="#dcebf8"/>
+<text x="354" y="343" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">struct inode</text>
+<text x="354" y="364" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">f_inode：文件系统对象</text>
+<path d="M271 410H307V348H343" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<rect x="343" y="401" width="350" height="54" rx="8" fill="#dcebf8"/>
+<text x="354" y="423" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">file_operations</text>
+<text x="354" y="444" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">f_op：操作分发表</text>
+<path d="M271 410H307V428H343" fill="none" stroke="#426583" stroke-width="2" marker-end="url(#a)"/>
+<text x="27" y="475" font-size="17" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172b43">inode 的 i_sb 指向所属的 struct super_block。</text>
+</svg>
