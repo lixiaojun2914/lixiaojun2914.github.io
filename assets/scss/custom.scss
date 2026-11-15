@@ -1,3 +1,274 @@
+/* ==========================================================================
+ *  代码展示风格覆盖
+ *
+ *  主题 hugo-theme-stack 自带两套硬编码配色（monokai / monokailight），
+ *  颜色写死在 partials/highlight/{light,dark}.scss，只能靠本文件覆盖。
+ *
+ *  本文件按「结构」与「配色」分成五节：
+ *    1. 字体
+ *    2. 配色变量（改这里就能整体换风格）
+ *    3. 语法着色（Chroma 的 token 类）
+ *    4. 代码块容器、字号、行高、换行
+ *    5. 行号、复制按钮、滚动条
+ *
+ *  想换别的配色，只改第 2、3 节：例如 Nord 用 底 #2e3440 / 关键词 #81a1c1 /
+ *  字符串 #a3be8c；Solarized 用 底 #fdf6e3 / 关键词 #859900。
+ * ========================================================================== */
+
+/* 1. 字体 ---------------------------------------------------------------- */
+
 :root {
     --base-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+    /* 等宽字体优先系统自带，缺字时逐级回退 */
+    --code-font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, "JetBrains Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+}
+
+/* 2. 配色变量 ------------------------------------------------------------ */
+
+[data-scheme="light"] {
+    --pre-text-color: #24292f;
+    --pre-background-color: #f6f8fa;
+    --code-background-color: #eff1f4;   /* 行内代码 */
+    --code-text-color: #1f2328;
+    --code-border-color: rgba(31, 35, 40, 0.12);
+    --code-line-number-color: #8c959f;
+}
+
+[data-scheme="dark"] {
+    /* 不采用 GitHub 的 #0d1117：站点深色卡片是 #424242，纯黑底过于突兀 */
+    --pre-text-color: #abb2bf;
+    --pre-background-color: #282c34;
+    --code-background-color: #343b43;
+    --code-text-color: #adbac7;
+    --code-border-color: rgba(255, 255, 255, 0.12);
+    --code-line-number-color: #6e7681;
+}
+
+/* 3. 语法着色 ------------------------------------------------------------ */
+
+/* 3.1 亮色 */
+[data-scheme="light"] .chroma {
+    color: #24292f;
+    background-color: #f6f8fa;
+}
+
+[data-scheme="light"] .chroma .c,
+[data-scheme="light"] .chroma .ch,
+[data-scheme="light"] .chroma .cm,
+[data-scheme="light"] .chroma .c1,
+[data-scheme="light"] .chroma .cs,
+[data-scheme="light"] .chroma .cp,
+[data-scheme="light"] .chroma .cpf,
+[data-scheme="light"] .chroma .gu {
+    color: #6e7781;
+}
+
+[data-scheme="light"] .chroma .k,
+[data-scheme="light"] .chroma .kc,
+[data-scheme="light"] .chroma .kd,
+[data-scheme="light"] .chroma .kn,
+[data-scheme="light"] .chroma .kp,
+[data-scheme="light"] .chroma .kr,
+[data-scheme="light"] .chroma .kt,
+[data-scheme="light"] .chroma .ow,
+[data-scheme="light"] .chroma .err {
+    color: #cf222e;
+}
+
+[data-scheme="light"] .chroma .s,
+[data-scheme="light"] .chroma .sa,
+[data-scheme="light"] .chroma .sb,
+[data-scheme="light"] .chroma .sc,
+[data-scheme="light"] .chroma .dl,
+[data-scheme="light"] .chroma .sd,
+[data-scheme="light"] .chroma .s2,
+[data-scheme="light"] .chroma .se,
+[data-scheme="light"] .chroma .sh,
+[data-scheme="light"] .chroma .si,
+[data-scheme="light"] .chroma .sx,
+[data-scheme="light"] .chroma .sr,
+[data-scheme="light"] .chroma .s1,
+[data-scheme="light"] .chroma .ss,
+[data-scheme="light"] .chroma .l,
+[data-scheme="light"] .chroma .ld {
+    color: #0a3069;
+}
+
+[data-scheme="light"] .chroma .m,
+[data-scheme="light"] .chroma .mb,
+[data-scheme="light"] .chroma .mf,
+[data-scheme="light"] .chroma .mh,
+[data-scheme="light"] .chroma .mi,
+[data-scheme="light"] .chroma .mo,
+[data-scheme="light"] .chroma .il,
+[data-scheme="light"] .chroma .no,
+[data-scheme="light"] .chroma .nb,
+[data-scheme="light"] .chroma .gh {
+    color: #0550ae;
+}
+
+[data-scheme="light"] .chroma .nf,
+[data-scheme="light"] .chroma .fm,
+[data-scheme="light"] .chroma .nd {
+    color: #8250df;
+}
+
+[data-scheme="light"] .chroma .nc,
+[data-scheme="light"] .chroma .na {
+    color: #953800;
+}
+
+[data-scheme="light"] .chroma .nt {
+    color: #116329;
+}
+
+[data-scheme="light"] .chroma .n,
+[data-scheme="light"] .chroma .nx,
+[data-scheme="light"] .chroma .nl,
+[data-scheme="light"] .chroma .py,
+[data-scheme="light"] .chroma .nv,
+[data-scheme="light"] .chroma .vc,
+[data-scheme="light"] .chroma .vg,
+[data-scheme="light"] .chroma .vi,
+[data-scheme="light"] .chroma .vm,
+[data-scheme="light"] .chroma .ni,
+[data-scheme="light"] .chroma .bp,
+[data-scheme="light"] .chroma .o,
+[data-scheme="light"] .chroma .p {
+    color: #24292f;
+}
+
+[data-scheme="light"] .chroma .gd {
+    color: #82071e;
+}
+
+[data-scheme="light"] .chroma .gi {
+    color: #116329;
+}
+
+[data-scheme="light"] .chroma .hl {
+    background-color: #fff8c5;
+}
+
+/* 3.2 暗色：Chroma onedark，仅使用颜色规则 */
+[data-scheme="dark"] .article-content .chroma :where(.cl span[class]) {
+    color: var(--pre-text-color);
+}
+
+[data-scheme="dark"] .chroma { color: #abb2bf; background-color: #282c34; }
+[data-scheme="dark"] .chroma .hl { background-color: #3d4148; }
+[data-scheme="dark"] .chroma .k { color: #c678dd; }
+[data-scheme="dark"] .chroma .kc { color: #e5c07b; }
+[data-scheme="dark"] .chroma .kd { color: #c678dd; }
+[data-scheme="dark"] .chroma .kn { color: #c678dd; }
+[data-scheme="dark"] .chroma .kp { color: #c678dd; }
+[data-scheme="dark"] .chroma .kr { color: #c678dd; }
+[data-scheme="dark"] .chroma .kt { color: #e5c07b; }
+[data-scheme="dark"] .chroma .n { color: #e06c75; }
+[data-scheme="dark"] .chroma .na { color: #e06c75; }
+[data-scheme="dark"] .chroma .nc { color: #e5c07b; }
+[data-scheme="dark"] .chroma .no { color: #e06c75; }
+[data-scheme="dark"] .chroma .nd { color: #61afef; }
+[data-scheme="dark"] .chroma .ni { color: #e06c75; }
+[data-scheme="dark"] .chroma .ne { color: #e06c75; }
+[data-scheme="dark"] .chroma .nl { color: #e06c75; }
+[data-scheme="dark"] .chroma .nn { color: #e06c75; }
+[data-scheme="dark"] .chroma .nx { color: #e06c75; }
+[data-scheme="dark"] .chroma .py { color: #e06c75; }
+[data-scheme="dark"] .chroma .nt { color: #e06c75; }
+[data-scheme="dark"] .chroma .nb { color: #e5c07b; }
+[data-scheme="dark"] .chroma .bp { color: #e5c07b; }
+[data-scheme="dark"] .chroma .nv { color: #e06c75; }
+[data-scheme="dark"] .chroma .vc { color: #e06c75; }
+[data-scheme="dark"] .chroma .vg { color: #e06c75; }
+[data-scheme="dark"] .chroma .vi { color: #e06c75; }
+[data-scheme="dark"] .chroma .vm { color: #e06c75; }
+[data-scheme="dark"] .chroma .nf { color: #61afef; }
+[data-scheme="dark"] .chroma .fm { color: #56b6c2; }
+[data-scheme="dark"] .chroma .s { color: #98c379; }
+[data-scheme="dark"] .chroma .sa { color: #98c379; }
+[data-scheme="dark"] .chroma .sb { color: #98c379; }
+[data-scheme="dark"] .chroma .sc { color: #98c379; }
+[data-scheme="dark"] .chroma .dl { color: #98c379; }
+[data-scheme="dark"] .chroma .sd { color: #98c379; }
+[data-scheme="dark"] .chroma .s2 { color: #98c379; }
+[data-scheme="dark"] .chroma .se { color: #98c379; }
+[data-scheme="dark"] .chroma .sh { color: #98c379; }
+[data-scheme="dark"] .chroma .si { color: #98c379; }
+[data-scheme="dark"] .chroma .sx { color: #98c379; }
+[data-scheme="dark"] .chroma .sr { color: #98c379; }
+[data-scheme="dark"] .chroma .s1 { color: #98c379; }
+[data-scheme="dark"] .chroma .ss { color: #98c379; }
+[data-scheme="dark"] .chroma .m { color: #d19a66; }
+[data-scheme="dark"] .chroma .mb { color: #d19a66; }
+[data-scheme="dark"] .chroma .mf { color: #d19a66; }
+[data-scheme="dark"] .chroma .mh { color: #d19a66; }
+[data-scheme="dark"] .chroma .mi { color: #d19a66; }
+[data-scheme="dark"] .chroma .il { color: #d19a66; }
+[data-scheme="dark"] .chroma .mo { color: #d19a66; }
+[data-scheme="dark"] .chroma .o { color: #56b6c2; }
+[data-scheme="dark"] .chroma .ow { color: #56b6c2; }
+[data-scheme="dark"] .chroma .or { color: #56b6c2; }
+[data-scheme="dark"] .chroma .p { color: #abb2bf; }
+[data-scheme="dark"] .chroma .c { color: #7f848e; }
+[data-scheme="dark"] .chroma .ch { color: #7f848e; }
+[data-scheme="dark"] .chroma .cm { color: #7f848e; }
+[data-scheme="dark"] .chroma .c1 { color: #7f848e; }
+[data-scheme="dark"] .chroma .cs { color: #7f848e; }
+[data-scheme="dark"] .chroma .cp { color: #7f848e; }
+[data-scheme="dark"] .chroma .cpf { color: #7f848e; }
+[data-scheme="dark"] .chroma .gd { color: #e06c75; }
+[data-scheme="dark"] .chroma .gi { color: #98c379; }
+
+/* 4. 代码块容器 ---------------------------------------------------------- */
+
+/* 主题默认让代码块左右出血（负 margin）、无边框无圆角，这里收回正文栏内。
+   保留 .highlight 的定位上下文，复制按钮仍在块内右上角。 */
+.article-content .highlight {
+    margin-left: 0;
+    margin-right: 0;
+    width: auto;
+    padding: 1em 1.15em;
+    border: 1px solid var(--code-border-color);
+    border-radius: 8px;
+}
+
+.article-content pre {
+    /* 主题把 pre 的字号与正文一致（偏大），这里收小半级 */
+    font-size: 0.9em;
+    line-height: 1.65;
+    /* 主题的 break-all 会把标识符从中间劈开，改回不折行 + 横向滚动 */
+    word-break: normal;
+    overflow-wrap: normal;
+    /* 关闭等宽连字，避免 -> => != 被渲染成单个符号 */
+    font-variant-ligatures: none;
+    tab-size: 4;
+}
+
+/* 5. 行号与辅助 ---------------------------------------------------------- */
+
+.article-content .highlight .chroma .lnt {
+    min-width: 2.4em;
+    padding: 0 0.9em 0 0;
+    text-align: right;
+    color: var(--code-line-number-color);
+}
+
+.article-content .copyCodeButton {
+    top: 0.6em;
+    right: 0.6em;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+/* 横向滚动条压薄一点，避免出现系统粗条 */
+.article-content .highlight .lntable td:last-child::-webkit-scrollbar {
+    height: 8px;
+}
+
+.article-content .highlight .lntable td:last-child::-webkit-scrollbar-thumb {
+    background: var(--code-border-color);
+    border-radius: 4px;
 }
