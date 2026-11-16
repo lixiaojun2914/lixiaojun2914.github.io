@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 260" role="img" aria-labelledby="title desc">
+  <title id="title">ls -l 的列与文件权限</title>
+  <desc id="desc">第一行依次是类型与权限、硬链接数、属主、所属组、字节数、修改时间和文件名。权限串由普通文件标记、属主读写、所属组只读、其他用户只读组成。</desc>
+  <rect width="660" height="260" rx="16" fill="#f1f5f9"/>
+  <rect x="14" y="14" width="632" height="71" rx="8" fill="#e2e8f0"/>
+  <g fill="#0f172a" font-family="monospace" font-size="17" text-anchor="middle">
+    <text x="92" y="44">-rw-r--r--</text>
+    <text x="186" y="44">1</text>
+    <text x="250" y="44">lxj</text>
+    <text x="313" y="44">lxj</text>
+    <text x="380" y="44">0</text>
+    <text x="489" y="44">Nov 16 14:20</text>
+    <text x="606" y="44">note</text>
+  </g>
+  <g fill="#334155" font-family="PingFang SC, sans-serif" font-size="14" text-anchor="middle">
+    <text x="92" y="67">类型与权限</text>
+    <text x="186" y="67">硬链接数</text>
+    <text x="250" y="67">属主</text>
+    <text x="313" y="67">所属组</text>
+    <text x="380" y="67">字节数</text>
+    <text x="489" y="67">修改时间</text>
+    <text x="606" y="67">文件名</text>
+  </g>
+  <path d="M92 85v24m-5-5 5 5 5-5" fill="none" stroke="#475569" stroke-width="2"/>
+  <rect x="14" y="120" width="149" height="110" rx="8" fill="#e2e8f0"/>
+  <rect x="175" y="120" width="149" height="110" rx="8" fill="#dbeafe"/>
+  <rect x="336" y="120" width="149" height="110" rx="8" fill="#dcfce7"/>
+  <rect x="497" y="120" width="149" height="110" rx="8" fill="#fef3c7"/>
+  <g fill="#172554" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle">
+    <text x="88" y="157">-</text>
+    <text x="249" y="157">rw-</text>
+    <text x="410" y="157">r--</text>
+    <text x="571" y="157">r--</text>
+  </g>
+  <g fill="#172554" font-family="PingFang SC, sans-serif" font-size="16" text-anchor="middle">
+    <text x="88" y="183">文件类型</text>
+    <text x="249" y="183">文件属主</text>
+    <text x="410" y="183">所属组</text>
+    <text x="571" y="183">其他用户</text>
+    <text x="88" y="209">普通文件</text>
+    <text x="249" y="209">读、写 · 4 + 2 = 6</text>
+    <text x="410" y="209">只读 · 4</text>
+    <text x="571" y="209">只读 · 4</text>
+  </g>
+</svg>
