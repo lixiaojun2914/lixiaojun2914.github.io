@@ -12,7 +12,7 @@ tags:
     - VFS
 ---
 
-[上一篇](/p/linux-file-object-model/)从 fd 表追到了 `struct file`。这次从打开对象继续往下看。假如通过两个硬链接打开同一个 ext4 文件，内核一方面要记住每次打开是通过哪个名字找到的，另一方面还要让两次访问落到同一个文件对象。这个关系从 `file->f_path` 就能看出来。本篇追到 VFS 把读请求交给 ext4 为止，磁盘布局留到下一篇，页缓存再往后。
+[上一篇](/p/linux-file-object-model/)从 fd 表追到了 `struct file`。这次从打开对象继续往下看。分别通过两个硬链接打开同一个 ext4 文件，会得到两个 `struct file`。它们各自的 `f_path.dentry` 对应打开时用到的名字，最终都关联到同一个 inode。本篇追到 VFS 把读请求交给 ext4 为止，磁盘布局留到下一篇，页缓存再往后。
 
 ## 一、从 f_path 看两个名字如何指向同一个 inode
 
@@ -130,9 +130,27 @@ Linux v6.8 分配 dentry 时就会设置 `d_sb`。例如，`d_alloc(parent, name
 | `s_op` | 实例级操作表。 |
 | `s_fs_info` | 文件系统私有状态，ext4 用它关联 `struct ext4_sb_info`。 |
 
-### 2.3 用 bind mount 给同一个目录加一个入口
+### 2.3 同一个文件，能从两个挂载访问吗？
 
-在 ext4 上新建两个目录，把 `source` bind mount 到 `view`。随后通过两个入口访问同一个文件，分别观察挂载和 inode。下面的命令需要能够执行 `sudo mount`。
+上一节说，`inode->i_sb` 能找到文件所属的 ext4 实例。那它能告诉我们，这次打开经过哪个挂载吗？把 `source` 目录 bind mount 到 `view`，再从两个入口访问同一个 `data.txt`，就能把这两个问题分开来看。
+
+| 实测项 | `source/data.txt` | `view/data.txt` |
+| --- | --- | --- |
+| 挂载 ID | 33 | 72 |
+| 设备号与 inode 编号 | `64512`、`524331` | `64512`、`524331` |
+
+两个入口的挂载 ID 不同，设备号和 inode 编号相同。访问 `view/data.txt` 时，路径查找从 `view` 进入新挂载，再从这个挂载的 `mnt_root`，也就是原来的 `source` 目录，继续找 `data.txt`。两个挂载共用原有的 ext4 superblock。**实例的根和挂载的根各有用途。** 同一个 `super_block` 的 `s_root` 仍指向该 ext4 文件系统的根，在本例中通过 `/` 可达。新挂载的 `mnt_root` 则指向其中的 `source` 子目录。
+
+回到打开对象，**`f_path.mnt` 记录这次打开经过的挂载**，可以区分实测里的 33 和 72。[bind mount 实现](https://github.com/torvalds/linux/blob/v6.8/fs/namespace.c)
+
+把这个例子和第一节的硬链接放在一起，更容易看清 `f_path` 的两个成员分别记录了什么。
+
+| 怎样打开同一个文件 | `f_path.dentry` | `f_path.mnt` | inode |
+| --- | --- | --- | --- |
+| 在同一个目录下，用两个硬链接名打开 | 不同 | 相同 | 相同 |
+| 从原路径和 bind mount 入口打开 | 相同 | 不同 | 相同 |
+
+在 ext4 目录里运行，需要能执行 `sudo mount`。脚本退出时会卸载临时挂载并清理实验目录。
 
 ```bash
 (
@@ -171,17 +189,7 @@ view
 dev=64512 inode=524331 links=1
 ```
 
-| 比较项 | `source/data.txt` | `view/data.txt` |
-| --- | --- | --- |
-| `ID` | 原有挂载的 ID | 新的挂载 ID |
-| `FSROOT` | 本例根挂载的 `/` | `source` 在 ext4 内部的路径，本次为 `/home/lxj/.vfs-bind.Lat1Md/source` |
-| `TARGET` | `/` | `view` 在当前目录树中的绝对路径 |
-| `MAJ:MIN`、`dev`、`inode` | 原文件的设备号和 inode 编号 | 与左侧相同 |
-| `links` | 1 | 仍然是 1 |
-
-**从哪里进入？** `TARGET` 是进程看到的入口 `view`，`FSROOT` 是这个入口通向的文件系统内部目录 `source`。访问 `view/data.txt` 时，路径查找在 `view` 跨进新挂载，再从它的 `mnt_root` 继续找 `data.txt`。[mountinfo 字段的生成](https://github.com/torvalds/linux/blob/v6.8/fs/proc_namespace.c#L126)
-
-**查到了哪个文件？** 两条路径的设备号和 inode 编号相同，硬链接数也都为 1。bind mount 复制挂载时沿用原来的 superblock，以源路径的 dentry 作为新挂载的根。两次打开因而可以共享文件的 dentry、inode 和文件系统实例，同时各自通过 `f_path.mnt` 记录挂载 ID 为 33 或 72 的入口。[bind mount 的实现](https://github.com/torvalds/linux/blob/v6.8/fs/namespace.c)
+输出中，`FSROOT` 是挂载根在 ext4 内部的位置，`TARGET` 是当前目录树中进入这个挂载的位置。新挂载的根是 `source`，入口是 `view`。两条路径看到的硬链接数均为 1。[mountinfo 字段的生成](https://github.com/torvalds/linux/blob/v6.8/fs/proc_namespace.c#L126)
 
 这里的 `struct super_block` 是 VFS 在内存中使用的实例对象。ext4 磁盘上还有自己的 `struct ext4_super_block`，描述磁盘格式和文件系统参数。两者如何关联，等到磁盘布局篇再看。这一篇接下来沿 inode 上的 `i_fop` 找到打开对象的 `f_op`。
 
@@ -225,9 +233,7 @@ f->f_op = fops_get(inode->i_fop);
 
 ### 4.1 VFS 如何选中 ext4 的读回调？
 
-沿用第一节的 `alias`。假设以 `O_RDONLY` 打开它，得到 fd，随后执行 `read(fd, &byte, 1)`。这是一个从偏移 0 开始、请求读取一个字节的例子。可以在第一节的实验目录里用 `dd` 发出这个读取请求，再用 `strace` 确认它打开和读取的是哪个文件。
-
-在第一节创建 `alias` 的目录里运行下面这条命令。`-P` 按绝对路径筛选跟踪记录，结果直接显示在终端。`>/dev/null` 只丢弃 `dd` 读到的文件内容。
+在第一节的实验目录里，用 `dd` 从 `alias` 读取一个字节，再用 `strace` 查看它打开了哪个文件、读到了什么。`-P` 按绝对路径筛选跟踪记录，结果直接显示在终端。`>/dev/null` 只丢弃 `dd` 读到的文件内容。
 
 ```bash
 strace -qq -y -e trace=openat,read -P "$PWD/alias" dd if="$PWD/alias" bs=1 count=1 status=none >/dev/null
