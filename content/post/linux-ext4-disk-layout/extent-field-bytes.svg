@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 480" role="img" aria-labelledby="title desc">
+<title id="title">i_block 中的 extent 头部与叶子记录</title>
+<desc id="desc">0x00 eh_magic：0a f3，0xf30a · 节点标记。0x02 eh_entries：01 00，当前 1 条。0x04 eh_max：04 00，最多 4 条。0x06 eh_depth：00 00，深度 0 · 叶子。0x08 eh_generation：00 00 00 00，本例为 0。0x0c ee_block：00 00 00 00，逻辑起始块 0。0x10 ee_len：02 00，2 个已初始化块。0x12 ee_start_hi：00 00，起始块号高位。0x14 ee_start_lo：4b 10 00 00，合并高低位得 4171</desc>
+<rect width="660" height="480" rx="16" fill="#f1f5f9"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172554">
+<text x="18" y="29" font-size="21" font-weight="bold">i_block 中的 extent 头部与叶子记录</text>
+<text x="18" y="52" font-size="15">偏移以 i_block 开头为基准</text>
+<text x="18" y="83" font-size="16" font-weight="bold">extent 头部 · 12 字节</text>
+<rect x="18" y="91" width="204" height="81" rx="8" fill="#dbeafe"/>
+<text x="28" y="108" font-size="13" font-family="monospace" fill="#475569">0x00</text>
+<text x="28" y="128" font-size="18" font-family="monospace" font-weight="bold">0a f3</text>
+<text x="28" y="146" font-size="14" font-family="monospace">eh_magic</text>
+<text x="28" y="164" font-size="14">0xf30a · 节点标记</text>
+<rect x="228" y="91" width="204" height="81" rx="8" fill="#dcfce7"/>
+<text x="238" y="108" font-size="13" font-family="monospace" fill="#475569">0x02</text>
+<text x="238" y="128" font-size="18" font-family="monospace" font-weight="bold">01 00</text>
+<text x="238" y="146" font-size="14" font-family="monospace">eh_entries</text>
+<text x="238" y="164" font-size="14">当前 1 条</text>
+<rect x="438" y="91" width="204" height="81" rx="8" fill="#fef3c7"/>
+<text x="448" y="108" font-size="13" font-family="monospace" fill="#475569">0x04</text>
+<text x="448" y="128" font-size="18" font-family="monospace" font-weight="bold">04 00</text>
+<text x="448" y="146" font-size="14" font-family="monospace">eh_max</text>
+<text x="448" y="164" font-size="14">最多 4 条</text>
+<rect x="18" y="179" width="204" height="81" rx="8" fill="#f3e8ff"/>
+<text x="28" y="196" font-size="13" font-family="monospace" fill="#475569">0x06</text>
+<text x="28" y="216" font-size="18" font-family="monospace" font-weight="bold">00 00</text>
+<text x="28" y="234" font-size="14" font-family="monospace">eh_depth</text>
+<text x="28" y="252" font-size="14">深度 0 · 叶子</text>
+<rect x="228" y="179" width="204" height="81" rx="8" fill="#fce7f3"/>
+<text x="238" y="196" font-size="13" font-family="monospace" fill="#475569">0x08</text>
+<text x="238" y="216" font-size="18" font-family="monospace" font-weight="bold">00 00 00 00</text>
+<text x="238" y="234" font-size="14" font-family="monospace">eh_generation</text>
+<text x="238" y="252" font-size="14">本例为 0</text>
+<text x="18" y="279" font-size="16" font-weight="bold">叶子记录 · 12 字节</text>
+<rect x="18" y="287" width="204" height="81" rx="8" fill="#dbeafe"/>
+<text x="28" y="304" font-size="13" font-family="monospace" fill="#475569">0x0c</text>
+<text x="28" y="324" font-size="18" font-family="monospace" font-weight="bold">00 00 00 00</text>
+<text x="28" y="342" font-size="14" font-family="monospace">ee_block</text>
+<text x="28" y="360" font-size="14">逻辑起始块 0</text>
+<rect x="228" y="287" width="204" height="81" rx="8" fill="#dcfce7"/>
+<text x="238" y="304" font-size="13" font-family="monospace" fill="#475569">0x10</text>
+<text x="238" y="324" font-size="18" font-family="monospace" font-weight="bold">02 00</text>
+<text x="238" y="342" font-size="14" font-family="monospace">ee_len</text>
+<text x="238" y="360" font-size="14">2 个已初始化块</text>
+<rect x="438" y="287" width="204" height="81" rx="8" fill="#fef3c7"/>
+<text x="448" y="304" font-size="13" font-family="monospace" fill="#475569">0x12</text>
+<text x="448" y="324" font-size="18" font-family="monospace" font-weight="bold">00 00</text>
+<text x="448" y="342" font-size="14" font-family="monospace">ee_start_hi</text>
+<text x="448" y="360" font-size="14">起始块号高位</text>
+<rect x="18" y="375" width="204" height="81" rx="8" fill="#f3e8ff"/>
+<text x="28" y="392" font-size="13" font-family="monospace" fill="#475569">0x14</text>
+<text x="28" y="412" font-size="18" font-family="monospace" font-weight="bold">4b 10 00 00</text>
+<text x="28" y="430" font-size="14" font-family="monospace">ee_start_lo</text>
+<text x="28" y="448" font-size="14">合并高低位得 4171</text>
+</g></svg>

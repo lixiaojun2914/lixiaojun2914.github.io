@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 181" role="img" aria-labelledby="title desc">
+<title id="title">磁盘 inode 的字段字节</title>
+<desc id="desc">0x00 i_mode：b4 81，普通文件 · 0664。0x04 i_size_lo：00 20 00 00，0x2000 · 8192 字节。0x1a i_links_count：02 00，2 个硬链接</desc>
+<rect width="660" height="181" rx="16" fill="#f1f5f9"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, sans-serif" fill="#172554">
+<text x="18" y="29" font-size="21" font-weight="bold">磁盘 inode 的字段字节</text>
+<text x="18" y="52" font-size="15">偏移以 inode 记录开头为基准</text>
+<rect x="18" y="71" width="204" height="81" rx="8" fill="#dbeafe"/>
+<text x="28" y="88" font-size="13" font-family="monospace" fill="#475569">0x00</text>
+<text x="28" y="108" font-size="18" font-family="monospace" font-weight="bold">b4 81</text>
+<text x="28" y="126" font-size="14" font-family="monospace">i_mode</text>
+<text x="28" y="144" font-size="14">普通文件 · 0664</text>
+<rect x="228" y="71" width="204" height="81" rx="8" fill="#dcfce7"/>
+<text x="238" y="88" font-size="13" font-family="monospace" fill="#475569">0x04</text>
+<text x="238" y="108" font-size="18" font-family="monospace" font-weight="bold">00 20 00 00</text>
+<text x="238" y="126" font-size="14" font-family="monospace">i_size_lo</text>
+<text x="238" y="144" font-size="14">0x2000 · 8192 字节</text>
+<rect x="438" y="71" width="204" height="81" rx="8" fill="#fef3c7"/>
+<text x="448" y="88" font-size="13" font-family="monospace" fill="#475569">0x1a</text>
+<text x="448" y="108" font-size="18" font-family="monospace" font-weight="bold">02 00</text>
+<text x="448" y="126" font-size="14" font-family="monospace">i_links_count</text>
+<text x="448" y="144" font-size="14">2 个硬链接</text>
+</g></svg>

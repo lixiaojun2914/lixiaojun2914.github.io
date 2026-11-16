@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 238" role="img" aria-labelledby="title desc">
+  <title id="title">实验镜像的两个块组</title>
+  <desc id="desc">第零组覆盖块零至三二七六七，包含两个组的位图和 inode 表。第一组从三二七六八开始。示意图不按比例。</desc>
+  <rect width="680" height="238" rx="14" fill="#f1f5f9"/>
+  <rect x="16" y="40" width="440" height="171" rx="9" fill="#dbeafe" stroke="#93c5fd"/>
+  <rect x="466" y="40" width="198" height="171" rx="9" fill="#dcfce7" stroke="#86efac"/>
+  <g font-family="PingFang SC, sans-serif" font-size="17" fill="#172554">
+    <text x="24" y="27">镜像块号（示意，非比例）</text>
+    <text x="29" y="69" font-weight="bold">第 0 组 · 0–32767</text>
+    <text x="479" y="69" font-weight="bold">第 1 组 · 32768–65535</text>
+    <text x="29" y="100">主超级块在块 0 内 · 主描述符表在块 1</text>
+    <text x="29" y="136">第 0 组元数据 · 块位图 33 · inode 位图 35</text>
+    <text x="29" y="158">inode 表起点 37</text>
+    <text x="29" y="182">第 1 组元数据 · 块位图 34 · inode 位图 36</text>
+    <text x="29" y="204">inode 表起点 2085</text>
+    <text x="479" y="105">备份超级块 32768</text>
+    <text x="479" y="132">备份描述符表 32769</text>
+  </g>
+</svg>
