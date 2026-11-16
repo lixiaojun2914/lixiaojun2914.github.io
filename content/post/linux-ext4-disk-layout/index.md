@@ -1,7 +1,7 @@
 ---
 title: "Linux 文件系统（五）：从 inode 编号找到 ext4 的数据块"
 slug: linux-ext4-disk-layout
-date: "2026-11-16"
+date: "2026-11-16T19:02:49+08:00"
 draft: false
 description: "通过一张独立的 ext4 镜像，从磁盘目录项找到 inode，再沿 extent 定位文件数据。"
 categories:

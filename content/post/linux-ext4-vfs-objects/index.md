@@ -1,7 +1,7 @@
 ---
 title: "Linux 文件系统（四）：从 struct file 到 ext4 的 VFS 对象"
 slug: linux-ext4-vfs-objects
-date: "2026-11-16"
+date: "2026-11-16T11:26:55+08:00"
 draft: false
 description: "从 ext4 上的两个硬链接出发，理解打开对象、路径、inode 和文件系统实例之间的关系。"
 categories:
