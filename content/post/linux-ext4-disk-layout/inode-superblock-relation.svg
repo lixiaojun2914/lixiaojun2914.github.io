@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 356" role="img" aria-labelledby="title desc">
+  <title id="title">内存 inode 如何关联到磁盘 inode</title>
+  <desc id="desc">i_sb 指向内存 super_block。用实例的布局参数和 i_ino 一起定位磁盘 inode。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+  <rect width="560" height="356" rx="16" fill="#f1f5f9"/>
+  <g fill="#dbeafe">
+    <rect x="20" y="30" width="200" height="80" rx="9"/>
+    <rect x="330" y="30" width="210" height="80" rx="9"/>
+    <rect x="330" y="155" width="210" height="65" rx="9"/>
+  </g>
+  <rect x="155" y="270" width="250" height="66" rx="9" fill="#dcfce7"/>
+  <g fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M220 70H326"/>
+    <path d="M435 110V151"/>
+    <path d="M120 110V302H151"/>
+    <path d="M435 220V302H409"/>
+  </g>
+  <g fill="#172554" font-family="PingFang SC, sans-serif" font-size="17" text-anchor="middle">
+    <text x="120" y="62">内存 struct inode</text>
+    <text x="120" y="88">i_ino = 13</text>
+    <text x="275" y="62">i_sb</text>
+    <text x="435" y="62">VFS struct super_block</text>
+    <text x="435" y="88">文件系统实例</text>
+    <text x="480" y="137" font-size="14">s_fs_info</text>
+    <text x="435" y="182">ext4_sb_info</text>
+    <text x="435" y="205">ext4 私有状态</text>
+    <text x="70" y="245">inode 编号</text>
+    <text x="487" y="245">布局参数</text>
+    <text x="280" y="296">磁盘 struct ext4_inode</text>
+    <text x="280" y="321">inode 表中的记录</text>
+  </g>
+</svg>

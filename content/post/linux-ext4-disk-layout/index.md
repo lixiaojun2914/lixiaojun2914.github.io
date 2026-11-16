@@ -14,6 +14,8 @@ tags:
 
 [上一篇](/p/linux-ext4-vfs-objects/)用两个硬链接说明了不同的 `dentry` 如何关联到同一个内存 inode。本篇把视角移到磁盘镜像里。给定一个文件的 inode 编号和一个文件内偏移，能不能算出这个字节在镜像里的位置，并直接读出来？
 
+这里说的**磁盘 inode**，是 ext4 在 inode 表中为文件保存的一条记录，源码用 `struct ext4_inode` 描述它的格式。记录里有权限、文件大小、硬链接数，以及本例用于定位内容的 extent 树根。文件名保存在目录项里，由目录项提供 inode 编号。上一篇的 VFS `struct inode` 是内核在内存中管理文件时使用的对象，磁盘字段会在加载时被解码到内存对象中。[ext4 磁盘 inode 格式](https://docs.kernel.org/filesystems/ext4/inodes.html)
+
 ## 一、在镜像里找出文件的 inode 编号
 
 ### 1.1 准备一张可以反复检查的 ext4 镜像
@@ -147,7 +149,54 @@ group:block:super:gdt:bbitmap:ibitmap:itable
 
 ## 三、把 inode 编号换成镜像里的字节偏移
 
-### 3.1 先找哪一张表，再找表里的哪一项
+### 3.1 内存 inode、磁盘 inode 和 super_block
+
+在镜像里，目录项给出编号 `13`，inode 表保存这个编号对应的记录。挂载后，当内核需要这个文件的 inode 时，ext4 会把磁盘记录里的属性解码到内存对象。下面从 Linux v6.8 摘出与定位有关的字段。[VFS 结构定义](https://github.com/torvalds/linux/blob/v6.8/include/linux/fs.h) · [ext4 磁盘 inode 定义](https://github.com/torvalds/linux/blob/v6.8/fs/ext4/ext4.h#L723)
+
+```c
+/* 内存对象，省略其他字段 */
+struct inode {
+    /* … */
+    struct super_block *i_sb;
+    /* … */
+    unsigned long i_ino;
+    /* … */
+};
+
+struct super_block {
+    /* … */
+    unsigned long s_blocksize;
+    /* … */
+    void *s_fs_info;
+    /* … */
+};
+```
+
+`i_sb` 是从**内存 inode** 指向**内存 superblock** 的指针。同一个 ext4 实例里的多个 inode 都可以指向它。`super_block` 保存实例级信息。这里用 `s_blocksize` 取得文件系统块大小，再通过 `s_fs_info` 取得 ext4 的私有状态 `struct ext4_sb_info`。其中的 `s_es` 指向读入内存的磁盘超级块数据。[ext4 私有结构入口](https://github.com/torvalds/linux/blob/v6.8/fs/ext4/ext4.h#L1656) · [关联磁盘超级块](https://github.com/torvalds/linux/blob/v6.8/fs/ext4/super.c#L4822)
+
+```c
+/* 磁盘 inode 记录，省略其他字段 */
+struct ext4_inode {
+    __le16 i_mode;
+    /* … */
+    __le32 i_size_lo;
+    /* … */
+    __le16 i_links_count;
+    /* … */
+    __le32 i_block[EXT4_N_BLOCKS];
+    /* … */
+    __le32 i_size_high;
+    /* … */
+};
+```
+
+磁盘 inode 记录保存权限和类型、文件大小、硬链接数等属性。`i_block` 在本例中存放 extent 树根。VFS 指针 `i_sb` 由内核在内存中维护。记录的编号也由它在 inode 表中的位置确定，目录项负责保存这个编号。
+
+![内存 inode 的 i_sb 指向 VFS super_block，i_ino 与该实例的布局一起定位磁盘 inode。](inode-superblock-relation.svg)
+
+定位时，**`i_sb` 提供在哪个文件系统里查，`i_ino` 提供查哪一条记录**。在这篇的离线实验里，前者所需的布局参数由 `dumpe2fs` 从镜像读出，后者就是目录项给出的 `13`。
+
+### 3.2 先找哪一张表，再找表里的哪一项
 
 目录项给出的 inode 编号是 `13`。ext4 的 inode 编号从 1 开始，表内下标从 0 开始。先减 1，再用每组的 inode 数做整数除法：商选块组，余数选组内槽位。[ext4 inode 表索引规则](https://docs.kernel.org/filesystems/ext4/inodes.html)
 
@@ -159,9 +208,11 @@ group:block:super:gdt:bbitmap:ibitmap:itable
 | 记录在表内的字节偏移 | `12 × 256` | `3072` 字节，即 `0x0c00` |
 | 记录在镜像里的字节偏移 | `37 × 4096 + 3072` | `154624` 字节，即 `0x25c00` |
 
+本篇用 `dumpe2fs` 直接查看未挂载镜像的布局。内核已经持有一个内存 inode 时，`ext4_get_inode_loc` 会把 `inode->i_sb` 和 `inode->i_ino` 一起交给定位函数。前者提供**在哪个实例里算**，后者提供**算哪条记录**。[ext4_get_inode_loc](https://github.com/torvalds/linux/blob/v6.8/fs/ext4/inode.c#L4206)
+
 Linux v6.8 的 `__ext4_get_inode_loc` 用的是同一套算法，只是把表内偏移拆成**块号和块内偏移**。每个 4096 字节块能装 16 条 inode 记录。本例的下标 12 落在表的第一个块，所以块号仍为 37，块内偏移是 3072。如果下标是 16，就要进入表的下一块，块内偏移回到 0。[Linux v6.8 的 inode 定位实现](https://github.com/torvalds/linux/blob/v6.8/fs/ext4/inode.c#L4057)
 
-### 3.2 用 debugfs 核对位置
+### 3.3 用 debugfs 核对位置
 
 ```bash
 debugfs -R 'imap /original' "$lab/ext4.img"
@@ -177,7 +228,7 @@ Inode 13 is part of block group 0
 
 这里的 `0x0c00` 是**块 37 内部**的偏移。从镜像开头读，仍要先跳过前面的 37 个块。
 
-### 3.3 直接读出磁盘 inode 的字段
+### 3.4 直接读出磁盘 inode 的字段
 
 用 `od` 从镜像偏移 `154624` 开始读取 32 字节，并按单字节十六进制显示。重新创建镜像后，时间戳等字节会随环境变化。若你的 `imap` 给出了不同的块号或块内偏移，就先用「块号 × 块大小 + 块内偏移」重算 `inode_offset`，后面读取 `i_block` 时也会用到它。
 
