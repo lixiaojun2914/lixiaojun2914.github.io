@@ -48,6 +48,8 @@ stat -c '%n: dev=%d inode=%i links=%h' /etc/hosts
 
 ext4 目录项是文件系统自己的记录格式，里面存的是 **编号**；`dentry` 是内核中的对象，关联的是 **指针**。内核还可以缓存一次找不到名字的结果：这种 dentry 的 `d_inode` 为空，称为负 dentry。因此，不能把内存里的每个 dentry 都理解为一条磁盘目录项的副本。[ext4 目录项格式](https://docs.kernel.org/filesystems/ext4/directory.html) · [Linux v6.8 的 dentry 定义](https://github.com/torvalds/linux/blob/v6.8/include/linux/dcache.h) · [inode 定义](https://github.com/torvalds/linux/blob/v6.8/include/linux/fs.h)
 
+查找某个名字时，dcache 用**父目录的 dentry 和子名字**查缓存。例如，VFS 以目录 `demo` 的 dentry 和名字 `note` 查找 `demo/note`。有效的正 dentry 可以直接提供 inode，有效的负 dentry 则可以直接回答这个名字不存在。若缓存没有可用结果，慢路径会在适当的锁下重新检查，必要时调用父目录 inode 的 `i_op->lookup`，由 ext4 查目录项。缓存一旦填好，后续查找就可能省掉这次文件系统回调。[Linux v6.8 路径查找文档](https://docs.kernel.org/6.8/filesystems/path-lookup.html) · [第三篇的完整调用链](/p/linux-file-object-model/#32-openat-path-walk)
+
 ### 从 stat 命令追到内核
 
 命令叫 `stat`，并不意味着底层必然调用同名的系统调用。在本机的 GNU Coreutils 9.4 和 Ubuntu 内核 `6.8.0-149-generic` 上，用下面的命令跟踪实际调用：

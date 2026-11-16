@@ -191,6 +191,10 @@ dev=64512 inode=524331 links=1
 
 输出中，`FSROOT` 是挂载根在 ext4 内部的位置，`TARGET` 是当前目录树中进入这个挂载的位置。新挂载的根是 `source`，入口是 `view`。两条路径看到的硬链接数均为 1。[mountinfo 字段的生成](https://github.com/torvalds/linux/blob/v6.8/fs/proc_namespace.c#L126)
 
+这里的 `view` 正是[第三篇路径解析图](/p/linux-file-object-model/#32-openat-path-walk)里切换挂载的那一步。跨进去以后，当前的 `struct path` 已换成新挂载和 `source` 对应的根 dentry。接下来查找的 `data.txt` 与原路径查到的是同一个文件。
+
+挂载也可能仍被进程引用。我在虚拟机上另建了一个临时 bind mount，在子 shell 中 `cd` 进入挂载后尝试普通卸载，`umount` 报告 `target is busy`。子 shell 退出后再次执行卸载，操作成功。工作目录持有的路径引用会让挂载保持忙碌，打开文件也可能持有这类引用。[Linux v6.8 的普通卸载检查](https://github.com/torvalds/linux/blob/v6.8/fs/namespace.c#L1686)
+
 这里的 `struct super_block` 是 VFS 在内存中使用的实例对象。ext4 磁盘上还有自己的 `struct ext4_super_block`，描述磁盘格式和文件系统参数。两者如何关联，等到磁盘布局篇再看。这一篇接下来沿 inode 上的 `i_fop` 找到打开对象的 `f_op`。
 
 ## 三、ext4 的操作表怎样绑定到打开对象？

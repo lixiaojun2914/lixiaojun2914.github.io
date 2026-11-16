@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 570 365" role="img" aria-labelledby="title desc">
+  <title id="title">openat 从路径字符串得到 struct path</title>
+  <desc id="desc">从当前工作目录查找 view。命中 dcache 可沿用目录项，未命中时检查慢路径。跨到 bind mount 的根后查找 data.txt，最后安装到 f_path。</desc>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+  <rect width="570" height="365" rx="16" fill="#f1f5f9"/>
+  <g fill="#dbeafe">
+    <rect x="22" y="16" width="526" height="55" rx="9"/>
+    <rect x="22" y="86" width="526" height="55" rx="9"/>
+    <rect x="22" y="156" width="526" height="55" rx="9"/>
+    <rect x="22" y="226" width="526" height="55" rx="9"/>
+  </g>
+  <rect x="22" y="296" width="526" height="55" rx="9" fill="#dcfce7"/>
+  <g stroke="#475569" stroke-width="2" marker-end="url(#a)">
+    <path d="M285 72v12"/><path d="M285 142v12"/><path d="M285 212v12"/><path d="M285 282v12"/>
+  </g>
+  <g fill="#172554" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" font-size="17">
+    <text x="36" y="39" font-weight="bold">path_init</text><text x="36" y="60">相对路径 view/data.txt 从当前工作目录开始</text>
+    <text x="36" y="109" font-weight="bold">link_path_walk → walk_component</text><text x="36" y="130">查找 view，先看 dcache，必要时走慢路径</text>
+    <text x="36" y="179" font-weight="bold">step_into → handle_mounts</text><text x="36" y="200">进入挂在 view 上的挂载，从它的 mnt_root 继续</text>
+    <text x="36" y="249" font-weight="bold">open_last_lookups</text><text x="36" y="270">按打开语义处理最后一个名字 data.txt</text>
+    <text x="36" y="319" font-weight="bold">vfs_open</text><text x="36" y="340">将新挂载与 data.txt 的 dentry 写入 file-&gt;f_path</text>
+  </g>
+</svg>

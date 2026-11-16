@@ -249,6 +249,21 @@ struct file {
 
 如果把 `data.txt` 换成一个确定不存在的名字，仍以 `O_RDONLY` 打开，路径查找会返回 `ENOENT`。这时要收回两样东西。`path_openat` 用 `fput(file)` 放掉已经分配的打开对象的引用，`do_sys_openat2` 收到错误后用 `put_unused_fd(fd)` 归还编号。原来预留的槽位可以再用，程序收到的则是打开失败。[对象引用的清理](https://github.com/torvalds/linux/blob/v6.8/fs/namei.c#L3805) · [预留编号的归还](https://github.com/torvalds/linux/blob/v6.8/fs/open.c#L1402)
 
+#### 3.2.1 一个路径字符串怎样变成 struct path？ {#32-openat-path-walk}
+
+这一段用 `openat(AT_FDCWD, "view/data.txt", O_RDONLY)` 说明，假定 `view` 是第四篇的 bind mount 入口，`data.txt` 已存在，路径中没有符号链接。内核用 `nameidata` 保存走到哪一步，包括当前挂载和 dentry，以及正在处理的名字。
+
+![openat 路径解析：选择起点，查中间目录，处理挂载，再查最后一个名字，得到挂载和 dentry。](openat-path-walk.svg)
+
+| 路径解析的步骤 | Linux v6.8 怎样做 |
+| --- | --- |
+| 选起点 | `path_init` 为 `AT_FDCWD` 下的相对路径选当前工作目录。普通绝对路径从进程的根目录开始。 |
+| 查中间目录 `view` | `link_path_walk` 检查目录搜索权限，并逐段推进。`walk_component` 先用 `lookup_fast` 查 dcache。 |
+| 跨入挂载 | `step_into` 调用 `handle_mounts`。如果 `view` 在当前挂载下接有子挂载，就把当前位置改为该挂载及其 `mnt_root`。 |
+| 查最终名字 `data.txt` | `link_path_walk` 留下最终名字，`open_last_lookups` 按打开语义处理它。已有普通文件找到后，继续到 `do_open`，成功时由 `vfs_open` 把路径写入 `file->f_path`。 |
+
+`lookup_fast` 在 RCU-walk 中通过 `__d_lookup_rcu` 查缓存，在 REF-walk 中可用 `__d_lookup`。有效的缓存命中可以跳过文件系统的目录查找回调。缓存未命中、失效或需要重新验证时，会按情况转入后续路径。对中间分量，`lookup_slow` 会加锁再查一次缓存，仍需查找时才交给文件系统。最后一段若没能走快路径，打开流程用 `lookup_open` 等逻辑处理。同一次 `openat` 即使命中缓存，仍要经过适用的路径搜索和打开权限检查。[查找快慢路径与最终分量](https://docs.kernel.org/6.8/filesystems/path-lookup.html) · [普通文件的打开路径](https://github.com/torvalds/linux/blob/v6.8/fs/namei.c)
+
 ### 3.3 dup 如何让两个 fd 指向同一个打开对象？
 
 `dup(3) = 4` 之后，原来的 `fd[3]` 仍然有效，`fd[4]` 多了一条通往同一个 `struct file` 的引用。Linux v6.8 的实现可以分成三步。[dup 的系统调用实现](https://github.com/torvalds/linux/blob/v6.8/fs/file.c#L1328)

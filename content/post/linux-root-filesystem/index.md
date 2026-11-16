@@ -55,6 +55,10 @@ findmnt -n -T /proc -o TARGET,FSTYPE
 
 `/boot` 是独立的 ext4 挂载，其中的 `/boot/efi` 又来自 vfat。类似地，`/dev` 是 devtmpfs，但访问 `/dev/pts` 时又会跨入 devpts。**目录位置和挂载归属是两件事。** 要查具体路径属于哪一个挂载，用 `findmnt -T 路径`。
 
+以 `/boot/efi` 为例，查找到 `boot` 这个目录项时，VFS 会查看当前挂载中的这个位置是否接了另一个挂载。如果接了，就把当前路径切换到新挂载和它的根目录项，再从那里继续查找 `efi`。找到 `efi` 时还能再跨一次挂载。因此，一次路径查找走的是**目录项与挂载的组合**。具体调用链见[第三篇的 openat 路径解析](/p/linux-file-object-model/#32-openat-path-walk)。[Linux v6.8 路径查找文档](https://docs.kernel.org/6.8/filesystems/path-lookup.html)
+
+`findmnt` 展示的是调用者所在挂载命名空间的视图。不同命名空间可以看到不同的挂载树。共享挂载可以在对等挂载间传播挂载和卸载事件，私有挂载的事件留在各自的挂载树中。[Linux 挂载传播文档](https://docs.kernel.org/filesystems/sharedsubtree.html)
+
 再看安装时定下的三个挂载点：
 
 | 挂载点 | 本机来源 | 文件系统 |
