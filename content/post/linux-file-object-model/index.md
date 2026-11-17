@@ -205,7 +205,9 @@ read(4, "B", 1) = 1
 
 两次打开 `data.txt` 时，两个 fd 最终可以找到同一个 inode。第一次读取却只推进了其中一个 fd 的偏移。要解释这个结果，需要看 fd 与 inode 之间的那一层。fd 表项指向 `struct file`，它代表一次打开，在用户态接口的文档中称为 *open file description*（打开文件描述）。
 
-![fd 表项指向 struct file，偏移保存在打开实例中，路径、inode 和操作表由各自的字段关联](file-fields.svg)
+![两个 fd 各有打开对象，共用 data.txt 的 inode。data.txt 和同一文件系统实例里的 other.txt 各有一个 inode，两个 i_sb 指向同一个 super_block。](file-fields.svg)
+
+图中取的是两次独立打开后，fd 3 刚读完一个字节的时刻。右侧的 `other.txt` 是同一 ext4 实例中另一个文件的示意，用来对照 inode 和文件系统实例的共享范围。
 
 下面摘出上游 Linux v6.8 中与这次实验相关的字段。[struct file 的完整定义](https://github.com/torvalds/linux/blob/v6.8/include/linux/fs.h#L935)
 
@@ -232,9 +234,21 @@ struct file {
 | `f_path` / `f_inode` | `f_path` 保存挂载与 dentry 的组合，表示路径解析得到的位置。`f_inode` 缓存指向目标 inode 的指针，inode 再通过 `i_sb` 关联到内核中的文件系统实例。 |
 | `f_op` | 指向 `file_operations`。VFS 可以从这张表取得打开、读取等操作的回调。 |
 
-以实验中的普通文件为例，`do_dentry_open` 从 `inode->i_fop` 取得操作表并放入 `file->f_op`。后续 `vfs_read` 优先调用表中的 `.read`，只有 `.read_iter` 时则通过 `new_sync_read` 调用它。这样，fd 查找和读请求的通用检查由内核公共代码处理，具体读取交给操作表选出的实现。[打开时绑定操作表](https://github.com/torvalds/linux/blob/v6.8/fs/open.c) · [VFS 的读分发](https://github.com/torvalds/linux/blob/v6.8/fs/read_write.c)
+本例中的 `do_dentry_open` 从 `inode->i_fop` 取得操作表，绑定到 `file->f_op`。后续读请求通过这张表分发，具体怎样进入 ext4 的读回调见[第四篇](/p/linux-ext4-vfs-objects/)。
 
-回到实验。两次打开各有一个 `struct file`，第一次读取只把其中一个 `f_pos` 从 0 推到 1，另一个仍从 0 开始，因此得到 `A/A`。`dup` 后两个 fd 指向同一个 `struct file`，第二次读取从已经更新的偏移 1 开始，因此得到 `A/B`。
+#### 3.1.1 不同 inode 可以共享同一个 super_block 吗？
+
+可以。**属于同一个文件系统实例的内存 inode，它们的 `i_sb` 指向同一个内存 `struct super_block`。** 图里 `data.txt` 和 `other.txt` 各有自己的 inode，但两个 `i_sb` 都指向图中下方的同一个对象。Linux v6.8 初始化 inode 时，用传入的 `sb` 设置 `inode->i_sb`。[inode 初始化](https://github.com/torvalds/linux/blob/v6.8/fs/inode.c#L151)
+
+`struct super_block` 是 VFS 对一个**文件系统实例**的表示。它保存该实例共用的信息，例如块大小和文件系统类型，以及文件系统私有状态的入口。可以用三个场景分清「同一个文件系统」具体指什么。
+
+| 场景 | superblock 关系 |
+| --- | --- |
+| 同一个 ext4 实例里打开两个不同文件 | 各有自己的 inode，两个 `i_sb` 指向同一个内存对象。 |
+| 给同一实例的目录增加一个 bind mount | 两条路径可以经过不同的挂载，但两个挂载仍引用同一个 superblock。 |
+| 把两个独立格式化的 ext4 镜像分别挂载 | 文件系统类型都是 ext4，各自有自己的 superblock。 |
+
+想知道**访问经过哪个挂载**，看 `file->f_path.mnt`。想知道**inode 属于哪个实例**，看 `inode->i_sb`。第五篇会把这个内存对象与磁盘中的 `struct ext4_super_block` 接起来。[VFS superblock 定义与用途](https://docs.kernel.org/6.8/filesystems/vfs.html#the-superblock-object) · [bind mount 实验](/p/linux-ext4-vfs-objects/) · [ext4 磁盘布局](/p/linux-ext4-disk-layout/)
 
 ### 3.2 openat 如何把打开对象装进 fd 表？
 

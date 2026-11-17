@@ -1,34 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 280" role="img" aria-labelledby="title desc">
-  <title id="title">struct file 的字段与对象关系</title>
-  <desc id="desc">fd 表项指向 struct file。f_pos 保存在打开实例中，f_path 包含挂载和 dentry，f_inode 指向 inode，f_op 指向操作表。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0 0L8 4L0 8Z" fill="#475569"/>
-    </marker>
-  </defs>
-  <rect width="620" height="280" rx="16" fill="#f1f5f9"/>
-  <g fill="#fff" stroke="#94a3b8">
-    <rect x="20" y="89" width="112" height="42" rx="8"/>
-    <rect x="340" y="89" width="260" height="42" rx="8"/>
-    <rect x="340" y="147" width="260" height="42" rx="8"/>
-    <rect x="340" y="205" width="260" height="42" rx="8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 390" role="img" aria-labelledby="title desc">
+  <title id="title">两次打开、两个 inode、一个文件系统实例</title>
+  <desc id="desc">fd 3 和 fd 4 各指向自己的 struct file，两次打开同一个 data.txt，共用一个 inode。data.txt 和同一实例中的 other.txt 各有一个 inode，两个 i_sb 都指向同一个内存 super_block。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+  <rect width="640" height="390" rx="16" fill="#f1f5f9"/>
+  <g fill="#e2e8f0">
+    <rect x="24" y="24" width="75" height="42" rx="8"/>
+    <rect x="24" y="105" width="75" height="42" rx="8"/>
   </g>
-  <rect x="168" y="24" width="136" height="232" rx="10" fill="#dbeafe" stroke="#3b82f6"/>
-  <g stroke="#475569" stroke-width="2" marker-end="url(#arrow)">
-    <path d="M132 110H164"/>
-    <path d="M304 110H336"/>
-    <path d="M304 168H336"/>
-    <path d="M304 226H336"/>
+  <g fill="#dbeafe" stroke="#93c5fd">
+    <rect x="142" y="12" width="178" height="66" rx="8"/>
+    <rect x="142" y="93" width="178" height="66" rx="8"/>
   </g>
-  <g fill="#172554" font-family="monospace" font-size="16" text-anchor="middle" dominant-baseline="middle">
-    <text x="76" y="110">fd[n]</text>
-    <text x="236" y="50" font-weight="bold">struct file</text>
-    <text x="236" y="76" fill="#1d4ed8">f_pos</text>
-    <text x="236" y="110">f_path</text>
-    <text x="236" y="168">f_inode</text>
-    <text x="236" y="226">f_op</text>
-    <text x="470" y="110">vfsmount + dentry</text>
-    <text x="470" y="168">inode → i_sb → super_block</text>
-    <text x="470" y="226">file_operations</text>
+  <g fill="#fef3c7" stroke="#fcd34d">
+    <rect x="437" y="48" width="180" height="66" rx="8"/>
+    <rect x="437" y="157" width="180" height="66" rx="8"/>
+  </g>
+  <rect x="161" y="284" width="318" height="78" rx="10" fill="#dcfce7" stroke="#86efac"/>
+  <g fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M99 45H138"/><path d="M99 126H138"/>
+    <path d="M320 45H382V67H433"/><path d="M320 126H382V95H433"/>
+    <path d="M474 114V264H264V280"/><path d="M561 223V264H386V280"/>
+  </g>
+  <g fill="#172554" font-family="PingFang SC, Noto Sans CJK SC, monospace" font-size="17" text-anchor="middle">
+    <text x="61" y="51">fd 3</text><text x="61" y="132">fd 4</text>
+    <text x="231" y="39">struct file A</text><text x="231" y="63">f_pos = 1</text>
+    <text x="231" y="120">struct file B</text><text x="231" y="144">f_pos = 0</text>
+    <text x="527" y="75">inode</text><text x="527" y="99">data.txt</text>
+    <text x="527" y="185">inode</text><text x="527" y="208">other.txt</text>
+    <text x="367" y="37" font-size="14">f_inode</text>
+    <text x="367" y="147" font-size="14">f_inode</text>
+    <text x="448" y="247" font-size="14">i_sb</text>
+    <text x="584" y="248" font-size="14">i_sb</text>
+    <text x="320" y="315" font-weight="bold">struct super_block</text>
+    <text x="320" y="341">同一个 ext4 实例的内存对象</text>
   </g>
 </svg>
