@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 252" role="img" aria-labelledby="title">
+  <title id="title">伙伴分配器从 order 0 逐阶合并到 order 2</title>
+  <rect width="720" height="252" rx="18" fill="#f8fafc"/>
+  <g font-family="system-ui, sans-serif" fill="#0f172a">
+    <text x="24" y="38" font-size="24" font-weight="700">从 PFN 64 释放到四页合并</text>
+    <g font-size="19" font-weight="600">
+      <text x="24" y="91">释放一页</text>
+      <text x="24" y="154">第一次合并</text>
+      <text x="24" y="217">第二次合并</text>
+    </g>
+    <rect x="160" y="64" width="128" height="44" rx="8" fill="#bfdbfe"/>
+    <rect x="296" y="64" width="128" height="44" rx="8" fill="#bfdbfe"/>
+    <rect x="432" y="64" width="264" height="44" rx="8" fill="#ccfbf1"/>
+    <rect x="160" y="127" width="264" height="44" rx="8" fill="#ccfbf1"/>
+    <rect x="432" y="127" width="264" height="44" rx="8" fill="#ccfbf1"/>
+    <rect x="160" y="190" width="536" height="44" rx="8" fill="#fde68a"/>
+    <g font-size="18" text-anchor="middle">
+      <text x="224" y="92">64</text>
+      <text x="360" y="92">65</text>
+      <text x="564" y="92">66–67 · order 1</text>
+      <text x="292" y="155">64–65 · order 1</text>
+      <text x="564" y="155">66–67 · order 1</text>
+      <text x="428" y="218">64–67 · order 2</text>
+    </g>
+  </g>
+</svg>

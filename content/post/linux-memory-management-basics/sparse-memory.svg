@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 327" role="img" aria-labelledby="title">
+<g font-family="system-ui, sans-serif">
+<title id="title">SPARSEMEM 按 section 组织页帧元数据</title>
+<rect width="760" height="327" rx="20" fill="#f8fafc"/>
+<text x="28" y="42" fill="#0f172a" font-size="26" font-weight="700">SPARSEMEM 按 section 组织页帧元数据</text>
+<text x="28" y="98" fill="#334155" font-size="20" font-weight="600">物理地址 →</text>
+<rect x="200.0" y="66" width="170.66666666666666" height="54" rx="10" fill="#dbeafe"/>
+<text x="285.3333333333333" y="100" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">section 0</text>
+<rect x="380.66666666666663" y="66" width="170.66666666666666" height="54" rx="10" fill="#e2e8f0"/>
+<text x="465.99999999999994" y="100" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">section 1</text>
+<rect x="561.3333333333333" y="66" width="170.66666666666666" height="54" rx="10" fill="#ccfbf1"/>
+<text x="646.6666666666666" y="100" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">section 2</text>
+<text x="28" y="181" fill="#334155" font-size="20" font-weight="600">RAM 示例</text>
+<rect x="200.0" y="149" width="170.66666666666666" height="54" rx="10" fill="#dbeafe"/>
+<text x="285.3333333333333" y="183" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">有 RAM</text>
+<rect x="380.66666666666663" y="149" width="170.66666666666666" height="54" rx="10" fill="#e2e8f0"/>
+<text x="465.99999999999994" y="183" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">整段空洞</text>
+<rect x="561.3333333333333" y="149" width="170.66666666666666" height="54" rx="10" fill="#ccfbf1"/>
+<text x="646.6666666666666" y="183" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">有 RAM</text>
+<text x="28" y="264" fill="#334155" font-size="20" font-weight="600">描述页帧</text>
+<rect x="200.0" y="232" width="170.66666666666666" height="54" rx="10" fill="#dbeafe"/>
+<text x="285.3333333333333" y="266" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">struct page</text>
+<rect x="380.66666666666663" y="232" width="170.66666666666666" height="54" rx="10" fill="#e2e8f0"/>
+<text x="465.99999999999994" y="266" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">空洞</text>
+<rect x="561.3333333333333" y="232" width="170.66666666666666" height="54" rx="10" fill="#ccfbf1"/>
+<text x="646.6666666666666" y="266" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">struct page</text>
+</g>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 410" role="img" aria-labelledby="title">
+<g font-family="system-ui, sans-serif">
+<title id="title">从 CPU 访问路径到节点内部的 zone</title>
+<rect width="760" height="410" rx="20" fill="#f8fafc"/>
+<text x="28" y="42" fill="#0f172a" font-size="26" font-weight="700">从 CPU 访问路径到节点内部的 zone</text>
+<text x="28" y="98" fill="#334155" font-size="20" font-weight="600">CPU</text>
+<rect x="200.0" y="66" width="261.0" height="54" rx="10" fill="#dbeafe"/>
+<text x="330.5" y="100" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">CPU 组 A</text>
+<rect x="471.0" y="66" width="261.0" height="54" rx="10" fill="#ccfbf1"/>
+<text x="601.5" y="100" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">CPU 组 B</text>
+<text x="28" y="181" fill="#334155" font-size="20" font-weight="600">本地访问 ↓</text>
+<rect x="200.0" y="149" width="261.0" height="54" rx="10" fill="#dbeafe"/>
+<text x="330.5" y="183" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">Node 0</text>
+<rect x="471.0" y="149" width="261.0" height="54" rx="10" fill="#ccfbf1"/>
+<text x="601.5" y="183" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">Node 1</text>
+<text x="28" y="264" fill="#334155" font-size="20" font-weight="600">节点内示例</text>
+<rect x="200.0" y="232" width="125.5" height="54" rx="10" fill="#dbeafe"/>
+<text x="262.75" y="266" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">DMA32</text>
+<rect x="335.5" y="232" width="125.5" height="54" rx="10" fill="#dbeafe"/>
+<text x="398.25" y="266" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">Normal</text>
+<rect x="471.0" y="232" width="125.5" height="54" rx="10" fill="#ccfbf1"/>
+<text x="533.75" y="266" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">Normal</text>
+<rect x="606.5" y="232" width="125.5" height="54" rx="10" fill="#ccfbf1"/>
+<text x="669.25" y="266" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">Movable</text>
+<text x="28" y="347" fill="#334155" font-size="20" font-weight="600">远端访问</text>
+<rect x="200.0" y="315" width="261.0" height="54" rx="10" fill="#e2e8f0"/>
+<text x="330.5" y="349" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">CPU 组 A  ↔  Node 1</text>
+<rect x="471.0" y="315" width="261.0" height="54" rx="10" fill="#e2e8f0"/>
+<text x="601.5" y="349" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">CPU 组 B  ↔  Node 0</text>
+</g>
+</svg>

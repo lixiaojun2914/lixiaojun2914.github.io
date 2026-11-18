@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 410" role="img" aria-labelledby="title">
+<g font-family="system-ui, sans-serif">
+<title id="title">同一段 16 KiB 内存可以有不同的观察方式</title>
+<rect width="760" height="410" rx="20" fill="#f8fafc"/>
+<text x="28" y="42" fill="#0f172a" font-size="26" font-weight="700">同一段 16 KiB 内存可以有不同的观察方式</text>
+<text x="28" y="98" fill="#334155" font-size="20" font-weight="600">物理页帧</text>
+<rect x="200.0" y="66" width="125.5" height="54" rx="10" fill="#dbeafe"/>
+<text x="262.75" y="100" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">PFN 64</text>
+<rect x="335.5" y="66" width="125.5" height="54" rx="10" fill="#dbeafe"/>
+<text x="398.25" y="100" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">PFN 65</text>
+<rect x="471.0" y="66" width="125.5" height="54" rx="10" fill="#dbeafe"/>
+<text x="533.75" y="100" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">PFN 66</text>
+<rect x="606.5" y="66" width="125.5" height="54" rx="10" fill="#dbeafe"/>
+<text x="669.25" y="100" fill="#1e3a8a" font-size="21" font-weight="600" text-anchor="middle">PFN 67</text>
+<text x="28" y="181" fill="#334155" font-size="20" font-weight="600">分配粒度</text>
+<rect x="200.0" y="149" width="532.0" height="54" rx="10" fill="#ccfbf1"/>
+<text x="466.0" y="183" fill="#134e4a" font-size="21" font-weight="600" text-anchor="middle">一个 order-2 块</text>
+<text x="28" y="264" fill="#334155" font-size="20" font-weight="600">管理粒度</text>
+<rect x="200.0" y="232" width="532.0" height="54" rx="10" fill="#fef3c7"/>
+<text x="466.0" y="266" fill="#78350f" font-size="21" font-weight="600" text-anchor="middle">可以作为一个 16 KiB folio 管理</text>
+<text x="28" y="347" fill="#334155" font-size="20" font-weight="600">映射方式示例</text>
+<rect x="200.0" y="315" width="125.5" height="54" rx="10" fill="#e2e8f0"/>
+<text x="262.75" y="349" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">PTE 0</text>
+<rect x="335.5" y="315" width="125.5" height="54" rx="10" fill="#e2e8f0"/>
+<text x="398.25" y="349" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">PTE 1</text>
+<rect x="471.0" y="315" width="125.5" height="54" rx="10" fill="#e2e8f0"/>
+<text x="533.75" y="349" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">PTE 2</text>
+<rect x="606.5" y="315" width="125.5" height="54" rx="10" fill="#e2e8f0"/>
+<text x="669.25" y="349" fill="#334155" font-size="21" font-weight="600" text-anchor="middle">PTE 3</text>
+</g>
+</svg>
