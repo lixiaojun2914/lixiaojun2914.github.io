@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" role="img" aria-labelledby="title">
+  <title id="title">基本页与 PMD 大页如何映射相同的 2 MiB 虚拟区间</title>
+  <rect width="720" height="280" rx="20" fill="#f8fafc"/>
+  <g font-family="system-ui,sans-serif" text-anchor="middle" fill="#0f172a">
+    <text x="360" y="36" font-size="23" font-weight="700">同一段 2 MiB 虚拟地址</text>
+    <text x="188" y="73" font-size="20" font-weight="600">4 KiB 基本页</text>
+    <text x="532" y="73" font-size="20" font-weight="600">2 MiB PMD 大页</text>
+    <rect x="25" y="90" width="326" height="48" rx="8" fill="#dbeafe"/>
+    <rect x="369" y="90" width="326" height="48" rx="8" fill="#ccfbf1"/>
+    <text x="188" y="121" font-size="18">PMD 指向下一级页表</text>
+    <text x="532" y="121" font-size="18">PMD 直接映射 2 MiB</text>
+    <text x="188" y="163" font-size="24">↓</text>
+    <rect x="25" y="176" width="326" height="48" rx="8" fill="#dbeafe"/>
+    <text x="188" y="207" font-size="18">512 个 PTE，各覆盖 4 KiB</text>
+    <text x="532" y="207" font-size="18">页表查找在 PMD 结束</text>
+    <text x="188" y="252" font-size="18">低 12 位为页内偏移</text>
+    <text x="532" y="252" font-size="18">低 21 位为页内偏移</text>
+  </g>
+</svg>
