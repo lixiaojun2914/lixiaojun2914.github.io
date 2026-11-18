@@ -282,3 +282,14 @@ read(3</home/lxj/.vfs-links.4GsILU/alias>, "A", 1) = 1
 | `mount --bind source view` / `umount view` | 给已有目录增加一个挂载入口，再卸载该入口。 |
 | `strace -qq -y -e trace=openat,read -P "$PWD/alias" …` | 跟踪指定文件的打开和读取。`-y` 为 fd 标注路径，`-P` 按路径筛选。 |
 | `read(fd, &byte, 1)` | 从打开对象当前的偏移请求一个字节，写入 `byte`，返回实际字节数。 |
+
+## 六、名词解释
+
+| 术语 | 含义 |
+| --- | --- |
+| `VFS` | Linux 在系统调用与具体文件系统实现之间提供的通用接口。 |
+| `struct path` | 用挂载与 dentry 共同表示路径查找结果。 |
+| `i_sb / d_sb / mnt_sb` | 分别从 inode、dentry、挂载找到各自关联的文件系统实例。 |
+| `s_root / mnt_root` | 分别表示文件系统实例的根与本次挂载使用的根。 |
+| `bind mount` | 为已有文件或目录增加一个挂载入口。 |
+| `i_fop / f_op` | inode 提供的文件操作表，以及打开对象实际关联的文件操作表。 |
