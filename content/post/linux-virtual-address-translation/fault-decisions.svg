@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" role="img" aria-labelledby="title"><title id="title">缺页后 · 从区间属性找到处理方式</title>
+<rect width="900" height="520" rx="20" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#0f172a">
+<text x="28" y="42" font-size="26" font-weight="700">缺页后 · 从区间属性找到处理方式</text>
+<text x="28" y="103" font-size="20" font-weight="600">异常地址</text>
+<rect x="222.0" y="70" width="650.0" height="56" rx="10" fill="#dbeafe"/>
+<text x="547.0" y="105" text-anchor="middle" font-size="20">查 VMA，并检查本次访问权限</text>
+<text x="28" y="187" font-size="20" font-weight="600">区间合法</text>
+<rect x="222.0" y="154" width="208.66666666666666" height="56" rx="10" fill="#ccfbf1"/>
+<text x="326.3333333333333" y="189" text-anchor="middle" font-size="20">匿名 → 分配或零页</text>
+<rect x="442.66666666666663" y="154" width="208.66666666666666" height="56" rx="10" fill="#ccfbf1"/>
+<text x="547.0" y="189" text-anchor="middle" font-size="20">文件 → 页缓存</text>
+<rect x="663.3333333333333" y="154" width="208.66666666666666" height="56" rx="10" fill="#ccfbf1"/>
+<text x="767.6666666666666" y="189" text-anchor="middle" font-size="20">COW → 复用或复制</text>
+<text x="28" y="271" font-size="20" font-weight="600">完成映射</text>
+<rect x="222.0" y="238" width="650.0" height="56" rx="10" fill="#fef3c7"/>
+<text x="547.0" y="273" text-anchor="middle" font-size="20">按需建页表，安装条目并维护翻译缓存</text>
+<text x="28" y="355" font-size="20" font-weight="600">返回用户态</text>
+<rect x="222.0" y="322" width="650.0" height="56" rx="10" fill="#e2e8f0"/>
+<text x="547.0" y="357" text-anchor="middle" font-size="20">重试原指令 → 通过新映射访问</text>
+<text x="28" y="439" font-size="20" font-weight="600">无合法后备</text>
+<rect x="222.0" y="406" width="650.0" height="56" rx="10" fill="#dbeafe"/>
+<text x="547.0" y="441" text-anchor="middle" font-size="20">权限或范围错误 → SIGSEGV 等信号</text>
+</g></svg>

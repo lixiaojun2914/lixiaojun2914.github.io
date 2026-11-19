@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 436" role="img" aria-labelledby="title"><title id="title">同一物理页的数据与元数据</title>
+<rect width="900" height="436" rx="20" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#0f172a">
+<text x="28" y="42" font-size="26" font-weight="700">同一物理页的数据与元数据</text>
+<text x="28" y="103" font-size="20" font-weight="600">用户映射</text>
+<rect x="222.0" y="70" width="650.0" height="56" rx="10" fill="#dbeafe"/>
+<text x="547.0" y="105" text-anchor="middle" font-size="20">用户 VA → 用户页表 → 物理页帧 P</text>
+<text x="28" y="187" font-size="20" font-weight="600">内核直接映射</text>
+<rect x="222.0" y="154" width="650.0" height="56" rx="10" fill="#ccfbf1"/>
+<text x="547.0" y="189" text-anchor="middle" font-size="20">内核 VA → 内核页表 → 同一页帧 P</text>
+<text x="28" y="271" font-size="20" font-weight="600">页描述对象</text>
+<rect x="222.0" y="238" width="650.0" height="56" rx="10" fill="#fef3c7"/>
+<text x="547.0" y="273" text-anchor="middle" font-size="20">PFN(P) → vmemmap 中的 struct page</text>
+<text x="28" y="355" font-size="20" font-weight="600">vmalloc 示例</text>
+<rect x="222.0" y="322" width="650.0" height="56" rx="10" fill="#e2e8f0"/>
+<text x="547.0" y="357" text-anchor="middle" font-size="20">连续内核 VA → 页表 → 分散的物理页帧</text>
+</g></svg>

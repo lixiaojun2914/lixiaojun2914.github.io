@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 436" role="img" aria-labelledby="title"><title id="title">同一段对齐的 2 MiB 地址</title>
+<rect width="900" height="436" rx="20" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#0f172a">
+<text x="28" y="42" font-size="26" font-weight="700">同一段对齐的 2 MiB 地址</text>
+<text x="28" y="103" font-size="20" font-weight="600">映射方式</text>
+<rect x="222.0" y="70" width="319.0" height="56" rx="10" fill="#dbeafe"/>
+<text x="381.5" y="105" text-anchor="middle" font-size="20">4 KiB 基本页</text>
+<rect x="553.0" y="70" width="319.0" height="56" rx="10" fill="#dbeafe"/>
+<text x="712.5" y="105" text-anchor="middle" font-size="20">2 MiB 块映射</text>
+<text x="28" y="187" font-size="20" font-weight="600">PMD 条目</text>
+<rect x="222.0" y="154" width="319.0" height="56" rx="10" fill="#ccfbf1"/>
+<text x="381.5" y="189" text-anchor="middle" font-size="20">指向末级页表 ↓</text>
+<rect x="553.0" y="154" width="319.0" height="56" rx="10" fill="#ccfbf1"/>
+<text x="712.5" y="189" text-anchor="middle" font-size="20">取得物理块起点 ↓</text>
+<text x="28" y="271" font-size="20" font-weight="600">查找终点</text>
+<rect x="222.0" y="238" width="319.0" height="56" rx="10" fill="#fef3c7"/>
+<text x="381.5" y="273" text-anchor="middle" font-size="20">512 个 PTE 各覆盖 4 KiB</text>
+<rect x="553.0" y="238" width="319.0" height="56" rx="10" fill="#fef3c7"/>
+<text x="712.5" y="273" text-anchor="middle" font-size="20">在 PMD 结束</text>
+<text x="28" y="355" font-size="20" font-weight="600">目标物理地址</text>
+<rect x="222.0" y="322" width="319.0" height="56" rx="10" fill="#e2e8f0"/>
+<text x="381.5" y="357" text-anchor="middle" font-size="20">页帧起点 + 低 12 位</text>
+<rect x="553.0" y="322" width="319.0" height="56" rx="10" fill="#e2e8f0"/>
+<text x="712.5" y="357" text-anchor="middle" font-size="20">块起点 + 低 21 位</text>
+</g></svg>

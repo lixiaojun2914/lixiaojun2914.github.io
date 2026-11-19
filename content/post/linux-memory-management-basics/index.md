@@ -1,9 +1,9 @@
 ---
-title: "Linux 内存管理（一）：从页、页帧到虚拟地址空间"
+title: "Linux 内存管理（一）：页、地址空间与物理内存的基本概念"
 slug: linux-memory-management-basics
 date: "2026-11-18T16:37:06+08:00"
 draft: false
-description: "从基本页大小和地址拆分出发，认识虚拟页、物理页帧及 Linux 管理内存时用到的基本概念。"
+description: "解释页、页帧、PFN、虚拟地址空间、order、folio、大页，以及 node、zone 和物理内存模型之间的关系。"
 categories:
     - Linux 与网络
 tags:
@@ -11,13 +11,11 @@ tags:
     - 内存管理
 ---
 
-假设一个程序用 `mmap` 申请了一段 16 KiB 的匿名私有内存。调用成功后，它可以拿到一段连续的虚拟地址。可如果程序只往其中一个字节写入数据，内核需要马上拿出整段 16 KiB 的物理内存吗？如果它最终写遍这段地址，底下的物理内存也要连在一起吗？
+本篇介绍 Linux 内存管理中的基本概念，包括虚拟页和物理页帧、地址空间与映射、连续页块、folio、大页，以及物理内存的 node 和 zone。各节按定义、用途和相互关系组织，地址换算统一以 4 KiB 基本页为例。内核接口以 Linux v6.8 为参照。
 
-本篇从 4 KiB 基本页出发，观察虚拟地址如何映射、写入何时占用物理内存，再用连续页块说明物理分配、内核管理和地址翻译三种粒度。最后用 node 和 zone 交代页帧从哪里来。
+## 一、基本页、页帧与地址编号
 
-## 一、CPU 怎样找到要写的那个字节
-
-### 1.1 实测 · 先看系统的基本页大小
+### 1.1 基本页与页帧
 
 下面是在 Ubuntu 24.04 ARM64 虚拟机上的输出。
 
@@ -28,11 +26,11 @@ $ getconf PAGE_SIZE
 4096
 ```
 
-这台机器的基本页大小是 **4096 字节（4 KiB）**。以这个大小为单位切分虚拟地址空间，得到的是**虚拟页**。用同样的大小切分物理地址空间，得到的基本单位叫作**页帧**。物理地址空间里还可能有空洞，某个位置能算出编号，并不保证那里有 RAM。4 KiB 是这台虚拟机的配置，实验时可以用 `getconf PAGE_SIZE` 查自己的系统。 [Linux v6.8 页表文档](https://docs.kernel.org/6.8/mm/page_tables.html) · [Linux v6.8 物理内存文档](https://docs.kernel.org/6.8/mm/physical_memory.html)
+这台机器的基本页大小是 **4096 字节（4 KiB）**。以这个大小为单位切分虚拟地址空间，得到的是**虚拟页**。用同样的大小切分物理地址空间，得到的基本单位叫作**页帧**。物理地址空间里还可能有空洞，某个位置能算出编号，并不保证那里有 RAM。基本页大小与架构、内核配置有关，4 KiB 是这台虚拟机的配置，实验时可以用 `getconf PAGE_SIZE` 查自己的系统。 [Linux v6.8 页表文档](https://docs.kernel.org/6.8/mm/page_tables.html) · [Linux v6.8 物理内存文档](https://docs.kernel.org/6.8/mm/physical_memory.html)
 
-### 1.2 推演 · 地址由页号和页内偏移组成
+### 1.2 页号与页内偏移
 
-为方便演算，假设示例中的 16 KiB 区间从 `0x12000` 开始，在 `0x16000` 结束。程序第一次写入的字节位于 `0x12345`。每页 4096 字节，即 `0x1000` 字节。用地址除以页大小，商是**虚拟页号（VPN）**，余数是**页内偏移**。在十六进制下可以直接读出来，低三位 `345` 是偏移，其余的 `12` 是页号。
+以虚拟地址 `0x12345` 为例。每页 4096 字节，即 `0x1000` 字节。用地址除以页大小，商是**虚拟页号（VPN，Virtual Page Number）**，余数是**页内偏移**。在十六进制下可以直接读出来，低三位 `345` 是偏移，其余的 `12` 是页号。
 
 | 要看的量 | 本例的值 | 含义 |
 | --- | --- | --- |
@@ -41,7 +39,7 @@ $ getconf PAGE_SIZE
 | 虚拟页起始地址 | `0x12000` | 页号乘以页大小 |
 | 页内偏移 | `0x345` | 从页起点向后数 837 个字节 |
 
-假设这个虚拟页已映射到物理页帧 `0xAB`。按基本页做地址转换时，MMU 将虚拟页号转换为**物理页帧号（PFN）**，然后保留原来的页内偏移。因此访问的是从物理地址 `0xAB000` 往后 837 字节的位置，也就是 `0xAB345`。这里的地址用于演示拆分和拼接。实际系统中，映射关系由内核建立并通过页表描述。 [Linux v6.8 页表文档](https://docs.kernel.org/6.8/mm/page_tables.html)
+假设这个虚拟页已映射到物理页帧 `0xAB`。按基本页做地址转换时，内存管理单元（MMU，Memory Management Unit）将虚拟页号转换为**物理页帧号（PFN，Page Frame Number）**，然后保留原来的页内偏移。因此访问的是从物理地址 `0xAB000` 往后 837 字节的位置，也就是 `0xAB345`。这里的地址用于演示拆分和拼接。实际系统中，映射关系由内核建立并通过页表描述。 [Linux v6.8 页表文档](https://docs.kernel.org/6.8/mm/page_tables.html)
 
 ![虚拟页号 0x12 映射到物理页帧号 0xAB，页内偏移 0x345 保持不变](address-translation.svg)
 
@@ -49,138 +47,60 @@ $ getconf PAGE_SIZE
 
 这也解释了为什么 **PFN 和虚拟页号要分别理解**。虚拟页号的含义取决于它所在的地址空间。同一个虚拟地址在两个进程中可能映射到不同的页帧。反过来，两个进程也可以通过不同的虚拟地址访问同一个页帧，例如共享映射中的同一页。
 
-## 二、申请了 16 KiB，物理内存什么时候到位
+## 二、虚拟地址空间、映射与驻留
 
-### 2.1 实测 · 地址区间和驻留状态
+### 2.1 虚拟地址空间与 VMA
 
-`/proc/<pid>/maps` 列出进程当前的虚拟内存区间。下面在同一台虚拟机上读取 `/proc/self/maps`。这里的 `self` 由内核解析为打开这个文件的进程，因此看到的是 `head` 自己的映射。地址可能随运行变化。
+**虚拟地址空间**是一个进程使用的虚拟地址范围。代码、堆、栈、共享库和文件映射都占用其中的区间，区间之间可以留有空洞。
+
+内核用**虚拟内存区域（VMA，Virtual Memory Area）**记录一段连续地址及其共同属性，包括范围、权限和映射来源。一个 VMA 可以包含许多虚拟页。
+
+`/proc/<pid>/maps` 显示进程的这些区间。下面沿用 Ubuntu ARM64 虚拟机的一次采样，`self` 指打开该文件的进程，这里是 `head`。
 
 ```text
 $ head -n 1 /proc/self/maps
 c894a2890000-c894a315c000 r-xp 00000000 fc:00 138                        /usr/lib/cargo/bin/coreutils/head
 ```
 
-最左边是一个左闭右开的地址区间，结束地址本身在当前区间之外。`r-xp` 表示可读、可执行、私有映射。`00000000` 是文件偏移，后面依次是设备号、inode 编号和路径。这里的 inode 标识映射所关联的文件，可以和文件系统系列里见到的 inode 对上。 [Linux v6.8 procfs 文档](https://docs.kernel.org/6.8/filesystems/proc.html)
+区间左闭右开。`r-xp` 表示可读、可执行、私有映射，后面的字段依次是文件偏移、设备号、inode 编号和路径。该行描述一段来自可执行文件的虚拟区间。 [Linux v6.8 procfs 文档](https://docs.kernel.org/6.8/filesystems/proc.html)
 
-把下面的程序保存为 `residency.c`。它通过 `sysconf` 获取基本页大小，映射四页，再用 `MADV_NOHUGEPAGE` 让这段匿名内存按基本页观察。`mincore` 为每个基本页返回一个字节，最低位表示采样时是否驻留。用 `volatile` 保留刻意安排的写入顺序。
+### 2.2 映射与驻留是两个相关的状态
 
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
-static void show_pages(const char *step, void *base, size_t length)
-{
-    unsigned char resident[4];
-
-    if (mincore(base, length, resident) == -1) {
-        perror("mincore");
-        exit(EXIT_FAILURE);
-    }
-    printf("%s %u %u %u %u\n", step,
-           resident[0] & 1u, resident[1] & 1u,
-           resident[2] & 1u, resident[3] & 1u);
-}
-
-int main(void)
-{
-    long page = sysconf(_SC_PAGESIZE);
-    if (page <= 0)
-        return EXIT_FAILURE;
-
-    size_t length = 4 * (size_t)page;
-    void *base = mmap(NULL, length, PROT_READ | PROT_WRITE,
-                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (base == MAP_FAILED) {
-        perror("mmap");
-        return EXIT_FAILURE;
-    }
-    if (madvise(base, length, MADV_NOHUGEPAGE) == -1) {
-        perror("madvise");
-        return EXIT_FAILURE;
-    }
-
-    volatile unsigned char *bytes = base;
-    show_pages("mmap:   ", base, length);
-    bytes[0] = 1;
-    show_pages("page 0: ", base, length);
-    bytes[page] = 2;
-    show_pages("page 1: ", base, length);
-    bytes[1] = 3;
-    show_pages("page 0: ", base, length);
-
-    if (munmap(base, length) == -1) {
-        perror("munmap");
-        return EXIT_FAILURE;
-    }
-}
-```
-
-```bash
-cc -Wall -Wextra -O2 residency.c -o residency
-./residency
-```
-
-在实验虚拟机上得到：
-
-```text
-mmap:    0 0 0 0
-page 0:  1 0 0 0
-page 1:  1 1 0 0
-page 0:  1 1 0 0
-```
-
-四列分别表示映射内的第 0 至第 3 页。对第二页的写入刚好比起点多一个 `PAGE_SIZE`，因此第二列变成 1。最后一次只改写第一页里的另一个字节，驻留页数仍然是两页。这个实验观察驻留状态，图上的 PFN 用于演示地址换算。 [Linux v6.8 mincore 实现](https://github.com/torvalds/linux/blob/v6.8/mm/mincore.c)
-
-### 2.2 推演 · 写到哪一页，先为哪一页建立映射
-
-回到那段 16 KiB 匿名内存。假设没有预填充，并且按基本页分配。调用成功后，`maps` 就可以显示这段区间，因为内核已经用 **VMA** 记录了范围、权限和映射类型。此时还可以没有对应的物理页帧。上面实测的 `head` 行展示的是同一种区间记录，只是它关联了一个可执行文件。
-
-| 程序做到哪一步 | 内核发生什么变化 |
-| --- | --- |
-| `mmap` 返回 | 内核记录区间 `[0x12000, 0x16000)` |
-| 写入 `0x12345` | 首次写入触发缺页异常。内核确认这段 VMA 允许写入，为虚拟页 `0x12` 分配页帧并建立映射 |
-| 写入 `0x13000` | 跨过页边界，虚拟页 `0x13` 可以独立获得另一个页帧 |
-| 继续写 `0x12346` | 地址仍在虚拟页 `0x12`，已有映射可继续使用 |
-
-![连续的四个虚拟页中，前两页已各自映射到分散的物理页帧，后两页尚未建立映射](virtual-to-physical.svg)
-
-只写第一个字节时，按这个例子的前提，只需要为第一虚拟页分配一个基本页帧作为数据后备。以后把四页都写遍，它们也可以落在四处不同的物理位置。CPU 每跨进一个新页，都会按该页自己的映射找到数据。这样程序就能使用连续的指针地址，而内核可以在物理内存的不同位置找空页。 [Linux v6.8 页表文档](https://docs.kernel.org/6.8/mm/page_tables.html)
-
-### 2.3 推演 · fork 后，父子进程为什么能先共用一页
-
-接着用前面的匿名私有映射。假设父进程已经向虚拟地址 `0x12345` 写入 `A`，这一页在图示中对应 PFN `0xAB`。执行 `fork()` 后，子进程也能从同一个虚拟地址读到 `A`。如果子进程把它改成 `B`，父进程随后仍能读到 `A`。Linux 用**写时复制（Copy-on-Write，COW）**把页内容的复制推迟到有写入、且需要分离时。 [fork(2) 手册](https://man7.org/linux/man-pages/man2/fork.2.html)
-
-| 时刻 | 父进程的页表 | 子进程的页表 |
+| 概念 | 含义 | 观察入口 |
 | --- | --- | --- |
-| `fork()` 前 | 指向 `0xAB`，可写，内容为 `A` | 子进程尚未创建 |
-| `fork()` 后，双方都只读 | 指向 `0xAB`，页表项写保护 | 指向同一个 `0xAB`，页表项写保护 |
-| 子进程写入 `B`，父进程仍保有原映射 | 继续指向 `0xAB`，读到 `A` | 改为指向新页帧，页表项可写，读到 `B` |
+| 区间 | 地址范围及允许的访问方式 | `maps` |
+| 页表映射 | 虚拟页到物理页帧的对应关系，以及访问属性 | 内核页表、受权限约束的 `pagemap` |
+| 驻留 | 当前数据页是否在物理内存中 | `smaps` 的 `Rss` 等统计 |
 
-### 2.4 源码 · 写保护怎样触发复制
+**按需分页**允许内核先记录合法区间，访问时再按需要建立页映射或取得数据后备。虚拟区间大小因此可以大于当时的驻留量。缺页异常是处理缺失映射、写保护等情形的入口。
 
-为什么 `/proc/<pid>/maps` 里的区间仍然可以显示 `rw-p`？`w` 来自 VMA，表示这个区间允许程序写入。页表项的写保护则让 CPU 在尝试写入时触发保护型缺页异常。内核检查 VMA 允许写入后，为子进程分配新页，复制原来的整页内容，再把子进程的页表项切到新页。指令重试时才把其中一个字节改成 `B`。因此这里虽然只写一个字节，仍要保留这张 4 KiB 页中其余字节的内容。 [Linux v6.8 fork 时设置写保护](https://github.com/torvalds/linux/blob/v6.8/mm/memory.c#L972) · [写保护异常的复制路径](https://github.com/torvalds/linux/blob/v6.8/mm/memory.c#L3116)
+![连续虚拟页可以对应分散页帧，合法区间中的部分页也可以尚无有效映射](virtual-to-physical.svg)
 
-前面的首次写入是在一页尚无数据后备时建立映射。这里已经有一页有效数据，内核要在更换映射时保留原内容。如果处理写入时匿名页已经能由写入进程独占，Linux 也可以直接恢复写权限，继续使用原页。 [Linux v6.8 do_wp_page](https://github.com/torvalds/linux/blob/v6.8/mm/memory.c#L3435)
+图中的四个虚拟页可以属于同一 VMA。前两页已有数据后备，物理页帧分散在不同位置，后两页尚待建立有效映射。虚拟连续性由地址范围决定，物理连续性由页帧编号决定。 [Linux v6.8 页表文档](https://docs.kernel.org/6.8/mm/page_tables.html)
+
+### 2.3 写时复制
+
+**写时复制（COW，Copy-on-Write）**让多个私有映射先共享页内容，发生需要分离的写入时再复制。典型用途是 `fork()` 后父子进程的私有匿名内存。
+
+共享期间，区间可以保留允许写入的属性，页表项则先写保护。写入触发异常后，内核检查区间权限和页状态。原页仍需共享时，内核复制内容并更新写入方的映射，若能够独占原页，也可以恢复写权限后继续使用。 [Linux v6.8 写保护处理](https://github.com/torvalds/linux/blob/v6.8/mm/memory.c#L3435)
 
 ## 三、连续页块的三种粒度
 
-同一段连续内存可以从三个角度看。分配器需要知道空闲块有多大，页缓存需要知道哪些页作为一个对象管理，CPU 需要知道一条页表映射能覆盖多少地址。
+页分配、内核对象管理和地址翻译各有自己的粒度。下表中的 order、folio 和页表项分别描述这三个维度。中央处理器（CPU，Central Processing Unit）通过页表完成地址翻译。
 
 | 维度 | 术语 | 回答的问题 |
 | --- | --- | --- |
 | 物理分配 | order | 一次能从空闲链表取得多少连续页帧？ |
 | 内核管理 | folio | 哪些基本页共用同一个缓存对象和锁？ |
-| 地址翻译 | PTE、PMD | 一条页表映射覆盖多大的虚拟地址范围？ |
+| 地址翻译 | PTE（Page Table Entry，页表项）、PMD（Page Middle Directory，中层页目录） | 一条页表映射覆盖多大的虚拟地址范围？ |
 
 ![四个连续物理页可以按 order 2 分配、由一个 folio 管理，也可以分别用四个 PTE 映射](contiguous-pages.svg)
 
 ### 3.1 物理分配 · order 与伙伴系统
 
-#### 3.1.1 推演 · 页块的大小和对齐
+#### 3.1.1 页块的大小和对齐
 
-假设内核现在有一个必须连续的 16 KiB 请求。四个分散的空页加起来也是 16 KiB，却无法提供一个连续的物理地址范围。伙伴分配器按 **order（阶）**组织物理连续页块。一个 order-`n` 块包含 2ⁿ 个连续基本页，起始 PFN 按 2ⁿ 个页对齐。以 4 KiB 基本页为例：
+**物理连续页块**由编号相邻的页帧组成。伙伴分配器按 **order（阶）**组织物理连续页块。一个 order-`n` 块包含 2ⁿ 个连续基本页，起始 PFN 按 2ⁿ 个页对齐。以 4 KiB 基本页为例：
 
 | 阶 | 基本页数 | 大小 | 一组可能的 PFN |
 | --- | ---: | ---: | --- |
@@ -191,9 +111,9 @@ page 0:  1 1 0 0
 
 高阶分配需要物理上连续且对齐的空闲页块。如果空闲内存散落在许多小块里，即使总量够，也可能找不到所需的高阶块。这是物理内存碎片化的一种表现。查看 `/proc/buddyinfo` 时，每行对应一个 node 的一个 zone，数字从 order 0 起按阶排列，统计的是**空闲块数**。一列若显示 3 个 order-2 块，相当于这一列贡献了 12 个空闲基本页。 [Linux v6.8 物理内存文档](https://docs.kernel.org/6.8/mm/physical_memory.html) · [procfs 文档](https://docs.kernel.org/6.8/filesystems/proc.html)
 
-#### 3.1.2 推演 · 伙伴系统怎样把小块合成大块
+#### 3.1.2 伙伴块的拆分与合并
 
-假设同一个 zone 里，PFN 64 仍在使用，PFN 65 是空闲的 order-0 块，PFN 66–67 已经是一个空闲的 order-1 块。这时释放 PFN 64，分配器能把这四页合成一个 16 KiB 块吗？
+伙伴系统按阶组织空闲块。两个块能合并，需要它们是同一较大对齐块的两半，处于相同的阶，并满足空闲、zone 等条件。伙伴起始 PFN 的计算式为 `pfn XOR (1 << order)`。以下用 64–67 四个页帧展示合并结果。
 
 ![PFN 64 释放后先与 65 合并，再与 66–67 合并，最终得到 64–67](buddy-merge.svg)
 
@@ -205,21 +125,21 @@ page 0:  1 1 0 0
 
 分配时可以反着走。如果只请求一页，而合适的空闲链表里只有 64–67 这个 order-2 块，就先拆出 64–65 和 66–67，再拆 64–65，把 64 交给调用者，把 65 和 66–67 分别留在 order 0 和 order 1 的空闲链表中。
 
-#### 3.1.3 源码 · 查找空闲伙伴
+#### 3.1.3 内核中的伙伴检查
 
-在 Linux v6.8 中，`__find_buddy_pfn()` 算出候选伙伴，`page_is_buddy()` 检查块阶和 zone 等条件，`__free_one_page()` 执行逐阶合并。某些迁移类型也会限制合并。本例从页进入伙伴分配器时算起，小块若先进入每 CPU 页缓存，要等它回到伙伴分配器才会走这条合并路径。 [Linux v6.8 伙伴查找](https://github.com/torvalds/linux/blob/v6.8/mm/internal.h#L302) · [Linux v6.8 页分配器](https://github.com/torvalds/linux/blob/v6.8/mm/page_alloc.c)
+在 Linux v6.8 中，`__find_buddy_pfn()` 算出候选伙伴，`page_is_buddy()` 检查块阶和 zone 等条件，`__free_one_page()` 执行逐阶合并。某些迁移类型也会限制合并。这里描述页进入伙伴分配器后的过程，小块若先进入每 CPU 页缓存，要等它回到伙伴分配器才会走这条合并路径。 [Linux v6.8 伙伴查找](https://github.com/torvalds/linux/blob/v6.8/mm/internal.h#L302) · [Linux v6.8 页分配器](https://github.com/torvalds/linux/blob/v6.8/mm/page_alloc.c)
 
 ### 3.2 内核管理 · 为什么需要 folio
 
-#### 3.2.1 推演 · 从一个基本页找到整个缓存对象
+#### 3.2.1 folio 的定义与引入原因
 
-现在把 PFN 64–67 用来缓存同一个文件中对齐的 16 KiB。假设调用者手里拿的是第三个基本页（PFN 66）的 `struct page *`，接下来要锁住整个缓存对象。锁应当落在哪个对象上？
+**folio** 是内核作为一个整体管理的内存对象，大小为基本页大小的 2 的幂倍，物理连续，并按自身大小对齐。它可以只包含一个基本页，也可以包含多个。用于页缓存时，其对应的文件偏移同样按 folio 大小对齐。
 
 旧的页接口里，同一个 `struct page *` 类型既可以指独立的基本页，也可以指复合页的头页或尾页。对于以整个复合页为单位的操作，调用者或底层助手得先弄清传进来的是哪一种，必要时由尾页找到头页。仅看参数类型，读代码时难以确认这一步是否已经做过。
 
-#### 3.2.2 源码 · folio 接口怎样表达操作范围
+#### 3.2.2 folio 的操作范围
 
-Linux 引入 `struct folio *`，让这类接口直接接收**整个内存对象**。例如，从第三个基本页可以用 `page_folio(page)` 取得所属 folio，随后 `folio_lock(folio)` 锁的是缓存这 16 KiB 的整体。`folio_size(folio)` 得到 16 KiB。需要处理第三个基本页时，可以用 `folio_page(folio, 2)` 取回对应的 `struct page *`。
+Linux 引入 `struct folio *`，让这类接口直接接收**整个内存对象**。例如，一个由四页组成的 16 KiB folio，从第三个基本页可以用 `page_folio(page)` 取得所属 folio，随后 `folio_lock(folio)` 锁的是缓存这 16 KiB 的整体。`folio_size(folio)` 得到 16 KiB。需要处理第三个基本页时，可以用 `folio_page(folio, 2)` 取回对应的 `struct page *`。
 
 这个接口也适用于只有 4 KiB 的 folio。调用者可以用同一套接口处理不同大小的页缓存对象，并从参数类型看出锁操作的范围。多个连续基本页由一个缓存对象管理时，页缓存还可以按对象处理锁与脏状态。
 
@@ -227,19 +147,19 @@ Linux 引入 `struct folio *`，让这类接口直接接收**整个内存对象*
 
 ### 3.3 地址翻译 · 基本页与 PMD 大页
 
-#### 3.3.1 实测 · 查看系统的大页统计
+#### 3.3.1 大页与基本页
 
-在实验机上，`/sys/kernel/mm/transparent_hugepage/enabled` 显示 `always [madvise] never`，方括号是当前顶层策略。`/proc/meminfo` 同一次采样中 `AnonHugePages` 为 159744 kB，`HugePages_Total` 为 0。前者统计 PMD 级匿名 THP 占用，后者统计默认尺寸的 HugeTLB 池页数。两项分别对应两种机制，读计数时要先认清字段。 [Linux v6.8 透明大页文档](https://docs.kernel.org/6.8/admin-guide/mm/transhuge.html)
+**大页**使用大于基本页的映射或内存后备粒度。以 4 KiB 基本页、2 MiB PMD 映射为例，一项 PMD 大页映射可以覆盖 512 个基本页大小的范围。
 
-#### 3.3.2 推演 · 同一段 2 MiB 如何映射
+#### 3.3.2 翻译覆盖范围
 
-把范围扩大到对齐的 2 MiB，问一个不同的问题：CPU 能否用一次地址翻译覆盖整段？在使用 4 KiB 基本页的示例中，如果用普通页表项，每个表项只覆盖 4 KiB，整段需要 512 项。如果架构支持 2 MiB PMD 映射，且虚拟、物理范围满足连续和对齐等条件，页表可以在 PMD 这一层用一项覆盖整段。此时地址的低 21 位都用作偏移，第一节的基本页示例只保留低 12 位。后者允许一条 TLB 缓存映射覆盖更大的地址范围。TLB 是 CPU 用来缓存地址翻译结果的结构。实际支持的页大小受架构和配置影响。
+在使用 4 KiB 基本页的示例中，如果用普通页表项，每个表项只覆盖 4 KiB，整段需要 512 项。如果架构支持 2 MiB PMD 映射，且虚拟、物理范围满足连续和对齐等条件，页表可以在 PMD 这一层用一项覆盖整段。此时地址的低 21 位都用作偏移，第一节的基本页示例只保留低 12 位。PMD 大页允许一条快表（TLB，Translation Lookaside Buffer）缓存映射覆盖更大的地址范围。TLB 是 CPU 用来缓存地址翻译结果的结构。实际支持的页大小受架构和配置影响。
 
 ![同一段 2 MiB 用基本页映射时经过 PMD 再到 512 个 PTE，使用大页时在 PMD 终止](pmd-huge-mapping.svg)
 
-Linux 中常见的两个入口是 **HugeTLB** 和 **THP**。HugeTLB 通过专门的大页池提供大页，程序可以使用 `MAP_HUGETLB` 或 hugetlbfs。THP 则根据系统策略和映射条件尝试使用较大的内存单元。Linux 6.8 文档也介绍了仍通过 PTE 映射的多尺寸 THP，因此看到「大 folio」或「THP」时，还要结合页表层级判断具体如何映射。 [Linux v6.8 透明大页文档](https://docs.kernel.org/6.8/admin-guide/mm/transhuge.html) · [HugeTLB 文档](https://docs.kernel.org/6.8/admin-guide/mm/hugetlbpage.html)
+Linux 中常见的两个入口是 **HugeTLB** 和 **THP（Transparent Huge Pages，透明大页）**。HugeTLB 通过专门的大页池提供大页，程序可以使用 `MAP_HUGETLB` 或 hugetlbfs。THP 则根据系统策略和映射条件尝试使用较大的内存单元。Linux 6.8 文档也介绍了仍通过 PTE 映射的多尺寸 THP，因此看到「大 folio」或「THP」时，还要结合页表层级判断具体如何映射。 [Linux v6.8 透明大页文档](https://docs.kernel.org/6.8/admin-guide/mm/transhuge.html) · [HugeTLB 文档](https://docs.kernel.org/6.8/admin-guide/mm/hugetlbpage.html)
 
-#### 3.3.3 推演 · 连续扫描与稀疏访问各适合哪种页
+#### 3.3.3 空间与性能取舍
 
 以同一个对齐的 2 MiB 匿名区间为例，并假设写入时按需分配。两种访问模式会得到不同的结果。
 
@@ -251,26 +171,41 @@ Linux 中常见的两个入口是 **HugeTLB** 和 **THP**。HugeTLB 通过专门
 
 第一种适合密集访问的大内存工作集，第二种体现了基本页在稀疏访问下的空间优势。2 MiB 映射覆盖范围是 4 KiB 的 512 倍，实际速度还取决于访问模式、CPU 的 TLB 和分配成本。想看某个进程哪些区间用了 PMD 级匿名 THP，可以在 `/proc/<pid>/smaps` 中按区间找 `AnonHugePages`。 [Linux v6.8 透明大页文档](https://docs.kernel.org/6.8/admin-guide/mm/transhuge.html)
 
-## 四、物理页帧从哪里来
+#### 3.3.4 查看大页统计
 
-### 4.1 实测 · 看一眼 node 和 zone
+在实验机上，`/sys/kernel/mm/transparent_hugepage/enabled` 显示 `always [madvise] never`，方括号是当前顶层策略。`/proc/meminfo` 同一次采样中 `AnonHugePages` 为 159744 kB，`HugePages_Total` 为 0。前者统计 PMD 级匿名 THP 占用，后者统计默认尺寸的 HugeTLB 池页数。两项分别对应两种机制，读计数时要先认清字段。 [Linux v6.8 透明大页文档](https://docs.kernel.org/6.8/admin-guide/mm/transhuge.html)
 
-在实验虚拟机上，`cat /sys/devices/system/node/online` 输出 `0`，表示来宾系统看到一个在线节点。在 `/proc/zoneinfo` 中，节点 0 的 Normal zone 有 524288 个 `present` 页，其中 491624 个由分配器管理（`managed`）。按 4 KiB 换算，后者约为 1920 MiB。 [Linux v6.8 物理内存文档](https://docs.kernel.org/6.8/mm/physical_memory.html)
+## 四、物理内存的组织
 
-### 4.2 推演 · 有空闲页时还要看什么
+### 4.1 UMA、NUMA 与 node
 
-| 情形 | 分配器要考虑什么 |
+**UMA（Uniform Memory Access，统一内存访问）**表示 CPU 对主存的访问成本在拓扑上大致一致。**NUMA（Non-Uniform Memory Access，非统一内存访问）**表示访问成本随内存所在节点而变化，本地访问通常比远端访问更便宜。
+
+Linux 用 **node** 表示内存拓扑节点。节点可以有 CPU 和内存，也可能缺少其中一种资源。同一种 zone 类型可以在多个 node 内分别存在。实验虚拟机的 `cat /sys/devices/system/node/online` 输出 `0`，表示来宾看到一个在线节点。
+
+![双节点 NUMA 示例，每组 CPU 有本地节点，也可以访问远端节点](numa-nodes-zones.svg)
+
+### 4.2 zone 与水位
+
+**zone** 是节点内按分配约束划分的内存区域。Normal 用于普通内存，DMA（Direct Memory Access，直接内存访问）和 DMA32 范围照顾设备寻址限制，Movable 主要容纳可迁移的页，HighMem 用于某些 32 位架构的高端内存。具体范围取决于架构和配置。
+
+`/proc/zoneinfo` 中的 `present` 表示存在的页数，`managed` 表示页分配器管理的页数。水位字段以基本页为单位。
+
+| 水位 | 基本用途 |
 | --- | --- |
-| 两组 CPU 各自靠近一组内存 | Linux 用 **node** 表示内存拓扑。在 **NUMA** 机器上，CPU 访问本地和远端 node 的代价可能不同。**UMA** 的主存访问模型则没有这种节点距离差异。 |
-| 同一 node 中，有些物理地址受分配约束 | Linux 用 **zone** 表示节点内不同用途和限制的内存范围，例如一般分配使用的 Normal 和照顾设备寻址限制的 DMA/DMA32。 |
-| 某个 zone 中空闲页持续下降 | `low` 是后台回收通常开始介入的参考，`high` 是 `kswapd` 通常用于判断是否恢复平衡的目标。 |
-| 某段物理地址上没有 RAM，或内存后来加入 | **SPARSEMEM** 按 section 组织页元数据。热添加的普通内存通常要登记物理范围并上线，才能参与页分配。 |
+| `min` | 普通分配检查使用的最低基准 |
+| `low` | 后台回收通常开始介入的参考 |
+| `high` | `kswapd` 通常用于判断是否恢复平衡的目标 |
 
-![双节点 NUMA 示例，CPU 组 A 本地访问 Node 0，CPU 组 B 本地访问 Node 1，跨节点访问走远端路径](numa-nodes-zones.svg)
+实际检查还会考虑请求阶、保留页和分配标志。部分高优先级请求可动用部分储备，符合条件的内存回收路径可跳过水位检查。 [Linux v6.8 物理内存组织](https://docs.kernel.org/6.8/mm/physical_memory.html) · [页分配器水位检查](https://github.com/torvalds/linux/blob/v6.8/mm/page_alloc.c#L2758)
 
-### 4.3 源码 · min 水位与普通分配
+### 4.3 SPARSEMEM 与内存热插拔
 
-`min` 是普通分配检查使用的最低基准。`__zone_watermark_ok()` 还会扣除本次请求无法使用的空闲页，并考虑对低地址 zone 的保护。部分高优先级分配可动用部分储备，例如带 `__GFP_HIGH` 的请求。符合条件的 `PF_MEMALLOC` 或 `__GFP_MEMALLOC` 路径可以跳过水位检查。高阶分配还必须找到相应大小的连续块。 [Linux v6.8 水位检查](https://github.com/torvalds/linux/blob/v6.8/mm/page_alloc.c#L2758) · [Linux v6.8 后台回收](https://github.com/torvalds/linux/blob/v6.8/mm/vmscan.c) · [物理内存模型](https://docs.kernel.org/6.8/mm/memory-model.html) · [内存热插拔](https://docs.kernel.org/6.8/admin-guide/mm/memory-hotplug.html)
+**SPARSEMEM（Sparse Memory，稀疏内存模型）**按 section 组织物理页元数据，以适应 RAM（Random Access Memory，随机存取存储器）范围之间存在空洞的布局。PFN 可以按地址计算，能否用于分配还取决于对应内存是否存在、是否交给内核管理。
+
+启用 SPARSEMEM_VMEMMAP 时，内核通过 `vmemmap` 中按 PFN 编址的虚拟区域定位 `struct page`。这些对象记录页帧状态。
+
+**内存热插拔**允许运行期间添加或移除符合条件的内存。普通 RAM 添加后还需上线，才能参与页分配。下线时需要迁移可移动页，并撤出相应范围，固定或无法迁移的页可能让下线失败。 [Linux v6.8 内存模型](https://docs.kernel.org/6.8/mm/memory-model.html) · [内存热插拔](https://docs.kernel.org/6.8/admin-guide/mm/memory-hotplug.html)
 
 ## 五、命令速查
 
