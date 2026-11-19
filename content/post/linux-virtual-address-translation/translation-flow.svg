@@ -2,9 +2,9 @@
 <rect width="900" height="436" rx="20" fill="#f8fafc"/>
 <g font-family="system-ui,sans-serif" fill="#0f172a">
 <text x="28" y="42" font-size="26" font-weight="700">从一次写入到指令完成</text>
-<text x="28" y="103" font-size="20" font-weight="600">写指令</text>
+<text x="28" y="103" font-size="20" font-weight="600">读指令</text>
 <rect x="222.0" y="70" width="650.0" height="56" rx="10" fill="#dbeafe"/>
-<text x="547.0" y="105" text-anchor="middle" font-size="20">虚拟地址 + 写访问</text>
+<text x="547.0" y="105" text-anchor="middle" font-size="20">虚拟地址 + 读访问</text>
 <text x="28" y="187" font-size="20" font-weight="600">查 TLB</text>
 <rect x="222.0" y="154" width="319.0" height="56" rx="10" fill="#ccfbf1"/>
 <text x="381.5" y="189" text-anchor="middle" font-size="20">命中且允许 → 得到物理地址</text>
@@ -17,7 +17,7 @@
 <text x="712.5" y="273" text-anchor="middle" font-size="20">缺失或权限异常 → 进入内核</text>
 <text x="28" y="355" font-size="20" font-weight="600">内核处理</text>
 <rect x="222.0" y="322" width="319.0" height="56" rx="10" fill="#e2e8f0"/>
-<text x="381.5" y="357" text-anchor="middle" font-size="20">合法 → 补映射 → 重试写指令</text>
+<text x="381.5" y="357" text-anchor="middle" font-size="20">合法 → 补映射 → 重试读指令</text>
 <rect x="553.0" y="322" width="319.0" height="56" rx="10" fill="#e2e8f0"/>
 <text x="712.5" y="357" text-anchor="middle" font-size="20">非法 → 信号处理</text>
 </g></svg>

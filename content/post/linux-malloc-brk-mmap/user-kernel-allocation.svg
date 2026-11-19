@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 690" role="img" aria-labelledby="t"><title id="t">用户与内核的申请在页分配层汇合</title><defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" stroke="#475569" fill="none"/></marker></defs><rect width="1080" height="690" rx="18" fill="#f8fafc"/><g font-family="system-ui,sans-serif" fill="#0f172a"><text x="24" y="38" font-size="26" font-weight="700">用户与内核的申请 · 数据后备主路径</text>
+<text x="180" y="78" font-size="22" text-anchor="middle" font-weight="700">用户进程</text>
+<text x="540" y="78" font-size="22" text-anchor="middle" font-weight="700">内核对象</text>
+<text x="900" y="78" font-size="22" text-anchor="middle" font-weight="700">内核虚拟范围</text>
+<rect x="24" y="100" width="312" height="58" rx="9" fill="#dbeafe"/><text x="180.0" y="136.0" font-size="20" text-anchor="middle">malloc → chunk / arena</text>
+<path d="M180 158 L180 184" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="24" y="185" width="312" height="58" rx="9" fill="#dbeafe"/><text x="180.0" y="221.0" font-size="20" text-anchor="middle">brk / mmap → 用户 VMA</text>
+<path d="M180 243 L180 269" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="24" y="270" width="312" height="58" rx="9" fill="#dbeafe"/><text x="180.0" y="306.0" font-size="20" text-anchor="middle">首次写入 → 匿名缺页</text>
+<path d="M180 328 L180 354" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="24" y="355" width="312" height="58" rx="9" fill="#dbeafe"/><text x="180.0" y="391.0" font-size="20" text-anchor="middle">vma_alloc_folio</text>
+<rect x="384" y="100" width="312" height="58" rx="9" fill="#ccfbf1"/><text x="540.0" y="136.0" font-size="20" text-anchor="middle">kmalloc / kmem_cache_alloc</text>
+<path d="M540 158 L540 184" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="384" y="185" width="312" height="58" rx="9" fill="#ccfbf1"/><text x="540.0" y="221.0" font-size="20" text-anchor="middle">SLUB → 已有对象可复用</text>
+<path d="M540 243 L540 269" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="384" y="270" width="312" height="58" rx="9" fill="#ccfbf1"/><text x="540.0" y="306.0" font-size="20" text-anchor="middle">需要新 slab 时申请后备</text>
+<path d="M540 328 L540 354" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="384" y="355" width="312" height="58" rx="9" fill="#ccfbf1"/><text x="540.0" y="391.0" font-size="20" text-anchor="middle">alloc_slab_page</text>
+<rect x="744" y="100" width="312" height="58" rx="9" fill="#fef3c7"/><text x="900.0" y="136.0" font-size="20" text-anchor="middle">vmalloc</text>
+<path d="M900 158 L900 184" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="744" y="185" width="312" height="58" rx="9" fill="#fef3c7"/><text x="900.0" y="221.0" font-size="20" text-anchor="middle">预留连续内核虚拟范围</text>
+<path d="M900 243 L900 269" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="744" y="270" width="312" height="58" rx="9" fill="#fef3c7"/><text x="900.0" y="306.0" font-size="20" text-anchor="middle">取得后备页，随后建映射</text>
+<path d="M900 328 L900 354" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="744" y="355" width="312" height="58" rx="9" fill="#fef3c7"/><text x="900.0" y="391.0" font-size="20" text-anchor="middle">vm_area_alloc_pages</text>
+<path d="M180 413 L540 459" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<path d="M540 413 L540 459" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<path d="M900 413 L540 459" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="168" y="460" width="744" height="58" rx="9" fill="#e2e8f0"/><text x="540.0" y="496.0" font-size="20" text-anchor="middle">页分配层 · alloc_pages 系列 / __alloc_pages</text>
+<path d="M540 518 L540 554" stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<rect x="168" y="555" width="744" height="58" rx="9" fill="#ddd6fe"/><text x="540.0" y="591.0" font-size="20" text-anchor="middle">物理空闲页 · PCP 与伙伴系统</text>
+<text x="540" y="650" text-anchor="middle" font-size="18">缓存与已有对象可提前满足请求；较大 kmalloc 也可直接申请连续页块。</text></g></svg>
