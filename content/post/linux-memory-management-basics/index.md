@@ -205,7 +205,19 @@ Linux 用 **node** 表示内存拓扑节点。节点可以有 CPU 和内存，�
 
 启用 SPARSEMEM_VMEMMAP 时，内核通过 `vmemmap` 中按 PFN 编址的虚拟区域定位 `struct page`。这些对象记录页帧状态。
 
-**内存热插拔**允许运行期间添加或移除符合条件的内存。普通 RAM 添加后还需上线，才能参与页分配。下线时需要迁移可移动页，并撤出相应范围，固定或无法迁移的页可能让下线失败。 [Linux v6.8 内存模型](https://docs.kernel.org/6.8/mm/memory-model.html) · [内存热插拔](https://docs.kernel.org/6.8/admin-guide/mm/memory-hotplug.html)
+**内存热插拔**允许运行期间添加或移除符合条件的内存。对普通 RAM，添加时先登记物理范围，再将其上线，交给页分配器。移除前则需要下线，把范围内仍在使用的数据迁走或释放，并从分配器撤出该范围。
+
+### 4.4 ZONE_MOVABLE 怎样帮助内存下线
+
+**ZONE_MOVABLE 通过限制分配类型，提高内存下线的可靠性。** 它主要承接可迁移的分配，例如常见的用户匿名页和页缓存。页表、大多数内核小对象等不可迁移分配由 Normal 等内核 zone 承接。下线一个内存块时，范围内若有无法迁走的内核对象，就可能无法腾空整个块。
+
+| 上线方式 | 内存进入哪里 | 对后续下线的影响 |
+| --- | --- | --- |
+| `online_movable` | ZONE_MOVABLE | 通过分配约束减少不可迁移对象落入该范围 |
+| `online_kernel` | 对应的内核 zone，通常为 ZONE_NORMAL | 可承接不可迁移分配，下线能否成功取决于实际占用 |
+| `online` | 由内核上线策略选择 | 需要结合最终所属 zone 和页状态判断 |
+
+Normal 中的内存同样可以参与热添加和符合条件的下线。下线成功还要求平台、内存块布局、迁移目标容量等条件满足，Movable 中的块也可能因混合 zone、特殊保留范围等限制而失败。可迁移分配也能来自 Normal，因此判断某一页能否迁移还要看它的具体用途和状态。 [Linux v6.8 内存热插拔与 ZONE_MOVABLE](https://docs.kernel.org/6.8/admin-guide/mm/memory-hotplug.html#zone-movable)
 
 ## 五、命令速查
 
