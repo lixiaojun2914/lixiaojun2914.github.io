@@ -145,6 +145,42 @@ Linux 引入 `struct folio *`，让这类接口直接接收**整个内存对象*
 
 图中的四个基本页可以组成一个 16 KiB folio，页表依然可以分别用四个 PTE 映射。 [Linux v6.8 内存管理 API](https://docs.kernel.org/6.8/core-api/mm-api.html)
 
+#### 3.2.3 页状态标志与 pageflags 枚举
+
+`struct page` 的 `unsigned long flags` 中，低位用于记录多个可同时成立的页标志，高位还可按配置编码 node、zone 等信息。Linux 用 `enum pageflags` 定义标志的**位编号**。例如 v6.8 中 `PG_dirty` 的枚举值是 4，对应的掩码是 `1UL << PG_dirty`，即 `0x10`。
+
+下面摘录枚举开头的真实顺序。
+
+```c
+enum pageflags {
+    PG_locked,
+    PG_writeback,
+    PG_referenced,
+    PG_uptodate,
+    PG_dirty,
+    PG_lru,
+    PG_head,
+    PG_waiters,
+    PG_active,
+    /* … */
+};
+```
+
+| 标志 | 常见含义 |
+| --- | --- |
+| `PG_locked` | 页或所属 folio 的相应操作正在持锁 |
+| `PG_uptodate` | 数据在其所属子系统的语义下有效，例如文件页读取完成 |
+| `PG_dirty` | 数据已修改，需要由相应后备管理机制处理 |
+| `PG_writeback` | 写回正在进行 |
+| `PG_referenced` | 回收逻辑使用的访问参考标志 |
+| `PG_lru` | 位于最近最少使用（LRU，Least Recently Used）回收管理链表体系中 |
+| `PG_active` | 传统活跃、非活跃回收管理使用的活跃标志，具体使用受回收实现影响 |
+| `PG_head` | 标识复合页的头页 |
+
+一个页可以同时带有多个标志，写回期间又被修改时，`dirty` 和 `writeback` 可以同时成立。内核一般通过 `PageDirty(page)`、`folio_test_dirty(folio)` 等接口读状态，由相应子系统负责更新，以遵守原子操作、锁和复合页规则。
+
+这些标志与第二篇的页表项访问位、脏位分属不同对象。一次写入怎样从映射状态反映到页对象状态，要结合具体匿名页或文件页路径理解。页的引用计数、映射计数和部分类型信息也保存在其他字段，枚举中的部分标志还会按用途复用位。 [Linux v6.8 页标志定义与访问接口](https://github.com/torvalds/linux/blob/v6.8/include/linux/page-flags.h) · [物理页结构](https://github.com/torvalds/linux/blob/v6.8/include/linux/mm_types.h)
+
 ### 3.3 地址翻译 · 基本页与 PMD 大页
 
 #### 3.3.1 大页与基本页
