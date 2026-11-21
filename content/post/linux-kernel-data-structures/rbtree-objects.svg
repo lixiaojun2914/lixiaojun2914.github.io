@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" role="img" aria-labelledby="title desc">
+<title id="title">红黑树中的内嵌节点与按键查找</title><desc id="desc">根指向编号20的对象内部节点，左右子节点分别属于编号10和30的对象。查找30先访问20再访问30。颜色标注用于区分查找路径，不表示红黑树的节点颜色。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#64748b"/></marker></defs>
+<rect width="900" height="470" rx="16" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#172b4d">
+<text x="30" y="38" font-size="21" font-weight="700">rb_node 负责连接，id 决定比较方向</text>
+<rect x="45" y="95" width="190" height="80" rx="10" fill="#e0edff" stroke="#64748b"/><text x="63" y="125" font-size="18">requests · rb_root</text><text x="63" y="155" font-size="17">rb_node</text>
+<rect x="345" y="75" width="230" height="150" rx="10" fill="white" stroke="#64748b"/><text x="363" y="106" font-size="18">indexed_request</text><text x="363" y="137" font-size="19">id = 20</text><rect x="363" y="155" width="194" height="50" rx="7" fill="#e0edff" stroke="#2563eb"/><text x="382" y="186" font-size="17">node · rb_node</text>
+<rect x="100" y="295" width="230" height="135" rx="10" fill="white" stroke="#64748b"/><text x="118" y="326" font-size="18">indexed_request</text><text x="118" y="356" font-size="19">id = 10</text><rect x="118" y="369" width="194" height="43" rx="7" fill="#e0edff" stroke="#64748b"/><text x="136" y="397" font-size="17">node · rb_node</text>
+<rect x="585" y="295" width="230" height="135" rx="10" fill="white" stroke="#64748b"/><text x="603" y="326" font-size="18">indexed_request</text><text x="603" y="356" font-size="19">id = 30</text><rect x="603" y="369" width="194" height="43" rx="7" fill="#dcfce7" stroke="#2563eb"/><text x="621" y="397" font-size="17">node · rb_node</text>
+<path d="M235 147H290V180H363" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M395 205V255H215V369" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#gray)"/>
+<path d="M525 205V255H700V369" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="236" y="248" font-size="17">rb_left</text><text x="574" y="248" font-size="17" fill="#2563eb">rb_right · 30 &gt; 20</text>
+<text x="45" y="455" font-size="15">蓝色箭头为查找 30 的路径；省略父指针、颜色及空子节点。</text>
+</g></svg>
