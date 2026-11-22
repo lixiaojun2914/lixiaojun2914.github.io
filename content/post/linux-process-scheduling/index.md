@@ -25,103 +25,23 @@ tags:
 
 保存为 [share-lab.c](share-lab.c)。程序只提高 nice 数值、降低其中一个任务的公平权重，不申请实时调度。运行前确保当前 shell 使用通常的 nice 0 与 `SCHED_OTHER`；受限容器或特殊调度环境可能不满足实验条件。
 
+完整程序包含父子进程协调与统计。正文只摘每个子进程的关键操作，其他代码用注释省略：
+
 ```c
-#define _GNU_SOURCE
-#include <errno.h>
-#include <sched.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <sys/resource.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <time.h>
-#include <unistd.h>
-
-struct result { int nice_value; double cpu_ms; };
-static void fail(const char *what) { perror(what); exit(EXIT_FAILURE); }
-static double milliseconds(struct timespec t)
-{
-    return t.tv_sec * 1000.0 + t.tv_nsec / 1000000.0;
-}
-static struct timespec now(clockid_t id)
-{
-    struct timespec t;
-    if (clock_gettime(id, &t) == -1) fail("clock_gettime");
-    return t;
-}
-static void transfer(int fd, void *buf, size_t size, int writing)
-{
-    char *p = buf;
-    while (size) {
-        ssize_t n = writing ? write(fd, p, size) : read(fd, p, size);
-        if (n == -1 && errno == EINTR) continue;
-        if (n <= 0) { fprintf(stderr, "pipe transfer failed\n"); exit(EXIT_FAILURE); }
-        p += n; size -= (size_t)n;
-    }
-}
-
-int main(void)
-{
-    cpu_set_t allowed, one;
-    if (sched_getaffinity(0, sizeof(allowed), &allowed) == -1) fail("affinity");
-    int cpu;
-    for (cpu = 0; cpu < CPU_SETSIZE && !CPU_ISSET(cpu, &allowed); cpu++) { }
-    if (cpu == CPU_SETSIZE) return EXIT_FAILURE;
-    CPU_ZERO(&one); CPU_SET(cpu, &one);
-    struct timespec *deadline = mmap(NULL, sizeof(*deadline),
-        PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    if (deadline == MAP_FAILED) fail("mmap");
-    int ready[2], start[2], output[2];
-    if (pipe(ready) || pipe(start) || pipe(output)) fail("pipe");
-    pid_t children[2];
-    for (int i = 0; i < 2; i++) {
-        children[i] = fork();
-        if (children[i] == -1) fail("fork");
-        if (children[i] == 0) {
-            close(ready[0]); close(start[1]); close(output[0]);
-            if (sched_setaffinity(0, sizeof(one), &one) == -1) fail("pin");
-            int target_nice = i * 5;
-            if (setpriority(PRIO_PROCESS, 0, target_nice) == -1) fail("nice");
-            char token = 'r';
-            transfer(ready[1], &token, 1, 1);
-            transfer(start[0], &token, 1, 0);
-            struct timespec before = now(CLOCK_PROCESS_CPUTIME_ID);
-            volatile unsigned long work = 0;
-            while (milliseconds(now(CLOCK_MONOTONIC)) < milliseconds(*deadline))
-                for (int j = 0; j < 4096; j++) work++;
-            struct timespec after = now(CLOCK_PROCESS_CPUTIME_ID);
-            struct result r = { target_nice,
-                milliseconds(after) - milliseconds(before) };
-            transfer(output[1], &r, sizeof(r), 1);
-            _exit(0);
-        }
-    }
-    close(ready[1]); close(start[0]); close(output[1]);
-    char tokens[2];
-    transfer(ready[0], tokens, 2, 0);
-    *deadline = now(CLOCK_MONOTONIC);
-    deadline->tv_sec += 2;
-    transfer(start[1], "ss", 2, 1);
-    struct result rows[2], r;
-    for (int i = 0; i < 2; i++) {
-        transfer(output[0], &r, sizeof(r), 0);
-        rows[r.nice_value == 0 ? 0 : 1] = r;
-    }
-    for (int i = 0; i < 2; i++) {
-        int status;
-        if (waitpid(children[i], &status, 0) == -1 ||
-            !WIFEXITED(status) || WEXITSTATUS(status) != 0) return EXIT_FAILURE;
-    }
-    printf("cpu=%d wall_target=2000 ms\n", cpu);
-    for (int i = 0; i < 2; i++)
-        printf("nice=%d cpu=%.3f ms\n", rows[i].nice_value, rows[i].cpu_ms);
-    printf("cpu_ratio=%.3f\n", rows[0].cpu_ms / rows[1].cpu_ms);
-    close(ready[0]); close(start[1]); close(output[0]);
-    munmap(deadline, sizeof(*deadline));
-    return EXIT_SUCCESS;
-}
+/* … */
+if (sched_setaffinity(0, sizeof(one), &one) == -1) fail("pin");
+int target_nice = i * 5; /* 两个子进程分别取 0 和 5。 */
+if (setpriority(PRIO_PROCESS, 0, target_nice) == -1) fail("nice");
+/* … 等待父进程统一发出开始通知 … */
+struct timespec before = now(CLOCK_PROCESS_CPUTIME_ID);
+volatile unsigned long work = 0;
+while (milliseconds(now(CLOCK_MONOTONIC)) < milliseconds(*deadline))
+    for (int j = 0; j < 4096; j++) work++;
+struct timespec after = now(CLOCK_PROCESS_CPUTIME_ID);
+/* … 将 after - before 交给父进程汇总 … */
 ```
+
+同一个 CPU 排除了“两个任务各自在不同 CPU 上同时执行”的情况；共同时间窗口便于比较；进程 CPU 时钟记录实际获得的执行时间。复现时使用链接中的完整源码。
 
 ```bash
 gcc -std=c11 -O2 -Wall -Wextra -Werror share-lab.c -o share-lab
@@ -275,17 +195,33 @@ Linux 从 6.6 开始引入 EEVDF（Earliest Eligible Virtual Deadline First，�
 
 EEVDF 先考虑实体是否还应得到服务，再从合格实体中考虑较早的虚拟截止时间。服务差额通常用 lag 解释，已经超过其应得份额的实体可能暂时不合格。
 
-下面是**演算示意**。假设三个同权实体的虚拟运行时间分别为 90、95、115，当前虚拟参考时间为 100，表内数字是示意单位，不是实验纳秒读数：
+这里还要回答：**虚拟 deadline 从哪里来？** 在 v6.8 的请求更新路径中，`update_deadline()` 在实体用完当前请求后，用下面的关系准备下一次请求：
 
-| 实体 | vruntime | 参考值减去 vruntime | 虚拟 deadline | 选择判断 |
+```text
+下一虚拟 deadline = 当前 vruntime + 请求执行量换算后的虚拟时间
+虚拟时间增量 ≈ 请求的实际执行时间 × 1024 / weight
+```
+
+请求执行量对应 `slice`。它描述这次安排的执行请求，不是程序总运行时间，也不是现实世界的完成期限。权重通过换算影响虚拟时间；同样的请求量，对较低权重会对应更大的虚拟增量。[v6.8 update_deadline 与 pick_eevdf](https://github.com/torvalds/linux/blob/v6.8/kernel/sched/fair.c)
+
+下面连续演算几轮，数字全部是**演算示意**，不是本机读数。只考虑两个持续就绪、同组且同权的实体 A、B，每份请求都是 10 个时间单位，因此实际运行 1 单位，虚拟时间也增加 1。没有新任务加入，也不考虑迁移；只在表格给定的检查点比较资格和期限，不模拟每一次 tick 或中途调度。表内的运行量是为了推演选定检查点的状态，不是承诺内核会让任务连续执行完整请求。
+
+初始时 A 刚开始一份请求：`vruntime = 90`，deadline 为 `90 + 10 = 100`。B 的当前请求从虚拟时间 105 开始，已执行 5，因此 `vruntime = 110`、deadline 为 `105 + 10 = 115`，还剩 5。这里是在观察两个任务各自执行进度的某一时刻，不要求它们同时开始请求。
+
+在这个简化的同权场景中，虚拟参考时间可以按两者 `vruntime` 的平均值理解。实体 `vruntime` 不超过参考值时合格，再比较合格者的 deadline：
+
+| 选择时刻 | A：vruntime / deadline | B：vruntime / deadline | 参考时间 | 选择及后续更新 |
 | --- | --- | --- | --- | --- |
-| A | 90 | +10 | 130 | 合格，但期限晚于 B |
-| B | 95 | +5 | 125 | 合格，优先考虑 B |
-| C | 115 | -15 | 116 | 期限虽早，但当前不合格 |
+| 初始 | 90 / 100 | 110 / 115 | 100 | 只有 A 合格，A 执行 10；到达 100 后，新 deadline 为 110 |
+| 第二次 | 100 / 110 | 110 / 115 | 105 | 只有 A 合格，A 再执行 10；到达 110 后，新 deadline 为 120 |
+| 第三次 | 110 / 120 | 110 / 115 | 110 | 两者都合格，B 的 deadline 更早，B 执行剩余 5；新 deadline 为 125 |
+| 第四次 | 110 / 120 | 115 / 125 | 112.5 | 只有 A 合格，下一步选择 A |
 
-![EEVDF先筛选有资格的实体，再在合格者中比较虚拟截止时间，虚拟期限不等于墙上时间期限](eevdf-selection.svg)
+A 开始时落后，所以先获得服务；追到相同虚拟进度后，两者都有资格，才比较剩余请求的虚拟 deadline。**资格回答“现在该不该给它服务”，deadline 回答“合格者中先服务谁”。**
 
-这既不是只比较 vruntime，也不是无条件比较 deadline。实际代码还处理当前实体、调度特性和其他边界。虚拟 deadline 是公平调度中的服务排序工具，不能当成实时任务对现实时间的完成保证。
+![同权任务A先追赶虚拟进度，第三次两者均合格时B因虚拟deadline更早而获选](eevdf-selection.svg)
+
+图中前三次选择与表格保持同一组数字，第四次选择可继续沿表格推演。实际内核按权重、运行队列状态和当前实体等计算资格，并在具体调度时机更新状态，不会逐字执行这个教学时间表。观察到 `cfs_rq` 这个名字时，应继续看 v6.8 的选择逻辑，而不是直接套用旧式“永远选最小 vruntime”的说法。
 
 ### 3.3 sched_entity 把这些状态放在哪里
 
@@ -399,6 +335,8 @@ cat /proc/sys/kernel/sched_rt_runtime_us
 TLB（Translation Lookaside Buffer，地址转换旁路缓存）是否以及怎样维护还与架构、地址空间标识和切换场景相关，不能将每次上下文切换都描述成“清空所有页表缓存”。
 
 CPU 亲和性限制任务可运行的位置，负载均衡则在允许范围内调整任务分布。绑核不等于隔离该 CPU，也不排除中断与其他允许任务的竞争。内核可抢占配置与用户任务的调度策略同样是不同维度。
+
+把本篇与前两篇接起来：任务创建后可以进入可运行集合；主动等待时暂时不参与普通可运行任务的竞争；事件唤醒它后，它重新获得运行资格，随后才由调度器选择。至于事件怎样从设备中断交到可唤醒任务的路径，继续看[第四篇的中断交接](/p/linux-kernel-execution-context/)。
 
 ## 六、命令与接口速查
 

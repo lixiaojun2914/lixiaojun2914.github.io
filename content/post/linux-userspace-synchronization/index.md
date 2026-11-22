@@ -33,67 +33,24 @@ tags:
 
 保存为 [sync-lab.c](sync-lab.c)。一个消费者线程与主线程生产者共用单槽，消费完三个值后退出：
 
+先看消费者的核心循环，下面摘自完整源码：
+
 ```c
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t changed = PTHREAD_COND_INITIALIZER;
-static int full, value, done;
-static int total;
-
-static void check(int err, const char *what)
-{
-    if (err) {
-        fprintf(stderr, "%s: %s\n", what, strerror(err));
-        exit(EXIT_FAILURE);
-    }
-}
-
-static void *consumer(void *arg)
-{
-    (void)arg;
-    check(pthread_mutex_lock(&lock), "lock");
-    for (;;) {
-        while (!full && !done)
-            check(pthread_cond_wait(&changed, &lock), "wait");
-        if (!full && done)
-            break;
-        total += value;
-        printf("consume=%d\n", value);
-        full = 0;
-        check(pthread_cond_signal(&changed), "signal");
-    }
-    check(pthread_mutex_unlock(&lock), "unlock");
-    return NULL;
-}
-
-int main(void)
-{
-    pthread_t thread;
-    check(pthread_create(&thread, NULL, consumer, NULL), "create");
-    for (int i = 1; i <= 3; i++) {
-        check(pthread_mutex_lock(&lock), "lock");
-        while (full)
-            check(pthread_cond_wait(&changed, &lock), "wait");
-        value = i;
-        full = 1;
-        check(pthread_cond_signal(&changed), "signal");
-        check(pthread_mutex_unlock(&lock), "unlock");
-    }
-    check(pthread_mutex_lock(&lock), "lock");
-    done = 1;
+check(pthread_mutex_lock(&lock), "lock");
+for (;;) {
+    while (!full && !done)
+        check(pthread_cond_wait(&changed, &lock), "wait");
+    if (!full && done)
+        break;
+    total += value;
+    printf("consume=%d\n", value);
+    full = 0;
     check(pthread_cond_signal(&changed), "signal");
-    check(pthread_mutex_unlock(&lock), "unlock");
-    check(pthread_join(thread, NULL), "join");
-    printf("total=%d\n", total);
-    check(pthread_cond_destroy(&changed), "destroy cond");
-    check(pthread_mutex_destroy(&lock), "destroy mutex");
-    return EXIT_SUCCESS;
 }
+check(pthread_mutex_unlock(&lock), "unlock");
 ```
+
+生产者在同一把锁下等待槽位变空，写入 `value` 并把 `full` 设为 1，再通知消费者。三个值提交完毕后，它设置 `done` 并通知，消费者取尽已提交的数据才退出。初始化、生产路径和错误处理都保留在 [sync-lab.c](sync-lab.c) 中。
 
 ```bash
 gcc -std=c11 -O2 -Wall -Wextra -Werror -pthread sync-lab.c -o sync-lab
@@ -133,6 +90,17 @@ while (!full && !done)
 这里必须用循环重新判断。`pthread_cond_signal()` 唤醒等待者的通知语义，不保证等待者马上执行，也不会保存一张让未来线程无条件消费的事件票据。[条件等待规则](https://man7.org/linux/man-pages/man3/pthread_cond_wait.3p.html)
 
 本例只有一个生产者、一个消费者，两者分别在等待槽位空和非空，不会同时都因这两个相反谓词等待；若扩展为多生产者多消费者，需要重新设计通知与等待者选择，不能机械认为同一个条件变量的 `signal` 总会选中需要的那一类线程。
+
+将一次等待与前面的调度篇对应起来：
+
+| 消费者所处阶段 | 锁与条件 | 任务执行情况 |
+| --- | --- | --- |
+| 发现槽位空 | 持锁检查 `full` | 当前仍在运行 |
+| 进入条件等待 | 协调释放锁并等待 | 确实阻塞后，CPU 可以执行其他任务 |
+| 生产者写入并通知 | 生产者仍按 mutex 协议更新条件 | 等待者可能变为可运行，不承诺立刻执行 |
+| 等待调用返回 | 消费者已重新取得 mutex | 重新检查 `full`，成立才消费 |
+
+这就把“条件不满足”连到了“任务暂时不运行”。下面继续看：用户态的这套等待，什么时候需要内核参与？
 
 ## 三、从用户态快速路径到 futex
 

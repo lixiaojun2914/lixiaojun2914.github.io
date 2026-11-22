@@ -15,7 +15,18 @@ tags:
 
 本系列实验环境为 VMware Fusion 中的 Ubuntu 26.04.1 ARM64，运行内核 `6.8.0-149-generic`，glibc 2.43。源码对照上游 **Linux v6.8**，发行版可能带有额外补丁。源码摘录用 `/* … */` 标明省略部分，接口示意与实测程序分别说明。
 
-系列位置：**1. 对象模型** · [2. 生命周期](/p/linux-process-lifecycle/) · 3. 调度（待发布） · 4. 执行上下文（待发布） · 5. 用户态同步（待发布） · 6. 内核同步（待发布）。
+系列位置：**1. 对象模型** · [2. 生命周期](/p/linux-process-lifecycle/) · [3. 调度](/p/linux-process-scheduling/) · [4. 执行上下文](/p/linux-kernel-execution-context/) · [5. 用户态同步](/p/linux-userspace-synchronization/) · [6. 内核同步](/p/linux-kernel-synchronization/)。
+
+六篇围绕一个任务展开，阅读时可以始终追问它此刻处于哪一步：
+
+| 篇目 | 主要问题 | 看完后应能解释的现象 |
+| --- | --- | --- |
+| 一：对象模型 | 一个任务持有什么、与谁共享？ | 相同 PID 的线程为何还有不同 TID 和栈 |
+| 二：生命周期 | 任务怎样产生、替换程序和退出？ | exec 不另建进程，退出与回收分开 |
+| 三：调度 | 就绪任务何时获得 CPU？ | 权重影响份额，唤醒不等于立即运行 |
+| 四：执行上下文 | 内核代码由谁执行？ | 系统调用、硬中断和 IRQ 线程的等待规则不同 |
+| 五：用户态同步 | 用户线程怎样协调共享状态？ | 锁、条件变量和 futex 分别承担什么 |
+| 六：内核同步 | 内核怎样互斥、等待和交付数据？ | 等待者如何重新就绪，并安全使用结果 |
 
 ## 一、用两个线程观察身份与地址
 
@@ -23,76 +34,26 @@ tags:
 
 保存为 [task-lab.c](task-lab.c)。主线程等待终止信号，工作线程等待读取管道。使用阻塞等待，是为了让它们在观察期间保持存活，不必持续占用处理器（CPU，Central Processing Unit）。
 
+正文先看两条关键路径，下面摘自完整程序，省略初始化与错误处理：
+
 ```c
-#define _GNU_SOURCE
-#include <errno.h>
-#include <pthread.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-
-static int shared_value = 42;
-static int channel[2];
-
-static void check(int err, const char *what)
-{
-    if (err) {
-        fprintf(stderr, "%s: %s\n", what, strerror(err));
-        exit(EXIT_FAILURE);
-    }
-}
-
-static void *worker(void *arg)
-{
-    int local = 2;
-    char token;
-    (void)arg;
-    check(pthread_setname_np(pthread_self(), "worker-demo"), "setname");
-    printf("worker pid=%ld tid=%ld shared=%p local=%p\n",
-           (long)getpid(), syscall(SYS_gettid),
-           (void *)&shared_value, (void *)&local);
-    ssize_t n;
-    do {
-        n = read(channel[0], &token, 1);
-    } while (n == -1 && errno == EINTR);
-    if (n == -1) {
-        perror("read");
-        exit(EXIT_FAILURE);
-    }
-    return NULL;
-}
-
-int main(void)
-{
-    pthread_t thread;
-    sigset_t signals;
-    int local = 1, received;
-    setbuf(stdout, NULL);
-    sigemptyset(&signals);
-    sigaddset(&signals, SIGTERM);
-    check(pthread_sigmask(SIG_BLOCK, &signals, NULL), "sigmask");
-    if (pipe(channel) == -1) {
-        perror("pipe");
-        return EXIT_FAILURE;
-    }
-    printf("main   pid=%ld tid=%ld shared=%p local=%p\n",
-           (long)getpid(), syscall(SYS_gettid),
-           (void *)&shared_value, (void *)&local);
-    check(pthread_create(&thread, NULL, worker, NULL), "create");
-    check(sigwait(&signals, &received), "sigwait");
-    if (write(channel[1], "x", 1) != 1) {
-        perror("write");
-        return EXIT_FAILURE;
-    }
-    check(pthread_join(thread, NULL), "join");
-    close(channel[0]);
-    close(channel[1]);
-    return EXIT_SUCCESS;
-}
+/* 工作线程：打印身份和地址，然后阻塞读管道。 */
+int local = 2;
+printf("worker pid=%ld tid=%ld shared=%p local=%p\n",
+       (long)getpid(), syscall(SYS_gettid),
+       (void *)&shared_value, (void *)&local);
+/* … */
+n = read(channel[0], &token, 1);
 ```
+
+```c
+/* 主线程：创建工作线程，并等待终止信号。 */
+check(pthread_create(&thread, NULL, worker, NULL), "create");
+check(sigwait(&signals, &received), "sigwait");
+/* 收到信号后，通过管道让工作线程结束。 */
+```
+
+这两条路径分别回答“它们是谁、看到什么地址”和“观察期间怎样保持存活”。复现时使用链接中的完整源码，其中包含头文件、共享变量、信号设置和退出收尾。
 
 错误处理辅助函数接收 pthread 接口直接返回的错误号。`SIGTERM` 在创建线程前被屏蔽，新线程继承该屏蔽设置，最后由主线程的 `sigwait()` 同步接收。收到后主线程写管道、等待工作线程退出，再关闭描述符。
 
@@ -275,7 +236,7 @@ kill -TERM "$pid"
 wait "$pid"
 ```
 
-第二篇将改变任务创建方式，观察哪些资源变成复制，哪些仍然共享。
+本篇实验中的工作线程停在管道读取，仍保有自己的任务对象与执行现场。主线程写入管道后，它才有机会继续运行。等待不是退出，共享地址空间也不是共享一份执行现场。[第二篇](/p/linux-process-lifecycle/)接着改变创建方式，说明哪些资源复制、哪些继续共享；重新就绪后何时运行，则交给[第三篇](/p/linux-process-scheduling/)。
 
 ## 四、命令与接口速查
 

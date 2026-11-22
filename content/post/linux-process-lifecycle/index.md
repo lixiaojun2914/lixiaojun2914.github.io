@@ -15,7 +15,7 @@ tags:
 
 本系列实验环境为 VMware Fusion 中的 Ubuntu 26.04.1 ARM64，运行内核 `6.8.0-149-generic`，glibc 2.43。源码对照上游 **Linux v6.8**，发行版可能带有额外补丁。源码摘录用 `/* … */` 标明省略部分，接口示意与实测程序分别说明。
 
-系列位置：[1. 对象模型](/p/linux-process-task-model/) · **2. 生命周期** · 3. 调度（待发布） · 4. 执行上下文（待发布） · 5. 用户态同步（待发布） · 6. 内核同步（待发布）。
+系列位置：[1. 对象模型](/p/linux-process-task-model/) · **2. 生命周期** · [3. 调度](/p/linux-process-scheduling/) · [4. 执行上下文](/p/linux-kernel-execution-context/) · [5. 用户态同步](/p/linux-userspace-synchronization/) · [6. 内核同步](/p/linux-kernel-synchronization/)。
 
 ## 一、exec 前后为什么 PID 相同
 
@@ -23,78 +23,23 @@ tags:
 
 保存为 [lifecycle.c](lifecycle.c)。子进程重新执行当前可执行文件，带上 `--child` 参数后返回退出码 7。父进程先等待退出但暂不回收，观察状态后才调用 `waitpid()`。
 
-```c
-#define _GNU_SOURCE
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+完整程序分为下面三段。这里用 **C 风格伪代码**突出顺序，打印、状态文件读取和错误处理保留在源码文件中：
 
-int main(int argc, char **argv)
-{
-    setbuf(stdout, NULL);
-    if (argc == 2 && strcmp(argv[1], "--child") == 0) {
-        printf("after exec pid=%ld ppid=%ld\n",
-               (long)getpid(), (long)getppid());
-        return 7;
-    }
-    pid_t parent = getpid();
-    pid_t child = fork();
-    if (child == -1) {
-        perror("fork");
-        return EXIT_FAILURE;
-    }
-    if (child == 0) {
-        printf("before exec pid=%ld ppid=%ld\n",
-               (long)getpid(), (long)getppid());
-        execl("/proc/self/exe", "lifecycle", "--child", (char *)NULL);
-        perror("execl");
-        _exit(127);
-    }
-    siginfo_t info;
-    int ret;
-    do {
-        ret = waitid(P_PID, (id_t)child, &info, WEXITED | WNOWAIT);
-    } while (ret == -1 && errno == EINTR);
-    if (ret == -1) {
-        perror("waitid");
-        return EXIT_FAILURE;
-    }
-    char path[64], line[256];
-    snprintf(path, sizeof(path), "/proc/%ld/status", (long)child);
-    FILE *status_file = fopen(path, "r");
-    if (!status_file) {
-        perror("fopen");
-        return EXIT_FAILURE;
-    }
-    while (fgets(line, sizeof(line), status_file))
-        if (strncmp(line, "State:", 6) == 0)
-            printf("before reap %s", line);
-    fclose(status_file);
-    int status;
-    pid_t waited;
-    do {
-        waited = waitpid(child, &status, 0);
-    } while (waited == -1 && errno == EINTR);
-    if (waited == -1) {
-        perror("waitpid");
-        return EXIT_FAILURE;
-    }
-    if (!WIFEXITED(status)) {
-        fprintf(stderr, "child did not exit normally\n");
-        return EXIT_FAILURE;
-    }
-    printf("parent=%ld child=%ld exit=%d\n",
-           (long)parent, (long)child, WEXITSTATUS(status));
-    errno = 0;
-    ret = access(path, F_OK);
-    printf("after reap status_missing=%d\n", ret == -1 && errno == ENOENT);
-    return EXIT_SUCCESS;
+```c
+child = fork();
+if (child == 0) {
+    print_current_pid();
+    exec_current_program_with_child_argument();
+    /* exec 成功后，从新程序入口运行，打印 PID 并返回 7。 */
+} else {
+    waitid(P_PID, child, &info, WEXITED | WNOWAIT);
+    print_child_state(); /* 子进程已退出，暂不回收。 */
+    waitpid(child, &status, 0);
+    print_exit_code(status);
 }
 ```
+
+先抓住三件事：`fork()` 增加一个子任务，`exec` 替换子任务执行的程序，父进程的最后一次等待收集并回收退出信息。复现时使用 [lifecycle.c](lifecycle.c)，伪代码中的辅助名称不是可直接调用的接口。
 
 实验是单线程父进程，因此子进程在 exec 前调用 `printf()` 等库接口没有多线程 fork 后的锁继承问题。对于多线程父进程，子进程到 exec 之间应遵守异步信号安全接口限制，不应直接照搬这一段输出代码。
 
@@ -271,6 +216,8 @@ C 库 `exit()` 会执行退出处理并刷新标准 I/O；`_exit()` 不执行这
 孤儿描述父子关系的变化：父任务退出后，子进程可能被适当的子收割者或该 PID 命名空间中的 init 接管。子进程可以继续正常运行，之后退出时再由接管者处理回收。
 
 因此，**僵尸描述已退出但仍保留信息的阶段，孤儿描述原父任务退出后的亲属关系**。一个正在运行的孤儿不是僵尸，处理僵尸也不是再给它发送一个终止信号，而是让有回收责任的任务完成相应 wait 或自动回收流程。
+
+回看第一篇中读管道的线程：它虽然睡眠，仍然可能被唤醒后继续执行；本篇的僵尸则已结束执行，只留下待回收信息。接下来只讨论仍有运行资格的任务：[第三篇](/p/linux-process-scheduling/)解释它们如何竞争 CPU，以及睡眠任务被唤醒后怎样重新参与选择。
 
 ## 五、命令与接口速查
 
