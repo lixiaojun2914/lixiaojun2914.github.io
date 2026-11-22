@@ -1,0 +1,6 @@
+[Unit]
+Description=Blog timer job
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/echo timer fired

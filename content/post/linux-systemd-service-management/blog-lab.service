@@ -1,0 +1,18 @@
+[Unit]
+Description=Blog service management lab
+Requires=blog-prep.service
+After=blog-prep.service
+
+[Service]
+Type=exec
+User=lxj
+Group=lxj
+ExecStart=/bin/sh -c 'echo lab started; /usr/bin/sleep infinity & wait'
+Restart=on-failure
+RestartSec=1s
+KillMode=control-group
+TimeoutStopSec=3s
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

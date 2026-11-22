@@ -194,3 +194,16 @@ skill 用于帮助执行工作，不能代替文章中的推导、实验和事�
 | 三：从设备号到 /dev、uevent 与 udev | `content/post/linux-device-files-udev/` | 发布稿，C/strace 与 null 的 change 事件已在虚拟机验证 |
 
 本轮调整了通用设备字段的出场顺序，补充 e1000e 创建网络接口的源码与真实事件记录，并用分支总图区分设备注册、绑定、事件及节点维护。
+
+
+## Linux 收尾系列进度（2026-11-22）
+
+三篇已完成并纳入本次发布。围绕实际虚拟机配置与独立运行时实验组织，不修改引导配置、SSH 配置或永久启用实验服务。
+
+| 篇目 | 本地目录 | 已完成验证 |
+| --- | --- | --- |
+| 启动：从 UEFI、GRUB 到根文件系统与登录 | `content/post/linux-boot-root-login/` | EFI 项、运行内核、initramfs、LVM 根、fstab 生成单元、账户查询 |
+| systemd：从 PID 1 到服务、依赖与日志 | `content/post/linux-systemd-service-management/` | 独立服务启停、drop-in 重载、控制组清理、socket 激活、timer 与 journal |
+| 进程隔离与资源控制：namespace 和 cgroup v2 | `content/post/linux-namespaces-cgroup-v2/` | PID/UTS/mount/net 视图，CPU 配额、任务数上限与独立组内 OOM；保留普通用户 user namespace 请求被拒绝的真实结果 |
+
+实验运行时单元、子进程和临时目录已清理；正文、配图、配置与源码随文章发布。

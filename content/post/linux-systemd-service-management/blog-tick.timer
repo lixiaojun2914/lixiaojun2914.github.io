@@ -1,0 +1,7 @@
+[Unit]
+Description=Blog one-shot timer
+
+[Timer]
+OnActiveSec=1s
+AccuracySec=100ms
+Unit=blog-tick.service

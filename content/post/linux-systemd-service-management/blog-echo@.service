@@ -1,0 +1,12 @@
+[Unit]
+Description=Blog echo connection
+
+[Service]
+Type=exec
+User=lxj
+Group=lxj
+ExecStart=/usr/bin/cat
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+NoNewPrivileges=yes

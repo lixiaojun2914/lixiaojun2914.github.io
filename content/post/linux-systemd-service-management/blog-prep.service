@@ -1,0 +1,7 @@
+[Unit]
+Description=Blog lab preparation
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/echo prep complete
+RemainAfterExit=yes
