@@ -66,17 +66,20 @@ req = container_of(node, struct request, pending);
 
 其中 `node` 必须指向一个有效 `struct request` 对象的 `pending` 成员。宏根据调用者提供的类型与成员名计算偏移，无法凭空识别这个地址实际属于哪种对象。把表头地址当成请求节点传入，也不能得到有效请求。[Linux v6.8 的 container_of 实现](https://github.com/torvalds/linux/blob/v6.8/include/linux/container_of.h)
 
-链表还提供更直接的写法：
+链表接口用 `list_entry()` 表达“从链表节点取得外层对象”。它的源码就是对 `container_of()` 的宏封装：
 
-```c
-req = list_entry(node, struct request, pending);
-```
+{{< c-macro >}}
+#define list_entry(ptr, type, member) \
+    container_of(ptr, type, member)
+{{< /c-macro >}}
 
-`list_entry()` 在这里通过 `container_of()` 从节点恢复外层对象。节点中不需要额外保存一个指向请求的反向指针。
+例如，`list_entry(&a.pending, struct request, pending)` 展开为 `container_of(&a.pending, struct request, pending)`，结果是 `&a`。三个参数分别指定成员地址、外层对象类型和成员名；`list_entry()` 没有另外维护一份对象对应表，也不增加运行时查找步骤。
+
+因此，`struct list_head` 只需保存相邻节点的 `next`、`prev`，无需额外保存外层 `struct request` 的地址。这里说的是省去“成员到所属对象”的额外指针，链表本身的前驱指针 `prev` 仍然存在。
 
 Linux v6.8 的 `container_of()` 实现如下，仅调整排版：
 
-```c
+{{< c-macro >}}
 #define container_of(ptr, type, member) ({                         \
     void *__mptr = (void *)(ptr);                                  \
     static_assert(__same_type(*(ptr), ((type *)0)->member) ||       \
@@ -84,7 +87,7 @@ Linux v6.8 的 `container_of()` 实现如下，仅调整排版：
                   "pointer type mismatch in container_of()");     \
     ((type *)(__mptr - offsetof(type, member)));                    \
 })
-```
+{{< /c-macro >}}
 
 可以分成三步理解：
 

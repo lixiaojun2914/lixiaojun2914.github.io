@@ -1,0 +1,10 @@
+{{- /* Chroma's C lexer treats an entire continued #define as one preprocessor
+     token. Mask the directive and continuation characters only while lexing,
+     then restore their exact visible text. Macro bodies retain C token colors. */ -}}
+{{- $source := strings.TrimSpace .Inner -}}
+{{- $masked := replaceRE `(?m)^([\t ]*)#define\b` `${1}__hugo_c_define__` $source -}}
+{{- $masked = replace $masked "\\\n" "__hugo_c_cont__\n" -}}
+{{- $rendered := highlight $masked "c" "" -}}
+{{- $rendered = replaceRE `<span class="[^"]+">__hugo_c_define__</span>` `<span class="cp">#define</span>` $rendered -}}
+{{- $rendered = replaceRE `<span class="[^"]+">__hugo_c_cont__</span>` `<span class="cp">\</span>` $rendered -}}
+{{- $rendered | safeHTML -}}
