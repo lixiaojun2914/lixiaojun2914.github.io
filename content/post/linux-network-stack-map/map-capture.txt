@@ -1,0 +1,13 @@
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on a0, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+1795357537.050826 IP 10.77.1.1.45450 > 10.77.1.2.18080: Flags [S], seq 3227774407, win 64240, options [mss 1460,sackOK,TS val 3247598070 ecr 0,nop,wscale 7], length 0
+1795357537.050882 IP 10.77.1.2.18080 > 10.77.1.1.45450: Flags [S.], seq 3690612433, ack 3227774408, win 65160, options [mss 1460,sackOK,TS val 553940212 ecr 3247598070,nop,wscale 7], length 0
+1795357537.050915 IP 10.77.1.1.45450 > 10.77.1.2.18080: Flags [.], ack 1, win 502, options [nop,nop,TS val 3247598070 ecr 553940212], length 0
+1795357537.051055 IP 10.77.1.1.45450 > 10.77.1.2.18080: Flags [P.], seq 1:6, ack 1, win 502, options [nop,nop,TS val 3247598070 ecr 553940212], length 5
+1795357537.051062 IP 10.77.1.2.18080 > 10.77.1.1.45450: Flags [.], ack 6, win 510, options [nop,nop,TS val 553940212 ecr 3247598070], length 0
+1795357537.051160 IP 10.77.1.1.45450 > 10.77.1.2.18080: Flags [F.], seq 6, ack 1, win 502, options [nop,nop,TS val 3247598070 ecr 553940212], length 0
+1795357537.092120 IP 10.77.1.2.18080 > 10.77.1.1.45450: Flags [.], ack 7, win 510, options [nop,nop,TS val 553940253 ecr 3247598070], length 0
+
+7 packets captured
+9 packets received by filter
+0 packets dropped by kernel
