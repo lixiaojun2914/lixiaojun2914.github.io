@@ -7,7 +7,7 @@ strace -- version 6.19
 driver: e1000e
 version: 6.8.0-149-generic
 firmware-version: 1.8-0
-expansion-rom-version: 
+expansion-rom-version:
 bus-info: 0000:02:00.0
 supports-statistics: yes
 supports-test: yes
