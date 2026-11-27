@@ -1,0 +1,4 @@
+table inet demo {
+ chain pre { type filter hook prerouting priority -301; policy accept; ip saddr 10.77.1.1 meta nftrace set 1; }
+ chain forward { type filter hook forward priority 0; policy accept; udp dport 18082 counter drop; }
+}

@@ -1,0 +1,13 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 1/1   #P:2
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+         netdemo-1568850 [001] ..s1. 731777.685704: kfree_skb: skbaddr=000000004c32bef1 protocol=2048 location=__udp4_lib_rcv+0x440/0x738 reason: NO_SOCKET

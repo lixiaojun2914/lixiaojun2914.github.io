@@ -1,0 +1,38 @@
+三对 veth 接入 br0：学习结果与 C 端可见性
+环境：7.0.0-44-generic，aarch64，lab.sh bridge
+
+## 两次 ping
+
+$ sudo ip netns exec nslab-a ping -n -c 1 10.77.1.2
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.039/0.039/0.039/0.000 ms
+
+$ sudo ip netns exec nslab-c ping -n -c 1 10.77.1.1
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.024/0.024/0.024/0.000 ms
+
+## FDB
+
+$ sudo ip netns exec nslab-r bridge fdb show br br0 | grep 02:00:00:77
+02:00:00:77:01:01 dev pa master br0
+02:00:00:77:01:02 dev pb master br0
+02:00:00:77:01:03 dev pc master br0
+
+## C 端抓包：清空 A 的邻居后从 A ping B
+
+$ sudo ip -n nslab-a neigh flush dev a0
+$ sudo ip netns exec nslab-c tcpdump -nn -e -i c0 -c 10
+
+14:51:30.511333 02:00:00:77:01:01 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.2 tell 10.77.1.1, length 28
+14:51:32.302950 02:00:00:77:01:03 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::588e:4dff:fe02:fa21 > ff02::2: ICMP6, router solicitation, length 16
+14:51:32.815779 4e:f9:50:ba:48:65 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::90a4:dff:fec5:11c9 > ff02::2: ICMP6, router solicitation, length 16
+14:51:33.327536 02:00:00:77:01:01 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::849f:3bff:fe69:38b7 > ff02::2: ICMP6, router solicitation, length 16
+14:51:33.839144 e2:d1:cb:b3:9b:3d > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::e0d1:cbff:feb3:9b3d > ff02::2: ICMP6, router solicitation, length 16
+14:51:33.839173 02:00:00:77:01:02 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::b008:f4ff:fe77:a8fd > ff02::2: ICMP6, router solicitation, length 16
+
+6 packets captured
+
+说明：只有 A 的 ARP 广播与几条 IPv6 路由请求，没有 ARP 应答，也没有 ICMP 单播。
+
+$ sudo ip -n nslab-a neigh
+10.77.1.2 dev a0 lladdr 02:00:00:77:01:02 REACHABLE

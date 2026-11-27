@@ -1,0 +1,51 @@
+enp2s0 低负载对照：15 个 ping，间隔 0.03 s
+环境：7.0.0-44-generic，aarch64，2 vCPU，e1000e，MSI-X 三向量
+
+## 实验前
+
+$ grep -E 'NET_RX|NET_TX' /proc/softirqs | head -3
+      NET_TX:      27507         53
+      NET_RX:      68539        228
+
+$ grep -iE 'enp2s0' /proc/interrupts
+ 50:      15679          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
+ 51:       5615          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
+ 52:          2          0 GICv2m-PCI-MSIX-0000:02:00.0   2 Edge      enp2s0
+
+$ ip -s link show enp2s0
+    RX:  bytes packets errors dropped  missed   mcast
+      16649640   14622      0       0       0       0
+    TX:  bytes packets errors dropped carrier collsns
+        536415    6850      0       0       0       0
+
+## 发送
+
+$ ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
+15 packets transmitted, 15 received, 0% packet loss, time 442ms
+rtt min/avg/max/mdev = 0.178/0.302/0.407/0.064 ms
+
+## 实验后
+
+$ grep -E 'NET_RX|NET_TX' /proc/softirqs | head -3
+      NET_TX:      27531         53
+      NET_RX:      68563        228
+
+$ grep -iE 'enp2s0' /proc/interrupts
+ 50:      15695          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
+ 51:       5631          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
+ 52:          2          0 GICv2m-PCI-MSIX-0000:02:00.0   2 Edge      enp2s0
+
+$ ip -s link show enp2s0
+    RX:  bytes packets errors dropped  missed   mcast
+      16651234   14638      0       0       0       0
+    TX:  bytes packets errors dropped carrier collsns
+        537927    6866      0       0       0       0
+
+## 差值
+
+NET_RX   CPU0  68539 -> 68563   +24
+NET_TX   CPU0  27507 -> 27531   +24
+enp2s0-rx-0   15679 -> 15695   +16
+enp2s0-tx-0    5615 ->  5631   +16
+RX packets     14622 ->  14638   +16
+TX packets      6850 ->   6866   +16

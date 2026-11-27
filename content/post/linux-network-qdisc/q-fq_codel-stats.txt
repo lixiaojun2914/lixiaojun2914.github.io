@@ -1,0 +1,12 @@
+FQ-CoDel 子队列，传输进行中的队列快照
+环境：7.0.0-44-generic
+
+$ sudo ip netns exec nslab-a tc -s qdisc show dev a0
+qdisc tbf 1: root refcnt 3 rate 5Mbit burst 16Kb lat 1s
+ Sent 1225020 bytes 822 pkt (dropped 4, overlimits 652 requeues 0)
+ backlog 24224b 2p requeues 0
+qdisc fq_codel 10: parent 1:1 limit 1000p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64
+ Sent 1237132 bytes 830 pkt (dropped 4, overlimits 0 requeues 0)
+ backlog 24224b 2p requeues 0
+  maxpacket 15140 drop_overlimit 0 new_flow_count 17 ecn_mark 0 memory_used 12544
+  new_flows_len 0 old_flows_len 1

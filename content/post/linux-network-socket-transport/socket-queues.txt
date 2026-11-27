@@ -1,0 +1,7 @@
+$ ip netns exec nslab-a ss -tinm '( dport = :18081 )'; ip netns exec nslab-b ss -tinm '( sport = :18081 )'
+State Recv-Q Send-Q Local Address:Port  Peer Address:Port 
+ESTAB 0      0          10.77.1.1:42716    10.77.1.2:18081
+	 skmem:(r0,rb131072,t0,tb32768,f0,w0,o0,bl0,d0) cubic wscale:7,7 rto:214 rtt:13.576/20.373 mss:1448 pmtu:1500 rcvmss:536 advmss:1448 cwnd:43 bytes_sent:122008 bytes_retrans:1448 bytes_acked:120561 segs_out:89 segs_in:19 data_segs_out:87 send 36690631bps lastsnd:603 lastrcv:709 lastack:585 pacing_rate 73377880bps delivery_rate 2518680bps delivered:88 busy:124ms retrans:0/1 dsack_dups:1 rcv_space:14480 rcv_ssthresh:64088 minrtt:0.005 snd_wnd:3200 rcv_wnd:64256
+State Recv-Q Send-Q Local Address:Port  Peer Address:Port 
+ESTAB 120560 0          10.77.1.2:18081    10.77.1.1:42716
+	 skmem:(r124400,rb131072,t0,tb87040,f2576,w0,o0,bl0,d1) cubic wscale:7,7 rto:200 rtt:0.039/0.019 ato:80 mss:1448 pmtu:1500 rcvmss:1448 advmss:1448 cwnd:10 bytes_received:120560 segs_out:18 segs_in:89 data_segs_in:87 send 2970256410bps lastsnd:717 lastrcv:634 lastack:611 pacing_rate 5940512816bps delivered:1 app_limited rcv_rtt:0.218 rcv_space:14480 rcv_ssthresh:91959 minrtt:0.039 snd_wnd:64256 rcv_wnd:3200

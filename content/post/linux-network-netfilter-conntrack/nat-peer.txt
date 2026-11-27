@@ -1,0 +1,6 @@
+B 上看到的连接对端是 R 的转换后地址
+环境：7.0.0-44-generic
+
+$ sudo ip netns exec nslab-b ss -tn sport = :18084
+State Recv-Q Send-Q Local Address:Port  Peer Address:Port
+ESTAB 120560 0      10.77.2.2:18084     10.77.2.254:45466

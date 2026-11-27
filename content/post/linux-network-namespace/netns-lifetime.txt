@@ -1,0 +1,25 @@
+名字删掉之后，进程仍持有原来的网络环境
+环境：7.0.0-44-generic，aarch64
+
+$ sudo ip netns add nslab-a
+$ sudo ip netns exec nslab-a sleep 60 &
+[1] 15549
+$ PID=$(sudo ip netns pids nslab-a | head -n 1)
+$ echo $PID
+15549
+
+$ sudo readlink /proc/15549/ns/net
+net:[4026532692]
+
+$ sudo ip netns del nslab-a
+
+$ sudo ip netns list
+（无输出）
+
+$ sudo readlink /proc/15549/ns/net
+net:[4026532692]
+
+$ sudo nsenter -t 15549 -n ip -br link
+lo               DOWN           00:00:00:00:00:00 <LOOPBACK>
+
+$ sudo kill 15549

@@ -1,0 +1,7 @@
+# 客户端一次写 262144 字节，写完后保持连接 6 s 不关闭
+# 接收端每次 recv 读 4096 字节；wakes 是 epoll_wait 有返回的次数，reads 是 recv 成功次数
+# 三个模式各跑一次，接收端在连续 1 s 没有新数据后打印并退出
+
+SINK=sink-lt       sent=262144  read=262144 reads=66 wakes=66
+SINK=sink-et       sent=262144  read=262144 reads=66 wakes=3
+SINK=sink-et-once  sent=262144  read=28672  reads=7  wakes=7

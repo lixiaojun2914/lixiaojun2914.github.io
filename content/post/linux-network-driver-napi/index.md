@@ -1,0 +1,180 @@
+---
+title: "Linux 网络栈（四）：驱动、中断与 NAPI 接收处理"
+slug: linux-network-driver-napi
+date: "2026-11-22T16:04:00+08:00"
+lastmod: "2026-11-27"
+draft: false
+description: "设备通知、NAPI 调度与 poll 预算怎样把一次中断摊成一批处理；三个计数各自算什么，为什么它们不必相等。"
+categories:
+    - Linux 与网络
+tags:
+    - Linux
+    - 网络栈
+---
+
+数据到了网卡，是中断处理函数一直读完，还是另有执行者接手？流量持续不断时，它又凭什么让出 CPU？
+
+系列导航：[1](/p/linux-network-stack-map/) · [2](/p/linux-network-socket-transport/) · [3](/p/linux-network-skbuff/) · **4** · [5](/p/linux-network-route-neighbor/) · [6](/p/linux-network-qdisc/) · [7](/p/linux-network-netlink/) · [8](/p/linux-network-namespace/) · [9](/p/linux-network-veth-bridge/) · [10](/p/linux-network-netfilter-conntrack/)
+
+第一篇的块 C 停在驱动把帧交给设备，块 D 从网卡把帧收进内存开始。中间这一段——谁先知道有数据、谁把数据取走、一次取多少就停下——就是这一篇。块 D 之后的路由与交付留给第五篇。
+
+实验机是 `7.0.0-44`，源码对照上游 `v7.0`。这一篇用的是 NAT 网卡 `enp2s0`，它挂在真实的 e1000e 驱动上；第一篇实验流量走的 veth 对没有物理设备，看不到中断和 NAPI。
+
+## 一、设备、队列与驱动
+
+```bash
+sudo ethtool -i enp2s0
+```
+
+```text
+driver: e1000e
+version: 7.0.0-44-generic
+firmware-version: 1.8-0
+bus-info: 0000:02:00.0
+supports-statistics: yes
+supports-test: yes
+supports-eeprom-access: yes
+supports-register-dump: yes
+supports-priv-flags: yes
+```
+
+这是 Fusion 提供的虚拟硬件，来宾里跑的是真的 e1000e 驱动，所以中断、NAPI、描述符这套机制都是真的；但吞吐和延迟受宿主调度影响，不能拿来估物理网卡的上限。
+
+设备注册只让内核认识这个接口。真正收发还要三样东西：描述符环、缓冲区、事件处理。Rx 环告诉驱动哪些缓冲区已经有数据；Tx 环记录哪些提交的资源可以回收了。
+
+`enp2s0` 有独立的接收与发送中断向量（`enp2s0-rx-0`、`enp2s0-tx-0`），说明它用的是 MSI-X 多向量。一个设备可以有多个队列、多个 NAPI 实例，队列和中断怎样对应由驱动决定，不是内核统一规定。
+
+## 二、通知与预算
+
+![设备中断、NAPI 调度、poll 预算和完成后恢复通知的循环](/p/linux-network-driver-napi/poll.svg)
+
+### 2.1 中断只负责通知
+
+如果每个包都要走一遍完整的中断处理，持续流量下的进出中断成本会吃掉大部分时间。常见做法是：设备通知"有事可做"，驱动调度一个 NAPI 实例，剩下的工作由 poll 回调批量取走。
+
+```c
+/* e1000_intr_msi() 与 e1000_intr_msix_rx() 的同一段收尾 */
+if (napi_schedule_prep(&adapter->napi)) {
+	adapter->total_rx_bytes = 0;
+	adapter->total_rx_packets = 0;
+	__napi_schedule(&adapter->napi);
+}
+```
+
+`napi_schedule_prep()` 判断这个实例是不是已经在调度或运行中，是就不再重复入队；`__napi_schedule()` 把它挂到当前 CPU 的待处理列表，随后软中断调用它的 poll 回调。
+
+通知在 e1000e 里不对称：中断入口只管调度，屏蔽靠硬件——读一次 `ICR` 就把这一路关掉了；重新打开在 poll 收尾，`napi_complete_done()` 返回真之后才 `ew32(IMS, rx_ring->ims_val)`。如果这一轮返回的是 `budget`，就压根走不到这里，中断保持关闭，下一轮软中断接着干。所以"关中断—收包—开中断"这种三段式只是示意，屏蔽与恢复分散在两头。
+
+### 2.2 budget 限定一次 poll
+
+`e1000e_poll()` 的核心几行：
+
+```c
+/* 省略前面的 adapter 初始化与 Tx 回收 */
+adapter->clean_rx(adapter->rx_ring, &work_done, budget);
+
+if (!tx_cleaned || work_done == budget)
+	return budget;
+
+/* 之后调用 napi_complete_done()，按结果恢复设备通知 */
+```
+
+`work_done` 是这次 poll 实际处理的工作量，`budget` 是给它定的上限。返回 `budget` 表示"还有活没干完"，实例会留在调度队列里，软中断结束时再来一轮；返回小于 `budget` 才收尾并恢复通知。
+
+预算只约束 Rx 这一侧。Tx 完成回收走的是另一套条件，`work_done == budget` 时也会提前返回，两者不能混成一句"每次最多处理这么多事件"。
+
+`struct napi_struct` 上挂着状态、poll 回调、所属设备和链表节点，驱动把它关联到 `net_device`。代码见 [e1000e/netdev.c](https://github.com/torvalds/linux/blob/v7.0/drivers/net/ethernet/intel/e1000e/netdev.c) 与 [netdevice.h](https://github.com/torvalds/linux/blob/v7.0/include/linux/netdevice.h)。
+
+## 三、低负载下的一次接收
+
+### 3.1 三个计数各算什么
+
+先取基线，向默认网关发 15 个间隔 0.03 秒的 ping，再取一次：
+
+```bash
+grep -E 'NET_RX|NET_TX' /proc/softirqs
+grep -iE 'enp2s0' /proc/interrupts
+ip -s link show enp2s0
+ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
+```
+
+| 计数 | 前 | 后 | 差值 | 算的是什么 |
+| --- | ---: | ---: | ---: | --- |
+| CPU0 `NET_RX` | 68539 | 68563 | +24 | 这台 CPU 上 `NET_RX` 软中断被执行了多少次 |
+| `enp2s0-rx-0` | 15679 | 15695 | +16 | 这个中断向量触发了多少次 |
+| 设备 `RX packets` | 14622 | 14638 | +16 | 设备收了多少帧 |
+
+中断和帧数都是 16，比 ping 的 15 多一个——回程的 ICMP 请求之外还有一个别的帧（ARP 或迟到的响应）。低负载下每个帧都触发一次通知，两个计数才对得上。
+
+`NET_RX` 多出 24 次，不等于多收了 24 个包。软中断计数是全局的，不分设备：这个 SSH 会话本身在 `enp10s0` 上产生的流量也算在里面。它记录的是"这个软中断被执行了几次"，不是"收了多少帧"。
+
+所以三个数不必相等，相等也不是规律。背景流量、批处理、中断合并都能让它们分开；反过来用它们估算包数，只在负载足够低、设备足够单一时才成立。
+
+### 3.2 poll 的工作量与预算
+
+在专属实例里跟踪 poll：
+
+```bash
+sudo -i
+mkdir /sys/kernel/tracing/instances/nslab
+cd /sys/kernel/tracing/instances/nslab
+echo 1 > events/napi/napi_poll/enable
+ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
+echo 0 > events/napi/napi_poll/enable
+grep 'device enp2s0' trace | head -n 1
+```
+
+```text
+          <idle>-0       [000] .Ns1. 23128.599083: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+```
+
+15 个 ping 对应 15 条 poll 记录，时间戳从 23128.599083 到 23129.040791，间隔约 31 ms，和 ping 的 0.03 秒一致。
+
+`work 1` 是这次回调的返回值，也就是处理了 1 个工作单元；`budget 64` 是允许的上限。它绝不等于"这次收了 64 个包"。这一轮 15 条记录全是 `work 1`，没有一条触到上限，说明低负载下 poll 每次只取一个就收尾了，批处理的优势根本用不上。
+
+15 条的上下文都是 `<idle>-0`，即软中断在空闲任务里执行。持续流量下同样的回调可能落在别的上下文，这与 NAPI 的调度方式有关，不是固定的。
+
+[完整记录](/p/linux-network-driver-napi/napi-trace.txt)、[前后计数](/p/linux-network-driver-napi/napi-counters.txt) 可以直接对照。
+
+```bash
+cd /
+rmdir /sys/kernel/tracing/instances/nslab
+exit
+```
+
+## 四、压力判断的四个落点
+
+低负载这一轮的作用是确认路径和观察方法。加大负载后，比较 poll 返回量、软中断次数、中断频率和驱动统计，才有意义。
+
+| 现象 | 往下查什么 |
+| --- | --- |
+| poll 多次返回 `budget` | 实例一直有活，结合 CPU、队列和丢弃看是否跟得上 |
+| 接收中断变少而吞吐正常 | 是否发生了更有效的批处理或中断合并 |
+| 驱动 `rx_no_buffer_count`、`rx_missed_errors` 增长 | 接收缓冲供应与驱动处理压力 |
+| socket 丢弃增长而设备计数正常 | 协议栈或应用消费速度、内存限制 |
+
+驱动统计的字段名由驱动定义，见[本机输出](/p/linux-network-driver-napi/napi-driver-stats.txt)，换一块网卡就未必还有这些名字。也不能因为这一轮 `dropped` 全是 0，就说路径上任何位置都不会丢。
+
+NAPI 通常在软中断上下文跑，但也支持 busy polling 和线程化处理，所以它不等于 `NET_RX_SOFTIRQ` 本身。驱动接口的一般规则（Rx 预算、Tx 完成、budget 为 0 的特殊约束）见 [NAPI 文档](https://docs.kernel.org/7.0/networking/napi.html)。
+
+## 五、命令与接口速查
+
+| 命令 / 接口 | 用途 |
+| --- | --- |
+| `ethtool -i DEV` | 驱动身份与固件版本 |
+| `ethtool -S DEV` | 驱动定义的统计字段 |
+| `/proc/interrupts` | 按 CPU 看中断累计次数 |
+| `/proc/softirqs` | 按 CPU 看软中断累计次数 |
+| `napi_schedule_prep()` / `__napi_schedule()` | 判断并申请一次 NAPI 处理 |
+| `napi_complete_done()` | 结束本轮，按结果恢复通知 |
+| `napi:napi_poll` | 观察实例、设备、返回工作量与预算 |
+
+## 六、名词解释
+
+| 名词 | 含义 |
+| --- | --- |
+| poll | 一次主动检查并处理已有工作的回调 |
+| 接收环 | 驱动与设备用描述符组织的接收缓冲区结构 |
+| 中断合并 | 设备侧按策略合并通知，改变通知频率与延迟 |
+| 处理预算 | 限制一次接收工作量，避免单个实例长期占住处理机会 |
+| MSI-X | 允许设备用多个独立中断向量的机制，队列多时常用 |

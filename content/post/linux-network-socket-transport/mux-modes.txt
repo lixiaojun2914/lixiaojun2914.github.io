@@ -1,0 +1,10 @@
+# 100 连接 × 100 轮，每轮收发 64 字节；服务端 nslab-b 10.77.1.2，客户端 nslab-a 10.77.1.1
+# 实验机 7.0.0-44-generic，2 vCPU。线程数与 RSS 在客户端运行期间每 30 ms 采样取峰值，
+# 上下文切换取 /proc/<pid>/task/*/status 各线程自愿切换之和，计数器来自服务端自身。
+# stats 行由服务端收到 SIGUSR1 时打印。
+
+MODE=thread     threads=101  rss=2228kB  ctxt=8987  ms=314  stats epoll_wait=0     accept=100 read=10000 write=10000
+MODE=epoll-lt   threads=1    rss=1404kB  ctxt=9868  ms=214  stats epoll_wait=10049 accept=100 read=10000 write=10000
+MODE=epoll-et   threads=1    rss=1396kB  ctxt=9275  ms=196  stats epoll_wait=10044 accept=100 read=10000 write=10000
+MODE=epoll-mt   threads=5    rss=1588kB  ctxt=9434  ms=315  stats epoll_wait=10053 accept=100 read=10000 write=10000
+# epoll-mt 为 4 个工作线程 + 1 个主线程

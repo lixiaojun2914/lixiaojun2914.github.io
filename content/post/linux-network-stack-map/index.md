@@ -200,15 +200,15 @@ IP 层拿到包先查路由：目的地址是本机就本地交付，中间过 `
 
 | 块 | 展开在哪篇 |
 | --- | --- |
-| A 的 socket 对象与等待队列 | 第二篇 socket 与多路复用 |
-| skb 的组成与各层头 | 第三篇 sk_buff |
-| C、D 的 DMA、描述符环、NAPI、GRO | 第四篇 驱动与 NAPI |
-| 路由判定与邻居解析 | 第五篇 路由与邻居 |
-| qdisc 与 tc | 第六篇 qdisc 与流控 |
-| 配置类命令怎么下发 | 第七篇 Netlink |
-| 这套拓扑怎么造出来 | 第八篇 网络命名空间 |
-| veth 与 bridge 的内部 | 第九篇 veth 与 bridge |
-| hook、conntrack 与 AppArmor 表项 | 第十篇 Netfilter 与连接跟踪 |
+| A 的 socket 对象、队列与多路复用 | 第二篇《socket、协议队列与应用交付》 |
+| skb 的组成、共享与释放 | 第三篇《sk_buff 的数据视图、共享与释放》 |
+| C、D 的 DMA、描述符环、NAPI | 第四篇《驱动、中断与 NAPI 接收处理》 |
+| 路由判定与邻居解析 | 第五篇《IP 路由、下一跳与邻居解析》 |
+| qdisc 与 tc | 第六篇《出口排队、qdisc 与延迟控制》 |
+| 配置类命令怎么下发 | 第七篇《Netlink 怎样把配置交给内核》 |
+| 这套拓扑怎么造出来 | 第八篇《网络命名空间的状态与生命周期》 |
+| veth 与 bridge 的内部 | 第九篇《veth、bridge 与二层转发》 |
+| hook、conntrack 与 AppArmor 表项 | 第十篇《Netfilter、连接跟踪与 NAT》 |
 
 ## 十一、附：一次五字节的耗时分布
 

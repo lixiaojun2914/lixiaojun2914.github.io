@@ -1,0 +1,36 @@
+一台路由器、两段链路（lab.sh router）
+环境：7.0.0-44-generic，aarch64
+
+$ sudo ip -n nslab-a route get 10.77.2.2
+10.77.2.2 via 10.77.1.254 dev a0 src 10.77.1.1 uid 0
+    cache
+
+$ sudo ip -n nslab-r route get 10.77.2.2
+10.77.2.2 dev rb src 10.77.2.254 uid 0
+    cache
+
+$ sudo ip netns exec nslab-a ping -n -c 2 10.77.2.2
+PING 10.77.2.2 (10.77.2.2) 56(84) bytes of data.
+64 bytes from 10.77.2.2: icmp_seq=1 ttl=63 time=0.074 ms
+64 bytes from 10.77.2.2: icmp_seq=2 ttl=63 time=0.096 ms
+
+--- 10.77.2.2 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1061ms
+rtt min/avg/max/mdev = 0.074/0.085/0.096/0.011 ms
+
+$ sudo ip -n nslab-a neigh
+10.77.1.254 dev a0 lladdr 76:dd:b1:88:8d:af REACHABLE
+
+$ sudo ip -n nslab-r neigh
+10.77.2.2 dev rb lladdr ea:20:db:7a:09:5f REACHABLE
+10.77.1.1 dev ra lladdr aa:0c:53:73:c3:89 DELAY
+
+## 清空邻居后的一次 ARP
+
+$ sudo ip -n nslab-a neigh flush dev a0
+$ sudo ip netns exec nslab-a tcpdump -nn -e -i a0 arp -c 2
+
+14:49:32.047170 aa:0c:53:73:c3:89 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.254 tell 10.77.1.1, length 28
+14:49:32.047186 76:dd:b1:88:8d:af > aa:0c:53:73:c3:89, ethertype ARP (0x0806), length 42: Reply 10.77.1.254 is-at 76:dd:b1:88:8d:af, length 28
+
+2 packets captured

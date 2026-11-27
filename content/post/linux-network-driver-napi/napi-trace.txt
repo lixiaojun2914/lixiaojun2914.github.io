@@ -1,0 +1,19 @@
+napi:napi_poll 跟踪，筛选 device enp2s0
+条件：ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2，跟踪 15 条记录全部命中
+环境：7.0.0-44-generic，aarch64，2 vCPU，e1000e
+
+          <idle>-0       [000] .Ns1. 23128.599083: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.630621: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.662653: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.693808: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.725821: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.757298: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.788870: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.820286: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.851105: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.881875: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.913455: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.944962: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23128.976938: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23129.008974: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+          <idle>-0       [000] .Ns1. 23129.040791: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64

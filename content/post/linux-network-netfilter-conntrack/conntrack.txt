@@ -1,0 +1,9 @@
+SNAT 之后 R 上的连接跟踪条目
+环境：7.0.0-44-generic，lab.sh router，natdemo 表
+
+$ sudo ip netns exec nslab-r conntrack -L -p tcp --dport 18084
+tcp      6 431998 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=45466 dport=18084 src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=45466 [ASSURED] mark=0 use=1
+conntrack v1.4.9 (conntrack-tools): 1 flow entries have been shown.
+
+客户端：accepted=120560 bytes; send=EAGAIN; holding fd 4000 ms
+服务端：ready TCP 10.77.2.2:18084 / received=120560 bytes
