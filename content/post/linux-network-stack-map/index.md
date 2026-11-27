@@ -30,13 +30,11 @@ tags:
 
 虚拟机接了两块 `e1000e`，分工是固定的：`enp2s0` 走 NAT，`192.168.126.135/24`，负责出网和 DNS；`enp10s0` 走仅主机网络，静态 `192.168.190.10/24`，Mac 从这里 SSH 进来，也就是实验流量走的那块。两块网卡参数相同：单收发队列、RX/TX 环形缓冲各 256、排队规则 `fq_codel`。这两块网卡怎么分的网段、静态地址怎么填，见[《Ubuntu Server 虚拟机安装及配置》](/p/ubuntu-server-vm-install/)（那篇装的是 24.04，双网卡布局与此相同）。下文涉及物理网卡的命令写作 `DEV`，指的就是 `enp10s0`。
 
-路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。先把两个文件下到同一个工作目录，后面所有命令都在这个目录里跑。站上它们的后缀是 `.txt`，只为让浏览器按 UTF-8 直接打开源码；改回原名再编译：
+路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。先把两个文件下到同一个工作目录，后面所有命令都在这个目录里跑：
 
-源码：[netdemo.c.txt](netdemo.c.txt)、[lab.sh.txt](lab.sh.txt)
+源码：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)
 
 ```bash
-mv netdemo.c.txt netdemo.c
-mv lab.sh.txt lab.sh
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
 sudo bash lab.sh direct
 ```
