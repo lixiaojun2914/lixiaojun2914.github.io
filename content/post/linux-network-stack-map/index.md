@@ -26,9 +26,9 @@ tags:
 
 ### 1.2 实验环境
 
-实测环境是 VMware Fusion 里的 Ubuntu ARM64，内核 `7.0.0-44-generic`，2 vCPU，3892 MB 内存；源码参照上游 Linux v7.0。宿主机两块网卡都是 `e1000e`，单收发队列，RX/TX 环形缓冲各 256，排队规则 `fq_codel`。
+实测环境是 VMware Fusion 里的 Ubuntu 26.04.1 LTS（ARM64），内核 `7.0.0-44-generic`，2 vCPU，3892 MB 内存；源码参照上游 Linux v7.0。
 
-接口名在重启后会互换：记录里承载实验流量的那块是 `enp2s0`，这次重跑变成了 `enp10s0`。下文命令统一用 `DEV` 指代承载流量的网卡，换成自己机器上的名字即可。
+虚拟机接了两块 `e1000e`，分工是固定的：`enp2s0` 走 NAT，`192.168.126.135/24`，负责出网和 DNS；`enp10s0` 走仅主机网络，静态 `192.168.190.10/24`，Mac 从这里 SSH 进来，也就是实验流量走的那块。两块网卡参数相同：单收发队列、RX/TX 环形缓冲各 256、排队规则 `fq_codel`。这两块网卡怎么分的网段、静态地址怎么填，见[《Ubuntu Server 虚拟机安装及配置》](/p/ubuntu-server-vm-install/)（那篇装的是 24.04，双网卡布局与此相同）；下文命令用 `DEV` 指代承载流量的那块，换台机器时按 `ip -br addr` 认一下名字。
 
 路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡：
 
@@ -119,7 +119,7 @@ sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'
 
 `write()` 落到 `sock_write_iter`，按 fd 找到 `struct file`，再找到 `socket`，然后经 `__sock_sendmsg` 走到 `sk->sk_prot->sendmsg`。TCP 的 `sk_prot` 是 `tcp_prot`，所以这一步就进了 `tcp_sendmsg`（[net/socket.c](https://github.com/torvalds/linux/blob/v7.0/net/socket.c)、[net/ipv4/tcp.c](https://github.com/torvalds/linux/blob/v7.0/net/ipv4/tcp.c)）。
 
-实测里 `__sock_sendmsg` 到 `tcp_sendmsg` 相隔 2458 ns。这段距离花在系统调用入口、fd 到 `struct file` 的查找、`socket` 到 `sock` 的转换上，还没碰任何网络协议。
+实测 `__sock_sendmsg` 到 `tcp_sendmsg` 相隔 2458 ns。这段距离花在系统调用入口、fd 到 `struct file` 的查找、`socket` 到 `sock` 的转换上，还没碰任何网络协议。
 
 数据的归属在这里发生变化：在此之前它属于用户缓冲区，在此之后它被拷进 `skb`，挂到 `sk_write_queue`，归 socket 所有。
 
@@ -162,7 +162,7 @@ tcp_write_xmit → (组 TCP 段) → ip_queue_xmit → __ip_local_out
 
 `ip_finish_output2` 拿下一跳地址去邻居表里查以太网地址，查到就填好帧头交给设备队列，查不到就发 ARP 并把 skb 挂在 `neigh->arp_queue` 上等。
 
-实测 `ip_finish_output2` 到 `__dev_queue_xmit` 只隔 417 ns，说明 ARP 早在 `connect()` 时就解析完了，这次是命中缓存。**邻居解析不是每个包都做**，只在缓存过期或首次通信时做；这也是为什么第一个包的延迟总比后续包高。
+实测 `ip_finish_output2` 到 `__dev_queue_xmit` 只隔 417 ns，说明 ARP 早在 `connect()` 时就解析完了，这一帧是命中缓存。**邻居解析不是每个包都做**，只在缓存过期或首次通信时做；这也是为什么第一个包的延迟总比后续包高。
 
 ### 3.6 S6：tc 在这里，qdisc 也在这里
 
@@ -205,7 +205,7 @@ veth 没有这一站。`dev_hard_start_xmit` 会直接调 `veth_xmit`，把 skb 
 
 关中断这个动作是 NAPI 的核心：中断只负责"叫醒"，搬运交给轮询。
 
-实测一次 20 MB TCP 接收：`rx_packets` 从 57479 涨到 72038，共 14559 个报文；`enp10s0-rx-0` 这条中断从 20428 涨到 20510，只进了 82 次硬中断，约 178:1。
+一次 20 MB 的 TCP 接收：14559 个报文，只进了 82 次硬中断，约 178:1。
 
 ```bash
 cat /sys/class/net/DEV/statistics/rx_packets   # 传输前后各跑一次，差值即报文数
@@ -216,7 +216,7 @@ grep DEV-rx-0 /proc/interrupts                 # 同上，差值即硬中断数
 
 软中断 `net_rx_action` 遍历挂起的 napi 实例，按预算（`NAPI_POLL_WEIGHT`，默认 64）调 `napi_poll`，e1000e 里是 `e1000_clean_rx_irq`。它从环上按顺序取描述符，为每个描述符建 `skb`（`napi_alloc_skb`），再用 `eth_type_trans` 从帧头取出 ethertype 写进 `skb->protocol`。
 
-实测同一轮 14559 个报文，`e1000_clean_rx_irq` 进了 305 次、`net_rx_action` 300 次，平均一次 poll 取走 48 个包；`eth_type_trans` 被调用 14556 次，基本等于一个包一次。这三个计数来自 4.3 节那段 bpftrace。
+同一批 14559 个报文，`e1000_clean_rx_irq` 进了 305 次、`net_rx_action` 300 次，平均一次 poll 取走 48 个包；`eth_type_trans` 被调用 14556 次，基本等于一个包一次。这三个计数来自 4.3 节那段 bpftrace。
 
 ### 4.3 R3：GRO 把同一条流的小段焊起来
 
@@ -253,7 +253,7 @@ s.close()'
 
 实测 `tcf_classify` 出现在 `__netif_receive_skb` 之后、`ip_rcv` 之前，位置和源码一致。`sch_handle_ingress` 开头会判断 `dev->tcx_ingress` 是否为空，为空就直接返回，所以不挂 tc 过滤器时 `tcf_classify` 一次都不会被调用——这与实测的 0 次一致。
 
-这里有个本文实测出来的坑：**IPv4 在 `ptype_base` 里注册了两个入口**，`func = ip_rcv` 对应单个 skb，`list_func = ip_list_rcv` 对应批量交付。单个走 `ip_rcv`；批量走 `ip_list_rcv` → `ip_sublist_rcv` → `ip_rcv_core`。网卡接收因为 GRO 会攒成 list，实测 5 个 ping 包里 `ip_list_rcv=5`、`ip_rcv=0`。凡是只画 `ip_rcv` 的路径图，在网卡这条路上都对不上。
+一个容易画错的地方：**IPv4 在 `ptype_base` 里注册了两个入口**，`func = ip_rcv` 对应单个 skb，`list_func = ip_list_rcv` 对应批量交付。单个走 `ip_rcv`；批量走 `ip_list_rcv` → `ip_sublist_rcv` → `ip_rcv_core`。网卡接收因为 GRO 会攒成 list，实测 5 个 ping 包里 `ip_list_rcv=5`、`ip_rcv=0`。凡是只画 `ip_rcv` 的路径图，在网卡这条路上都对不上。
 
 ### 4.5 R5：路由决定本地交付还是转发
 
@@ -284,7 +284,7 @@ s.close()'
 
 下面是 S1 到 R6 的完整记录，原始文件在 [trace-5byte.txt](trace-5byte.txt)，探针脚本是 [tl3.bt](tl3.bt)。`Δ` 是与上一个点的时间差，`累计` 从 `__sock_sendmsg` 起算。
 
-采集方式是让 bpftrace 直接把被测进程拉起来，这样 27 个探针只记录这一次运行：
+采集方式是让 bpftrace 直接把被测进程拉起来，27 个探针只记录这一趟收发：
 
 ```bash
 sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5'
@@ -294,7 +294,7 @@ sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18
 
 跑之前先在另一个终端把服务端起起来（1.2 节那条 `tcp-server` 命令），否则 `-c` 拉起的客户端连不上，只会看到 `connect: Connection refused`。
 
-这一轮**不要同时开 tcpdump**。它走 AF_PACKET，每个包都要额外复制一份到 packet socket 并唤醒读进程，本文这份时间线是在没有 tcpdump 的条件下采的。
+采这条时间线时**不要同时开 tcpdump**。它走 AF_PACKET，每个包都要额外复制一份到 packet socket 并唤醒读进程；本文的时间线是在没有 tcpdump 的条件下采的。
 
 | # | 函数 | Δ ns | 累计 µs |
 | --- | --- | --- | --- |
@@ -326,22 +326,22 @@ sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18
 | 26 | `tcp_v4_rcv` | 292 | 18.12 |
 | 27 | `tcp_v4_do_rcv` | 541 | 18.67 |
 
-### 5.2 三个从这份记录里得出的结论
+### 5.2 从时间线里读出的三件事
 
 **第一，接收半程没有换线程。** 27 个点的 `tid` 全是 4443，`cpu` 全是 0。也就是 B 的接收处理，是在 A 的 `write()` 系统调用里跑完的。
 
 原因在 veth 的实现：`veth_xmit` → `dev_forward_skb` → `netif_rx` 把 skb 挂到**本 CPU** 的 `process_queue`，等这一层 `local_bh_enable` 时就地触发 `net_rx_action`，于是 `enqueue_to_backlog` 和 `net_rx_action` 在时间线上挨着出现，中间只隔 500 ns。
 
-**第二，同样的代码可以跑在完全不同的上下文里。** 另一份记录里，同一个包从定时器软中断发出，时间线是这样的：
+**第二，同样的代码可以跑在完全不同的上下文里。** 同一个包也可能从定时器软中断里发出，那时的时间线是这样：
 
 ```text
 1894023326984 kprobe:ip_queue_xmit   pid=0      cpu=1 comm=swapper/1
 1894023427490 kprobe:net_rx_action   pid=24     cpu=1 comm=ksoftirqd/1
 ```
 
-同样是 `ip_queue_xmit` 到 `net_rx_action`，这次隔了 100 µs，执行者从"发送进程"变成"ksoftirqd"。所以"接收路径属于接收进程"这个说法是错的：**它属于当时正在执行软中断的那个任务**。
+同样是 `ip_queue_xmit` 到 `net_rx_action`，两者隔了 100 µs，执行者从发送进程变成了 `ksoftirqd`。所以"接收路径属于接收进程"这个说法是错的：**它属于当时正在执行软中断的那个任务**。
 
-**第三，绝对耗时不能读。** 同一段路径在不同探针数量下差异很大：15 个探针那一轮 13.9 µs，17 个探针那一轮 22.6 µs，26 个探针这一轮 18.7 µs。没有稳定的线性关系，说明探针开销和运行时噪声同量级。
+**第三，绝对耗时不能读。** 同一段路径在不同探针数量下差异很大：15 个探针时 13.9 µs，17 个时 22.6 µs，26 个时 18.7 µs。没有稳定的线性关系，说明探针开销和运行时噪声同量级。
 
 所以这份记录的用途是**顺序**和**量级**：整趟收发在几十微秒内完成，`tcp_sendmsg` 和 `tcp_write_xmit` 是最大的两个间隔，其余每一站都是几百纳秒。要测绝对耗时，得减少探针，换 `fentry` 或直接用 `perf`。
 

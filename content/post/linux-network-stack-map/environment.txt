@@ -2,7 +2,7 @@
 
 采集时间：2026-11-27
 主机形态：VMware Fusion 虚拟机
-发行版：Ubuntu，aarch64
+发行版：Ubuntu 26.04.1 LTS，aarch64
 
 uname -a
 Linux master 7.0.0-44-generic #44-Ubuntu SMP PREEMPT_DYNAMIC Fri Nov  6 02:50:28 UTC 2026 aarch64 GNU/Linux
@@ -21,8 +21,8 @@ MemTotal = 3892 MB
   enp2s0   bus 0000:02:00.0  MSI-X 50/51/52
   enp10s0  bus 0000:0a:00.0  MSI-X 59/60/61
 
-承载实验流量的网卡：本次是 enp10s0（192.168.190.10）。
-早期记录里同一网段显示为 enp2s0，重启后换成了 enp10s0，所以正文命令用 DEV 代指。
+承载实验流量的网卡：enp10s0（192.168.190.10，仅主机网络，Mac 由此 SSH 登录）。
+网段划分与静态地址见 /p/ubuntu-server-vm-install/。
 
 单收发队列，RX/TX 环形缓冲各 256（ethtool -g），MSI-X 三条
 排队规则：fq_codel（tc qdisc show dev enp10s0）
