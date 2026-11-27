@@ -56,7 +56,7 @@ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5
 
 服务端第 4 个参数是"accept 之后等多少毫秒才开始读"，客户端的是"写多少字节"（不给就是 5）。成功时两边各打一行：服务端 `ready TCP 10.77.1.2:18082` 和 `received=5 bytes`，客户端 `write accepted=5 bytes in … ms`。只看到 `ready` 而没看到 `received`，说明服务端还在那 1500 ms 的等待里。
 
-A 是 `10.77.1.1/24`，B 是 `10.77.1.2/24`，中间没有网关。[环境记录](environment.txt)、[抓包原文](wire-71bytes.txt)、[函数时间线](trace-5byte.txt)、[网卡侧计数](nic-napi.txt)、[hook 对照](netfilter-hooks.txt) 都在同目录，也可以直接下[实验记录包](experiment-records.zip)。
+A 是 `10.77.1.1/24`，B 是 `10.77.1.2/24`，中间没有网关。源码是 [netdemo.c](netdemo.c) 和 [lab.sh](lab.sh)，[环境记录](environment.txt)、[抓包原文](wire-71bytes.txt)、[函数时间线](trace-5byte.txt)、[网卡侧计数](nic-napi.txt)、[hook 对照](netfilter-hooks.txt) 都在同目录，也可以直接下[实验记录包](experiment-records.zip)。
 
 ### 1.3 为什么用两套实验
 
