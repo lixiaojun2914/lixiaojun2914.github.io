@@ -4,7 +4,7 @@ slug: linux-network-stack-map
 date: "2026-11-22T16:01:00+08:00"
 lastmod: "2026-11-27"
 draft: false
-description: "跟着一次五字节发送走完 S1–S7、R1–R7 十四个交接点：每一站谁拿着数据、做了什么、交给谁，细节留给后续九篇。"
+description: "把一次五字节发送切成五块：每块谁拿着数据、做了什么、交给谁，以及三处容易看错的边界；函数与分支留给后续各篇。"
 categories:
     - Linux 与网络
 tags:
@@ -12,9 +12,9 @@ tags:
     - 网络栈
 ---
 
-一次 `write()` 返回 5，说明内核收下了这 5 个字节，仅此而已。它们随后被拷进 skb、排队、加头、交给驱动，再从对端网卡的中断里出来，穿过协议栈，最后落进 `read()` 的缓冲区。中间换过几次上下文、经过谁的队列，就是本文要走的路线。
+一次 `write()` 返回 5，说明内核收下了这 5 个字节，仅此而已。它们随后被拷进 skb（内核描述一个报文的对象，数据本体在它指向的缓冲区里）、排进队列、加上各层头部、交给驱动，再从对端网卡的中断里出来，穿过协议栈，最后落进 `read()` 的缓冲区。中间换过几次上下文、经过谁的队列，就是本文要走的路线。
 
-主线是一次五字节 TCP 发送。文中的报文数、中断数和耗时都来自 1.2 节那台机器：Ubuntu ARM64、内核 7.0.0-44。这一篇是地图，不是手册——发送侧记作 S1–S7，接收侧记作 R1–R7，全文只用这一套编号，每一站只回答一个问题：这一刻数据在谁手里，下一步谁接手。函数和分支细节留给对应篇目，7.2 那张表是索引。
+这是系列的第一篇，只做一张地图：把这条路切成五块，每块说清三件事——这一刻数据在谁手里、它做了什么、交给谁；块与块之间那几处容易看错的边界单独讲。具体的内核函数、分支和数据结构留给后面各篇，9.2 是索引。
 
 系列安排：一、路径地图 · 二、socket 与多路复用 · 三、sk_buff · 四、驱动与 NAPI · 五、路由与邻居 · 六、qdisc 与流控 · 七、Netlink · 八、网络命名空间 · 九、veth 与 bridge · 十、Netfilter 与连接跟踪。
 
@@ -30,7 +30,7 @@ tags:
 
 虚拟机接了两块 `e1000e`，分工是固定的：`enp2s0` 走 NAT，`192.168.126.135/24`，负责出网和 DNS；`enp10s0` 走仅主机网络，静态 `192.168.190.10/24`，Mac 从这里 SSH 进来，也就是实验流量走的那块。两块网卡参数相同：单收发队列、RX/TX 环形缓冲各 256、排队规则 `fq_codel`。这两块网卡怎么分的网段、静态地址怎么填，见[《Ubuntu Server 虚拟机安装及配置》](/p/ubuntu-server-vm-install/)（那篇装的是 24.04，双网卡布局与此相同）。
 
-路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。用到的文件有五个：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)，以及 5.1、4.3、6.2 三节各用一个的 [tl3.bt](tl3.bt)、[gro3.bt](gro3.bt)、[hooks.bt](hooks.bt)。一并放到同一个工作目录，后面每条命令都在这里执行：
+路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。用到的文件有五个：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)，以及附录、块 D、第八节各用一个的 [tl3.bt](tl3.bt)、[gro3.bt](gro3.bt)、[hooks.bt](hooks.bt)。一并放到同一个工作目录，后面每条命令都在这里执行：
 
 ```bash
 mkdir -p ~/nslab && cd ~/nslab
@@ -66,11 +66,23 @@ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5
 
 A 是 `10.77.1.1/24`，B 是 `10.77.1.2/24`，中间没有网关。[环境记录](environment.txt)、[抓包原文](wire-71bytes.txt)、[函数时间线](trace-5byte.txt)、[网卡侧计数](nic-napi.txt)、[hook 对照](netfilter-hooks.txt) 都在同目录，也可以直接下[实验记录包](experiment-records.zip)。
 
-### 1.3 两套实验各自覆盖的站点
+### 1.3 五块与十四个交接点
 
-veth 能把 S1 到 R6 完整走通，且耗时在微秒级，适合看顺序；但它没有 DMA、没有描述符环、没有中断，S7 和 R1 在这条路上根本不存在。DMA、NAPI、GRO 只能在同一台机器的真实网卡上看，做法是从对端灌 20 MB，数接收侧的计数。两组数据不能拼成一条时间线，后面分开标注。
+一条路按"数据在谁手里"切成五块，块里是十四个交接点，发送侧记作 S1–S7、接收侧记作 R1–R7，全文只用这一套编号。
+
+| 块 | 站点 | 这一块做什么 | 展开在哪篇 |
+| --- | --- | --- | --- |
+| A 应用与 socket | S1–S2 | 把字节拷进 skb、挂到发送队列，判断能不能发 | 第二篇 |
+| B 协议栈的发送 | S3–S4 | 组 TCP 段、填 IP 头、定路由、两次 hook、分片判断 | 第三篇 |
+| C 设备与链路 | S5–S7 | 查 MAC、过 tc 与 qdisc、交给驱动与 DMA | 第四、六篇 |
+| D 对端的接收上半程 | R1–R4 | 中断、轮询、GRO、二层分发 | 第四篇 |
+| E 本地交付、入队与唤醒 | R5–R7 | 路由判定、四元组查找、入队、唤醒 `read()` | 第二、五篇 |
 
 ![从 write 到 read 的十四个交接点：发送 S1–S7，接收 R1–R7，左侧是执行上下文，右侧是 tc 与 netfilter 的位置](path.svg)
+
+图从上往下是一条路：左边一列是执行上下文，中间是 S1–S7 与 R1–R7，右边标着 hook 与 tc 的位置。从 S1 出发，跨过中间那条虚线（veth）就进了对端，R1 之后是接收半程。走一遍时只看"下一步谁接手"，函数名可以整段跳过。
+
+veth 上能走完 A 到 E 的全部站点，只有 C 末尾的 DMA 与描述符环、D 开头的硬中断在这条路上不存在；那两处的数字来自另一组网卡实验，后文会分开标注。
 
 ## 二、线路上 71 字节帧的构成
 
@@ -100,7 +112,7 @@ veth 能把 S1 到 R6 完整走通，且耗时在微秒级，适合看顺序；�
 同一个包有三个长度，各有各的用处：
 
 - 应用关心 5，这是它写进去的字节数。
-- `ip_rcv_core` 关心 57，这是 IP 头里声明的总长，决定了要交给上层多少字节。
+- IP 层关心 57，这是 IP 头里声明的总长，决定了要交给上层多少字节。
 - 驱动和 `tc` 关心 71，这是链路上实际搬运的字节数，MTU 比对、qdisc 计数都用它。
 
 另有一段开销不进任何一层：线路上每个帧前面还有 8 字节前导码，帧与帧之间留 12 字节间隙。这两段不写进 `skb`，所以 `ip -s link` 的字节数永远对不上物理层速率，算带宽时要自己加上去。
@@ -109,185 +121,96 @@ veth 能把 S1 到 R6 完整走通，且耗时在微秒级，适合看顺序；�
 
 2.1 那张表里四层加起来，属于应用数据的只有 5 个字节，其余 66 字节都是各层头部。为送这 5 个字节，协议栈在每个包上花了 13 倍的代价。短请求、小响应躲不开这笔固定开销，各种合并小包的优化也大多出自这个动机。
 
-## 三、发送侧：从 write 到描述符环
+## 三、块 A：应用与 socket（S1–S2）
 
-### 3.1 S1：五个字节进入 socket
+`write()` 把用户缓冲区里的字节交给内核。socket 层按 fd 找到这条连接，把字节拷进 skb，挂到它的发送队列上——做完这一步，`write()` 就可以返回 5 了。返回值只说明"进队成功"，不说明字节已经上路。
 
-`write()` 要做的事只有一件：把用户缓冲区里的字节交出去。从 fd 找到 `socket` 这一段由 socket 层完成，交给协议的入口是 `tcp_sendmsg`（[net/socket.c](https://github.com/torvalds/linux/blob/v7.0/net/socket.c)、[net/ipv4/tcp.c](https://github.com/torvalds/linux/blob/v7.0/net/ipv4/tcp.c)）。数据在这一步换了主人：之前属于用户缓冲区，之后被拷进 skb，挂到 `sk_write_queue`，归 socket 所有。
+什么时候真发出去，由 TCP 的发送判定决定：拥塞窗口、对端通告窗口、Nagle、发送队列长度限制（TSQ）任何一条不满足，数据就继续等在队列里。所以抓不到包而 `write` 成功并不奇怪，包可能还躺在这一块。
 
-### 3.2 S2：队列与发送判定
+数据在这里换了主人：之前属于用户缓冲区，之后归 socket 的发送队列。fd 到 socket 之间有几层对象、队列满了怎么办，是第二篇的题目。
 
-`tcp_sendmsg` 只负责入队，真正决定"现在发多少"的是 `tcp_write_xmit`：拥塞窗口 `snd_cwnd`、对端通告窗口、Nagle、TSQ 任何一个不满足，数据就继续排队。所以 `write()` 返回 5 只说明字节进了内核队列，不说明它们已经在路上；抓不到包而 `write` 成功，问题多半落在 S2 到 S6 之间。整条链上最慢的也是这一段：建 skb、更新队列、准备校验和都在这儿，5.1 的表里它单独占了 5.5 µs。
+## 四、块 B：协议栈的发送（S3–S4）
 
-### 3.3 S3：IP 头与两次出方向 hook
+出队之后，TCP 把字节组装成段、填上 TCP 头，交给 IP 层。IP 层填 IP 头、算校验和，并按目的地址选路由：出口设备和源地址在这一步定下来，后面的处理都依赖这个结果。
 
-TCP 段交给 IP 层后，路由在 `ip_queue_xmit` 里就定下来了：出口设备和源地址写进 `skb_dst`，后面拿到的 skb 都带着这个结果。接着填 IP 头、算校验和，两次出方向 hook `LOCAL_OUT` 与 `POST_ROUTING` 分别夹在填头之后和交给链路层之前（[net/ipv4/ip_output.c](https://github.com/torvalds/linux/blob/v7.0/net/ipv4/ip_output.c)）。
+这一段会先后经过两个 netfilter hook——`LOCAL_OUT` 在路由已定的包上，`POST_ROUTING` 在即将交给链路层的包上。它们不是"层"，是固定在既有路径上的回调点，没有规则也会被调用，第八节给出证据。
 
-### 3.4 S4：分片判断
+最后一个判断是能不能整块交给下一跳：不超过 MTU 直接放过，超过就分片。开了 GSO 的大包是个例外——它交给网卡去切，不在协议栈里分段，这两种"分段"经常被混为一谈。
 
-`ip_finish_output` 只判断一件事：这个 skb 能不能整块交给下一跳。不超过 MTU 直接放过；超过且允许分片就进 `ip_fragment`；超过又置了 DF 位，就回一个 ICMP 并丢弃。本例 71 字节、MTU 1500，直接过。开了 GSO 的 skb 长度可以远超 MTU，但它交给网卡去切，不在协议栈里分片，这两种"分段"要分清。
+## 五、块 C：设备与链路（S5–S7）
 
-### 3.5 S5：下一跳地址的 MAC 解析
+交给网卡之前要先补以太网头：拿下一跳地址查邻居表，换成 MAC。查不到就先发 ARP、把包挂起来等，所以第一个包的延迟总比后续高。
 
-`ip_finish_output2` 拿下一跳地址查邻居表：查到就填好帧头交给设备队列，查不到就发 ARP、把 skb 挂在 `neigh->arp_queue` 上等。邻居解析只在首次通信或缓存过期时发生，第一个包的延迟总比后续高，原因就在这里；这一帧的 ARP 在 `connect()` 时就完成了。
+再往下是设备的发送入口：选发送队列、过 tc egress、入 qdisc，然后交给驱动。tc 的 egress 挂在 qdisc 之前，这是它两个位置中的一个；qdisc 决定有没有排队——veth 是 `noqueue`，真实网卡是 `fq_codel`，所以"在 veth 上测不出队列延迟"不是方法问题，是这条路上根本没有队列。
 
-### 3.6 S6：tc egress 与 qdisc 入队
+驱动力这最后一段：从环形缓冲里取一个描述符，写好 skb 的 DMA 地址和长度，敲门铃通知网卡；之后网卡自己发 DMA 读请求搬数据，CPU 不再参与。
 
-`__dev_queue_xmit` 是设备发送的总入口（[net/core/dev.c](https://github.com/torvalds/linux/blob/v7.0/net/core/dev.c)）：选发送队列、过 tc egress、入 qdisc，再交给驱动。tc 的 egress 挂点在 qdisc 之前，匹配走 `tcf_classify`。qdisc 差别很大：veth 的 `a0` 是 `noqueue`，没有排队，直接进 `dev_hard_start_xmit`；真实网卡是 `fq_codel`，有入队、有调度、有丢弃统计。所以"在 veth 上测不出队列延迟"不是方法问题，是这条路上根本没有队列。
+veth 没有 DMA、没有描述符环、没有中断：它的发送函数直接把 skb 交给对端命名空间的接收路径，这也是第八节里"接收在发送的 `write` 里跑完"的原因。
 
-### 3.7 S7：描述符、DMA 与门铃
+## 六、块 D：对端的接收上半程（R1–R4）
 
-`dev_hard_start_xmit` 交给驱动的发送函数，e1000e 里是 `e1000_xmit_frame`：取一个空闲描述符，把 skb 的 DMA 地址和长度写进去，敲门铃通知网卡。之后网卡自己发 DMA 读请求搬数据，CPU 不再参与，大包吞吐由 DMA 和总线决定，与 CPU 频率关系不大。环的大小和队列数一眼能看：`ethtool -g enp10s0` 给出 RX/TX 各 256，`ls /sys/class/net/enp10s0/queues/` 只有 `rx-0` 与 `tx-0`。
+对端网卡收到帧，用 DMA 写进 rx 环里描述符指向的缓冲区，然后发一个中断。驱动进来先把这个队列的中断关掉，改由软中断轮询取包——中断只负责叫醒，搬运交给轮询。省下的中断很可观：灌 20 MB 进来，一万四千多个报文只触发 82 次硬中断。
 
-veth 没有这一站：`dev_hard_start_xmit` 直接调 `veth_xmit`，把 skb 交给对端 netns 的接收路径。这也是 5.2 里接收半程没有换线程的原因。
+轮询一次取一批（预算默认 64 个），每取一个就建 skb、从帧头读出协议类型。GRO 紧接着做合并：同一条流、同方向、序号连续的段合成一个大段。还是那 20 MB，一万四千多个 skb 交给协议栈时只剩 610 次 IP 层处理，约 24 个合一个。
 
-## 四、接收侧：从 DMA 到 read
+二层分发是这一块的最后一关，顺序固定：先过 tc ingress（tc 的第二个位置），再按协议类型找上层处理函数。IPv4 在这里注册了两个入口，单个包一个、批量一个；网卡接收因为 GRO 攒成了批量，走的是批量那条，所以只画单包入口的路径图在这条路上是错的。
 
-### 4.1 R1：DMA 写内存与中断通知
+## 七、块 E：本地交付、入队与唤醒（R5–R7）
 
-网卡收到帧，用 DMA 写进 rx 环里某个描述符指向的缓冲区，回写描述符状态，触发 MSI-X 中断。驱动 `e1000_intr_msix_rx` 先把该队列的中断关掉，再 `napi_schedule` 把 poll 排进软中断——中断只负责叫醒，搬运交给轮询。这能省下多少中断，收一次大流就看得出：灌 20 MB 进来，一万四千多个报文只触发 82 次硬中断，平均 180 个包一次。
+IP 层拿到包先查路由：目的地址是本机就本地交付，中间过 `LOCAL_IN`；不是本机且允许转发就走转发，过 `FORWARD`。这个分岔决定了后面碰哪几个 hook。
 
-### 4.2 R2：NAPI poll 的批量取包
+本地交付时，按四元组在连接表与监听表里找到 socket，把数据挂到接收队列；序号不连续则先进乱序队列等重传。到这一步，数据已经在内核里等应用了，但应用还没醒。
 
-`net_rx_action` 遍历挂起的 napi 实例，按预算（`NAPI_POLL_WEIGHT`，默认 64）调各自的 poll 函数——e1000e 里是 `e1000_clean_rx_irq`，它从环上按顺序取描述符，为每个描述符建 skb，再用 `eth_type_trans` 从帧头取出 ethertype 写进 `skb->protocol`。同一批报文，一次 poll 平均取走 48 个包，`eth_type_trans` 则是一个包一次。
+唤醒发生在入队之后：TCP 通知 socket 可读，等在 `read()` 上的进程被叫醒，把接收队列里的 skb 拷进用户缓冲区。用了 epoll 的话，就绪事件先走一遍回调链挂到就绪链表——这条链是第二篇的题目。
 
-### 4.3 R3：GRO 合并同一条流的连续段
+## 八、块与块之间的三处边界
 
-`napi_gro_receive` 在交给协议栈之前做一次合并：同一条流、同方向、序号连续的段，合进前一个 skb 的 frags。合并后的 skb 长度可以远超 MTU，因为它已经不是链路上的帧，而是给协议栈看的段。还是那 20 MB（脚本 [gro3.bt](gro3.bt)，七个 kprobe 各数一件事），一万四千多个 skb 只换来 610 次 IP 层处理，约 24 个合一个：GRO 省的不是中断，是上层遍历 skb 的次数。
+- 贯穿全程的是 skb。每次"交给谁"，交的都是一个 skb 指针，在 veth 上甚至就是同一个对象转手。它不是数据本身，是指向数据的一组指针加上各层头的位置；谁持有它，数据就在谁的队列或缓冲区里。
+- hook 和 tc 都不是"层"。hook 是协议栈里五个固定位置的回调点，调用发生在既有代码路径上；tc 也只有两个位置，egress 在 qdisc 之前、ingress 在二层分发之前。把它们画成独立的层，就会误解它们能改什么。一个现成的例子：全新的、`nft list ruleset` 为空的命名空间里，出方向两个 hook 每次都在被调用，挂的是 Ubuntu 默认启用的 AppArmor 表项（记录见 [netfilter-hooks.txt](netfilter-hooks.txt)）——判断包有没有经过 netfilter，看的是 hook 有没有被调用，不是 `nft list ruleset` 空不空。
+- 接收侧有两个入口。单包和批量（GRO 之后）走的是两条路径，一张图很难同时画对；本篇按批量画，那是网卡上实际发生的那条。
 
-### 4.4 R4：二层分发，tc 在 ptype 之前
+## 九、现象定位与后续篇目
 
-`netif_receive_skb` → `__netif_receive_skb_core` 是二层分发的总入口，顺序固定：先过 tc ingress，再按 `skb->protocol` 在 `ptype_all` / `ptype_base` 里找处理函数。IPv4 在这里注册了两个入口：`ip_rcv` 处理单个 skb，`ip_list_rcv` 处理批量交付。网卡接收因为 GRO 会攒成 list，走的是 `ip_list_rcv` 那条，`ip_rcv` 一次都不会被调用——只画 `ip_rcv` 的路径图，在网卡这条路上是错的。不挂 tc 过滤器时，`sch_handle_ingress` 一开头就返回，tc 不参与。
+### 9.1 现象与落点
 
-### 4.5 R5：本地交付与转发的分岔
-
-`ip_rcv_core` 之后进 `PRE_ROUTING`，`ip_rcv_finish` 用 `ip_route_input_noref` 查路由、写进 `skb_dst`。查完只有两条路：目的地址是本机就 `ip_local_deliver`（中间过 `LOCAL_IN`），不是本机且允许转发就 `ip_forward`（中间过 `FORWARD`）。这 5 个字节走前者，不碰转发那一段。
-
-### 4.6 R6：四元组查找与入队
-
-`ip_local_deliver_finish` → `ip_protocol_deliver_rcu` 按协议号找到 `tcp_v4_rcv`（[net/ipv4/tcp_ipv4.c](https://github.com/torvalds/linux/blob/v7.0/net/ipv4/tcp_ipv4.c)）。TCP 用四元组做哈希，在 `ehash`（已建立连接）和 `lhash`（监听）里找到 socket，`tcp_v4_do_rcv` → `tcp_rcv_established` 把数据挂到 `sk_receive_queue`；序号不连续则先进 `out_of_order_queue` 等重传。到这里数据已经躺在接收 socket 的队列里，但接收进程还没醒。
-
-### 4.7 R7：唤醒接收进程并拷贝数据
-
-`tcp_rcv_established` 入队后调 `sk_data_ready`（默认实现 `sock_def_readable`），唤醒在 `sk_sleep` 上等的进程；被唤醒的 `read()` 进 `tcp_recvmsg`，把 `sk_receive_queue` 里的 skb 逐段拷到用户缓冲区。用了 epoll 的话，`sock_def_readable` 还会经 `ep_poll_callback` 把就绪事件挂到就绪链表——这条链是第二篇的题目。
-
-## 五、一次五字节收发的函数时间线
-
-### 5.1 二十七个探针点与时间线
-
-把 14 站拆成 27 个探针点，先后和量级就都落在一条时间轴上。原始记录在 [trace-5byte.txt](trace-5byte.txt)，探针脚本是 [tl3.bt](tl3.bt)；`Δ` 是相邻两点的差，`累计` 从 `__sock_sendmsg` 起算。
-
-采集时让 bpftrace 直接把被测进程拉起来，只记录这一趟收发：
-
-```bash
-sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5'
-```
-
-跑之前先在另一个终端起服务端（1.2 节那条 `tcp-server`）。另外不要同时开 tcpdump：它走 AF_PACKET，每个包都要多复制一份并唤醒读进程，时间线就不干净了。
-
-| # | 函数 | Δ ns | 累计 µs |
-| --- | --- | --- | --- |
-| 1 | `__sock_sendmsg` | — | 0.00 |
-| 2 | `tcp_sendmsg` | 2458 | 2.46 |
-| 3 | `tcp_write_xmit` | 5500 | 7.96 |
-| 4 | `ip_queue_xmit` | 1708 | 9.67 |
-| 5 | `__ip_local_out` | 375 | 10.04 |
-| 6 | `nf_hook_slow`，hook 3 | 333 | 10.37 |
-| 7 | `ip_output` | 500 | 10.87 |
-| 8 | `nf_hook_slow`，hook 4 | 250 | 11.12 |
-| 9 | `ip_finish_output` | 375 | 11.50 |
-| 10 | `ip_finish_output2` | 375 | 11.87 |
-| 11 | `__dev_queue_xmit` | 417 | 12.29 |
-| 12 | `tcf_classify` | 333 | 12.62 |
-| 13 | `dev_hard_start_xmit` | 708 | 13.33 |
-| 14 | `eth_type_trans` | 334 | 13.67 |
-| 15 | `enqueue_to_backlog` | 333 | 14.00 |
-| 16 | `net_rx_action` | 500 | 14.50 |
-| 17 | `__netif_receive_skb` | 375 | 14.87 |
-| 18 | `ip_rcv` | 458 | 15.33 |
-| 19 | `ip_rcv_core` | 250 | 15.58 |
-| 20 | `nf_hook_slow`，hook 0 | 334 | 15.92 |
-| 21 | `ip_rcv_finish` | 499 | 16.42 |
-| 22 | `ip_local_deliver` | 542 | 16.96 |
-| 23 | `nf_hook_slow`，hook 1 | 208 | 17.16 |
-| 24 | `ip_local_deliver_finish` | 334 | 17.50 |
-| 25 | `ip_protocol_deliver_rcu` | 333 | 17.83 |
-| 26 | `tcp_v4_rcv` | 292 | 18.12 |
-| 27 | `tcp_v4_do_rcv` | 541 | 18.67 |
-
-### 5.2 执行上下文与耗时量级
-
-27 个点的 `tid` 全是 4443、`cpu` 全是 0：B 的接收处理是在 A 的 `write()` 里跑完的，中途没有换线程。原因在 veth：`veth_xmit` → `dev_forward_skb` → `netif_rx` 把 skb 挂到本 CPU 的 `process_queue`，等这一层 `local_bh_enable` 时就地触发 `net_rx_action`，于是 `enqueue_to_backlog` 和 `net_rx_action` 在表里紧挨着。
-
-换一种触发方式，执行者就变了：同一条路径也可能落在 `ksoftirqd` 上，取决于软中断在哪个上下文里被抬起。所以"接收路径属于接收进程"这句话是错的，**它属于当时正在执行软中断的那个任务**。
-
-绝对耗时不能当真实值读：换几组探针数，同一段路径的总量在十几到二十几微秒之间跳，与探针自身的开销同量级。能用的是顺序和量级——整趟不到 20 µs，最长的两段都在发送侧，其余每站几百纳秒。要测绝对耗时，得减少探针、换 `fentry`，或者直接用 `perf`。
-
-### 5.3 测量的边界
-
-这份记录不覆盖三样东西：S7 和 R1（veth 没有 DMA、描述符环和中断，那两站的数字来自网卡实验）；函数内部的耗时（`tcp_transmit_skb` 在本机内核上没有独立符号，时间线从 `tcp_write_xmit` 直接跳到 `ip_queue_xmit`）；并发行为（拥塞窗口、qdisc 排队、GRO 合并要批量场景才显现）。
-
-## 六、netfilter hook、tc 与 XDP 的挂点
-
-### 6.1 五个 hook 的位置与参与计数
-
-netfilter 的 IPv4 hook 有五个，编号和出现位置固定：
-
-| 编号 | 常量 | 出现在 | 无规则时 | 空基链 | 加 tc 过滤 |
-| --- | --- | --- | --- | --- | --- |
-| 0 | `NF_INET_PRE_ROUTING` | `ip_rcv_core` 之后、`ip_rcv_finish` 之前 | 0 | 8 | 8 |
-| 1 | `NF_INET_LOCAL_IN` | `ip_local_deliver` 内 | 0 | 8 | 8 |
-| 2 | `NF_INET_FORWARD` | `ip_forward` 内 | 0 | 0 | 0 |
-| 3 | `NF_INET_LOCAL_OUT` | `__ip_local_out` 内 | 8 | 8 | 8 |
-| 4 | `NF_INET_POST_ROUTING` | `ip_output` 之后、`ip_finish_output` 之前 | 8 | 8 | 8 |
-| — | `tcf_classify` | egress 与 ingress 各一处 | 0 | 0 | 8 |
-
-三列分别是：不装 nft、两个 netns 各装五个空基链、再加 `clsact` 与 `matchall`。0 表示这一列里没有包经过那个 hook，非 0 表示每个包都停了一下；绝对值随连接里的包数浮动，不必正好是 8。配置与计数的完整过程在 [netfilter-hooks.txt](netfilter-hooks.txt)。
-
-由此看清两件事：入方向的两个 hook 要装了 filter 基链才会进 `nf_hook_slow`，规则为空也照样进，只是立即返回；出方向的两个 hook 一条规则都没有也在调，而且不是 nft 干的。
-
-### 6.2 出方向两个 hook 上的 AppArmor 表项
-
-在一个全新的 netns 里（`nft list ruleset` 为空）ping 三次回环，hook 3 和 hook 4 仍各有 6 次进入 `nf_hook_slow`。把表项里的函数地址打出来，挂的是 `apparmor_ip_localout` 和 `apparmor_ip_postroute`（脚本 [hooks.bt](hooks.bt)）：Ubuntu 默认启用的 AppArmor 在出方向常驻一条表项，与 nft 规则无关。
-
-所以判断包有没有经过 netfilter，看的是 `nf_hook_slow` 有没有被调用，不是 `nft list ruleset` 空不空。"我没配防火墙，所以包没经过 netfilter"这句话，在 Ubuntu 上基本是错的。
-
-### 6.3 三个挂点的先后顺序
-
-- `tc egress` 在 `__dev_queue_xmit` 里、qdisc 入队之前，作用对象是已经走完 IP 层、即将下发的 skb。
-- `tc ingress` 在 `__netif_receive_skb_core` 里、ptype 分发之前，作用对象是刚建好、协议字段已填但还没进 IP 层的 skb。
-- `XDP` 在驱动里、`skb` 还没分配之前，拿到的是 `xdp_buff`，只能看到线性区的原始帧。能改的东西比 tc 少，代价也最低。
-
-这三者的顺序决定了它们能做什么：XDP 最早，看不到 `skb` 的元数据；tc ingress 能看到 `skb`，但还没有路由结果；tc egress 已经知道出口设备。eBPF 程序可以挂在这三处，本篇只标出位置，程序写法不在十篇的实验范围内。
-
-## 七、现象定位与后续篇目
-
-### 7.1 现象与对应站点
-
-| 现象 | 先看哪一站 | 命令 |
+| 现象 | 先看哪一块 | 命令 |
 | --- | --- | --- |
-| `write` 返回 5，但抓包没有 | S2–S6 | `ss -ti`、`tc -s qdisc show` |
-| 本机抓到了，对端抓不到 | S6–S7 | `ip -s link`、`ethtool -S` |
-| 对端抓到了，应用读不到 | R4–R7 | `ss -mni`、`cat /proc/net/snmp` |
-| 收包丢在环上 | R1–R2 | `ethtool -S enp10s0 \| grep -i drop` |
-| 收包丢在协议栈 | R4–R5 | `nstat -az`、`tc -s filter show` |
-| 延迟忽高忽低 | R1–R2、S6 | `cat /proc/interrupts`、`tc -s qdisc` |
+| `write` 返回 5，抓包没有 | A（是否入队）、B（是否放行） | `ss -ti`、`tc -s qdisc show` |
+| 本机抓到了，对端抓不到 | C | `ip -s link`、`ethtool -S` |
+| 对端抓到了，应用读不到 | D、E | `ss -mni`、`cat /proc/net/snmp` |
+| 收包丢在环上 | D 的前半 | `ethtool -S enp10s0 \| grep -i drop` |
+| 收包丢在协议栈 | D、E | `nstat -az`、`tc -s filter show` |
+| 延迟忽高忽低 | C、D | `cat /proc/interrupts`、`tc -s qdisc` |
 
-### 7.2 各站与后续篇目
+### 9.2 各块与后续篇目
 
-| 站 | 交给 |
+| 块 | 展开在哪篇 |
 | --- | --- |
-| S1、S2、R6、R7 | 第二篇 socket 与多路复用 |
-| S3 的 skb 结构、S4 的分片 | 第三篇 sk_buff |
-| R1、R2、R3 | 第四篇 驱动与 NAPI |
-| S5 | 第五篇 路由与邻居 |
-| S6 | 第六篇 qdisc 与流控 |
+| A 的 socket 对象与等待队列 | 第二篇 socket 与多路复用 |
+| skb 的组成与各层头 | 第三篇 sk_buff |
+| C、D 的 DMA、描述符环、NAPI、GRO | 第四篇 驱动与 NAPI |
+| 路由判定与邻居解析 | 第五篇 路由与邻居 |
+| qdisc 与 tc | 第六篇 qdisc 与流控 |
 | 配置类命令怎么下发 | 第七篇 Netlink |
 | 这套拓扑怎么造出来 | 第八篇 网络命名空间 |
 | veth 与 bridge 的内部 | 第九篇 veth 与 bridge |
-| hook 与 conntrack | 第十篇 Netfilter 与连接跟踪 |
+| hook、conntrack 与 AppArmor 表项 | 第十篇 Netfilter 与连接跟踪 |
 
-## 八、命令与接口速查
+## 十、附：一次五字节的耗时分布
+
+把十四个交接点拆成二十七个探针点，按段归并，这一趟收发的时间这样分：
+
+| 段 | 从 | 到 | 用时 |
+| --- | --- | --- | --- |
+| socket 层入口 | `write()` 进内核 | 字节进发送队列 | 2.5 µs |
+| TCP 组包与发送判定 | 发送队列 | 交出 TCP 段 | 7.2 µs |
+| IP 层 | 收到 TCP 段 | 定下出口、交给设备 | 2.6 µs |
+| 设备与驱动 | 设备发送入口 | 对端建出 skb | 1.4 µs |
+| 接收半程 | 对端 skb | 数据进接收队列 | 5.0 µs |
+
+合计不到 19 µs，其中接收半程那 5 µs 是在发送进程的 `write()` 里跑完的——就是块 C 末尾那条 veth 捷径。在这份记录里，绝对耗时只能当量级看：换几组探针数，同一段路径的总量在十几到二十几微秒之间跳，与探针自身的开销同量级。二十七个点的原始记录在 [trace-5byte.txt](trace-5byte.txt)，探针脚本是 [tl3.bt](tl3.bt)。
+
+## 十一、命令与接口速查
 
 | 命令 | 用途 | 关键输出 |
 | --- | --- | --- |
@@ -310,7 +233,7 @@ netfilter 的 IPv4 hook 有五个，编号和出现位置固定：
 | `ip -s link show enp10s0` | 看设备计数 | `RX/TX packets/errors/dropped` |
 | `nstat -az` | 看协议栈统计 | `IpInReceives`、`TcpInErrs` |
 
-## 九、名词解释
+## 十二、名词解释
 
 | 术语 | 一句话含义 |
 | --- | --- |
@@ -335,6 +258,7 @@ netfilter 的 IPv4 hook 有五个，编号和出现位置固定：
 进度：第一篇已按 S1–S7 / R1–R7 重写，实测数据来自 7.0.0-44 虚拟机，待作者校验。
 2026-11-27 修订：统一 H2/H3 为陈述式标题（对齐其余九篇）、速查小节改名「命令与接口速查」；2.1 删去与 1.2 重复的 tcpdump 命令及说明；速查表删去正文未使用的命令并与正文写法对齐；修正 6.3 的篇目预告。
 2026-11-27 二审：H3 统一为名词短语；2.1 只留输出怎么读，参数与过滤交回 1.2；2.3 不再重复 2.1 表内已列的头长。
+2026-11-27 五审：按“分块”重写。正文改为 A–E 五块加三处边界，不再出现任何内核函数名；27 点时间线归并为五段耗时放进附录；hook 的 AppArmor 证据并入边界一节。
 2026-11-27 四审：按 roadmap 重排。三、四章每站压到两三句，删去调用顺序树、分片分支细节、逐站命令块与 nft/tc 三组构造命令；GRO 与 hook 的计数只留表、比值和结论，命令与过程回到 netfilter-hooks.txt 等记录文件。
 2026-11-27 三审：正文去掉“实测”标签与逐站 ns 读数（数字留给 5.1 表与记录文件），计数改为量级与比值表述，把逐次实验的口吻改成机制陈述。
 已清理旧结构的五张 SVG（topology、three-paths、capture-points、rx-data-notification、socket-wait-stages），只保留 path.svg。
