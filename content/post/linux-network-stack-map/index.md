@@ -39,6 +39,20 @@ sudo bash lab.sh direct
 
 两个文件也在同目录：[netdemo.c](netdemo.c) 是收发程序，[lab.sh](lab.sh) 负责建网和清理（`lab.sh clean`）。
 
+建完网，一次完整的收发就是两条命令，一个在 B 里监听、一个在 A 里发：
+
+```bash
+# B 侧监听：接上之后先等 1500 ms 再 read
+sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18082 1500 &
+
+# A 侧连过去，写 5 个字节
+sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5
+```
+
+参数位置要记一下：服务端的第 4 个参数是"accept 之后等多少毫秒才开始读"，客户端的是"写多少字节"（不给就是 5）。成功时两边各打一行：服务端 `ready TCP 10.77.1.2:18082` 和 `received=5 bytes`，客户端 `write accepted=5 bytes in … ms`。只看到 `ready` 而没看到 `received`，说明服务端还在那 1500 ms 的等待里。
+
+`tcp-fill` 是另一个方向：客户端把 `SO_SNDBUF` 压到 16 KB 后一直非阻塞写，直到 `EAGAIN`，然后抱着 fd 挂 4 秒——用来制造"发送队列满、包堵在 qdisc 里"的场景。
+
 A 是 `10.77.1.1/24`，B 是 `10.77.1.2/24`，中间没有网关。[环境记录](environment.txt)、[抓包原文](wire-71bytes.txt)、[函数时间线](trace-5byte.txt)、[网卡侧计数](nic-napi.txt)、[hook 对照](netfilter-hooks.txt) 都在同目录，也可以直接下[实验记录包](experiment-records.zip)。
 
 ### 1.3 为什么用两套实验
@@ -58,6 +72,8 @@ sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8
 ```
 
 `-e` 打出链路层头（这样才看得到两端的 MAC 和 ethertype），`-X` 打出从 IP 头开始的十六进制，`-nn` 不做端口和协议名解析，`-c 8` 只抓 8 个包，够覆盖握手、数据和挥手开头。
+
+顺序是：先起 `tcpdump`，再在另一个终端跑 1.2 节那两条收发命令；抓够 8 个包它自己退出。
 
 ```text
 08:56:40.337619 ... length 71: 10.77.1.1.57658 > 10.77.1.2.18083: Flags [P.], seq 1:6, length 5
@@ -269,6 +285,8 @@ sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18
 
 脚本里每个 kprobe 的正文只有一行 `printf`，打印 `nsecs`、函数名、`tid`、`cpu`；`nf_hook_slow` 那一条额外读 `((struct nf_hook_state *)arg1)->hook` 把 hook 号带出来。加上 `/comm == "netdemo"` 过滤是为了把 ssh、systemd 这些无关调用挡掉。
 
+跑之前先在另一个终端把服务端起起来（1.2 节那条 `tcp-server` 命令），否则 `-c` 拉起的客户端连不上，只会看到 `connect: Connection refused`。
+
 | # | 函数 | Δ ns | 累计 µs |
 | --- | --- | --- | --- |
 | 1 | `__sock_sendmsg` | — | 0.00 |
@@ -430,6 +448,10 @@ hook=4 pf=2 num=1 fn=apparmor_ip_postroute
 | 命令 | 用途 | 关键输出 |
 | --- | --- | --- |
 | `write(fd, buf, 5)` | 发送 5 字节 | 返回 5 只表示进了内核队列 |
+| `sudo bash lab.sh direct` | 建两个 netns 加一对 veth | `nslab-a` / `nslab-b`，`lab.sh clean` 清掉 |
+| `sudo ip netns exec nslab-b ./netdemo tcp-server IP PORT 1500 &` | 起服务端 | `ready TCP`，接上后等 1500 ms 再读 |
+| `sudo ip netns exec nslab-a ./netdemo tcp-client IP PORT 5` | 发 5 字节 | 客户端 `write accepted=5 bytes`，服务端 `received=5 bytes` |
+| `sudo ip netns exec nslab-a ./netdemo tcp-fill IP PORT` | 打满发送队列 | `send=EAGAIN`，然后持 fd 挂 4 秒 |
 | `strace -e trace=write ./netdemo tcp-client IP PORT 5` | 确认系统调用 | `write(3, "AAAAA", 5) = 5` |
 | `tcpdump -i a0 -nn -e -X -c 8` | 看链路层帧 | `length 71`，末尾 5 字节是负载 |
 | `sudo bpftrace -e 'kprobe:tcp_sendmsg { @=count(); }'` | 统计某函数调用次数 | `@: N` |
