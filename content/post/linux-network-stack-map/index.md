@@ -39,15 +39,22 @@ sudo bash lab.sh direct
 
 两个文件也在同目录：[netdemo.c](netdemo.c) 是收发程序，[lab.sh](lab.sh) 负责建网和清理（`lab.sh clean`）。
 
-建完网，一次完整的收发就是两条命令，一个在 B 里监听、一个在 A 里发：
+建完网，一次完整的收发按这个顺序来：**先抓包，再起服务端，最后发客户端**。三个终端各跑一条：
 
 ```bash
-# B 侧监听：接上之后先等 1500 ms 再 read
+# 终端一：先把 tcpdump 起起来，-c 8 抓够自己退
+sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'
+
+# 终端二：B 侧监听，接上之后先等 1500 ms 再 read
 sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18082 1500 &
 
-# A 侧连过去，写 5 个字节
+# 终端三：A 侧连过去，写 5 个字节
 sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5
 ```
+
+严格说，`tcpdump` 只要能早于客户端就行——它晚于客户端起来，就抓不到 SYN 和握手那三帧。放在最前面最省心，也省得算时序。
+
+`'tcp port 18082'` 这个过滤条件不是可选项。新建的 netns 里接口刚起来那两三秒，IPv6 会发 DAD 和 MLD 组播，不加过滤时 `-c 8` 会被这些帧吃光：实测这样抓 8 帧全是 `ethertype IPv6`，握手一帧没进来。
 
 参数位置要记一下：服务端的第 4 个参数是"accept 之后等多少毫秒才开始读"，客户端的是"写多少字节"（不给就是 5）。成功时两边各打一行：服务端 `ready TCP 10.77.1.2:18082` 和 `received=5 bytes`，客户端 `write accepted=5 bytes in … ms`。只看到 `ready` 而没看到 `received`，说明服务端还在那 1500 ms 的等待里。
 
@@ -68,19 +75,19 @@ veth 能把 S1 到 R6 完整走通，且耗时在微秒级，适合看顺序；�
 在 A 的 `a0` 口抓一次，五字节数据那一帧是这样的：
 
 ```bash
-sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8
+sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'
 ```
 
-`-e` 打出链路层头（这样才看得到两端的 MAC 和 ethertype），`-X` 打出从 IP 头开始的十六进制，`-nn` 不做端口和协议名解析，`-c 8` 只抓 8 个包，够覆盖握手、数据和挥手开头。
+`-e` 打出链路层头（这样才看得到两端的 MAC 和 ethertype），`-X` 打出从 IP 头开始的十六进制，`-nn` 不做端口和协议名解析，`-c 8` 只抓 8 个包，够覆盖握手、数据和挥手开头。末尾的 `'tcp port 18082'` 把 IPv6 组播挡在外面，原因见 1.2 节——不加它，新 netns 里的 DAD 组播会把这 8 个名额占满。
 
-顺序是：先起 `tcpdump`，再在另一个终端跑 1.2 节那两条收发命令；抓够 8 个包它自己退出。
+顺序是：先起 `tcpdump`，再起服务端，最后发客户端（1.2 节那段就是按这个顺序排的）；抓够 8 个包它自己退出。
 
 ```text
-08:56:40.337619 ... length 71: 10.77.1.1.57658 > 10.77.1.2.18083: Flags [P.], seq 1:6, length 5
-	0x0000:  4500 0039 577c 4000 4006 cca6 0a4d 0101  E..9W|@.@....M..
-	0x0010:  0a4d 0102 e13a 46a3 82c4 f119 1082 14d1  .M...:F.........
-	0x0020:  8018 007e 16c8 0000 0101 080a 184c 5601  ...~.........LV.
-	0x0030:  b195 aad7 4141 4141 41                   ....AAAAA
+12:34:18.140047 02:00:00:77:01:01 > 02:00:00:77:01:02, ethertype IPv4 (0x0800), length 71: 10.77.1.1.44862 > 10.77.1.2.18082: Flags [P.], seq 1:6, ack 1, win 126, options [nop,nop,TS val 2833223901 ecr 702975311], length 5
+	0x0000:  4500 0039 9831 4000 4006 8bf1 0a4d 0101  E..9.1@.@....M..
+	0x0010:  0a4d 0102 af3e 46a2 0f82 a941 4c34 7e60  .M...>F....AL4~`
+	0x0020:  8018 007e 16c8 0000 0101 080a a8df 90dd  ...~............
+	0x0030:  29e6 8d4f 4141 4141 41                   )..OAAAAA
 ```
 
 `4141 4141 41` 就是应用写出的五个 `A`。这一帧在链路上 71 字节，按层次拆开是：
@@ -287,6 +294,8 @@ sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18
 
 跑之前先在另一个终端把服务端起起来（1.2 节那条 `tcp-server` 命令），否则 `-c` 拉起的客户端连不上，只会看到 `connect: Connection refused`。
 
+这一轮**不要同时开 tcpdump**。它走 AF_PACKET，每个包都要额外复制一份到 packet socket 并唤醒读进程，本文这份时间线是在没有 tcpdump 的条件下采的。
+
 | # | 函数 | Δ ns | 累计 µs |
 | --- | --- | --- | --- |
 | 1 | `__sock_sendmsg` | — | 0.00 |
@@ -453,7 +462,7 @@ hook=4 pf=2 num=1 fn=apparmor_ip_postroute
 | `sudo ip netns exec nslab-a ./netdemo tcp-client IP PORT 5` | 发 5 字节 | 客户端 `write accepted=5 bytes`，服务端 `received=5 bytes` |
 | `sudo ip netns exec nslab-a ./netdemo tcp-fill IP PORT` | 打满发送队列 | `send=EAGAIN`，然后持 fd 挂 4 秒 |
 | `strace -e trace=write ./netdemo tcp-client IP PORT 5` | 确认系统调用 | `write(3, "AAAAA", 5) = 5` |
-| `tcpdump -i a0 -nn -e -X -c 8` | 看链路层帧 | `length 71`，末尾 5 字节是负载 |
+| `tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'` | 看链路层帧 | `length 71`，末尾 5 字节是负载 |
 | `sudo bpftrace -e 'kprobe:tcp_sendmsg { @=count(); }'` | 统计某函数调用次数 | `@: N` |
 | `sudo bpftrace -e 'kprobe:nf_hook_slow { @[((struct nf_hook_state *)arg1)->hook]=count(); }'` | 看 hook 是否参与 | 按 hook 号分组计数 |
 | `sudo bpftrace -e 'kprobe:tcf_classify { @=count(); }'` | 看 tc 是否参与 | 没装 filter 时为 0 |
