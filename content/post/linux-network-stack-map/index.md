@@ -28,19 +28,26 @@ tags:
 
 实测环境是 VMware Fusion 里的 Ubuntu 26.04.1 LTS（ARM64），内核 `7.0.0-44-generic`，2 vCPU，3892 MB 内存；源码参照上游 Linux v7.0。
 
-虚拟机接了两块 `e1000e`，分工是固定的：`enp2s0` 走 NAT，`192.168.126.135/24`，负责出网和 DNS；`enp10s0` 走仅主机网络，静态 `192.168.190.10/24`，Mac 从这里 SSH 进来，也就是实验流量走的那块。两块网卡参数相同：单收发队列、RX/TX 环形缓冲各 256、排队规则 `fq_codel`。这两块网卡怎么分的网段、静态地址怎么填，见[《Ubuntu Server 虚拟机安装及配置》](/p/ubuntu-server-vm-install/)（那篇装的是 24.04，双网卡布局与此相同）。下文涉及物理网卡的命令写作 `DEV`，指的就是 `enp10s0`。
+虚拟机接了两块 `e1000e`，分工是固定的：`enp2s0` 走 NAT，`192.168.126.135/24`，负责出网和 DNS；`enp10s0` 走仅主机网络，静态 `192.168.190.10/24`，Mac 从这里 SSH 进来，也就是实验流量走的那块。两块网卡参数相同：单收发队列、RX/TX 环形缓冲各 256、排队规则 `fq_codel`。这两块网卡怎么分的网段、静态地址怎么填，见[《Ubuntu Server 虚拟机安装及配置》](/p/ubuntu-server-vm-install/)（那篇装的是 24.04，双网卡布局与此相同）。下文出现 `enp10s0` 的地方就是指这块承载实验流量的网卡。
 
 路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。先把两个文件下到同一个工作目录，后面所有命令都在这个目录里跑：
 
-源码：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)。也可以直接抓下来，省得复制粘贴：
+源码 [netdemo.c](netdemo.c)、[lab.sh](lab.sh)，探针脚本 [tl3.bt](tl3.bt)、[gro3.bt](gro3.bt)、[hooks.bt](hooks.bt)——三个脚本分别用在 5.1、4.3、6.2 节。也可以一次抓下来，省得复制粘贴：
 
 ```bash
 mkdir -p ~/nslab && cd ~/nslab
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/lab.sh
+wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/tl3.bt
+wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/gro3.bt
+wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/hooks.bt
+# 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、nc、gcc 不一定齐
+sudo apt install -y bpftrace tcpdump nftables netcat-openbsd ethtool strace gcc
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
 sudo bash lab.sh direct
 ```
+
+网建好之后重复跑 `lab.sh direct` 会因 namespace 已存在而退出，先 `sudo bash lab.sh clean` 再建。
 
 建完网，一次完整的收发按这个顺序来：**先抓包，再起服务端，最后发客户端**。三个终端各跑一条：
 
@@ -191,9 +198,9 @@ qdisc 差别很大：
 这一步的参数是查出来的，三条命令各看一层：
 
 ```bash
-ethtool -g DEV                    # RX/TX 环形缓冲：各 256，上限 4096
-ls /sys/class/net/DEV/queues/     # 只有 rx-0 与 tx-0，单队列
-grep DEV /proc/interrupts         # 三条 MSI-X：rx-0、tx-0、其他
+ethtool -g enp10s0                    # RX/TX 环形缓冲：各 256，上限 4096
+ls /sys/class/net/enp10s0/queues/     # 只有 rx-0 与 tx-0，单队列
+grep enp10s0 /proc/interrupts          # 三条 MSI-X：rx-0、tx-0、其他
 ```
 
 veth 没有这一站。`dev_hard_start_xmit` 会直接调 `veth_xmit`，把 skb 交给对端 netns 的接收路径——这就是下一节开头那个反直觉现象的来源。
@@ -206,11 +213,11 @@ veth 没有这一站。`dev_hard_start_xmit` 会直接调 `veth_xmit`，把 skb 
 
 关中断这个动作是 NAPI 的核心：中断只负责"叫醒"，搬运交给轮询。
 
-一次 20 MB 的 TCP 接收：14559 个报文，只进了 82 次硬中断，约 178:1。
+一次 20 MB 的 TCP 接收：14559 个报文，只进了 82 次硬中断，约 178:1。这 20 MB 怎么灌进来、灌之前要起哪个脚本，见 4.3 节。
 
 ```bash
-cat /sys/class/net/DEV/statistics/rx_packets   # 传输前后各跑一次，差值即报文数
-grep DEV-rx-0 /proc/interrupts                 # 同上，差值即硬中断数
+cat /sys/class/net/enp10s0/statistics/rx_packets   # 传输前后各跑一次，差值即报文数
+grep enp10s0-rx-0 /proc/interrupts                 # 同上，差值即硬中断数
 ```
 
 ### 4.2 R2：一次 poll 取走一批
@@ -226,15 +233,17 @@ grep DEV-rx-0 /proc/interrupts                 # 同上，差值即硬中断数
 实测最能说明问题。计数脚本是 [gro3.bt](gro3.bt)，七个 kprobe 各数一件事；流量由对端灌入 20 MB，接收端先起 `nc` 等：
 
 ```bash
-# 接收端
+# 接收端是虚拟机：先起 nc 占住端口，再起脚本等计数
 nc -l 9002 > /dev/null
-sudo bpftrace gro3.bt          # 另开一个终端，Ctrl-C 结束
+sudo bpftrace gro3.bt          # 另一个终端，灌完流按 Ctrl-C，统计在退出时打印
 
-# 发送端（对端机器），连发 20 MB
-python3 -c 'import socket; s=socket.create_connection(("RECEIVER_IP",9002)); b=b"A"*(1<<20)
+# 发送端是宿主机 Mac，和 enp10s0 在同一个仅主机网段
+python3 -c 'import socket; s=socket.create_connection(("192.168.190.10",9002)); b=b"A"*(1<<20)
 for _ in range(20): s.sendall(b)
 s.close()'
 ```
+
+顺序不能反：`nc` 先听着，`bpftrace` 先挂着，最后才灌流；反过来的话前几 MB 不进统计。
 
 | 计数点 | 次数 | 含义 |
 | --- | --- | --- |
@@ -244,6 +253,8 @@ s.close()'
 | `tcp_v4_rcv` | 610 | 多少次交给 TCP |
 
 14556 个 skb 只换来 610 次 IP 层处理，合并比约 24:1；每次 `ip_list_rcv` 平均带走约 26 个 skb。**GRO 省的不是中断，是上层遍历 skb 的次数。**
+
+同一个脚本里另外三个计数 `e1000_intr_msix_rx` 82、`e1000_clean_rx_irq` 305、`net_rx_action` 300，就是 4.1 和 4.2 引用的那组数。
 
 ### 4.4 R4：二层分发，tc 在 ptype 之前
 
@@ -369,7 +380,7 @@ netfilter 的 IPv4 hook 有五个，编号和出现位置固定：
 | 4 | `NF_INET_POST_ROUTING` | `ip_output` 之后、`ip_finish_output` 之前 | 8 | 8 | 8 |
 | — | `tcf_classify` | egress 与 ingress 各一处 | 0 | 0 | 8 |
 
-表里的数字是同一次完整连接的计数：8 表示这次连接里经过该 hook 的 8 个包全都在 `nf_hook_slow` 里停了一下，0 表示一个都没有。原始记录见 [netfilter-hooks.txt](netfilter-hooks.txt)。
+表里的数字是同一次完整连接的计数：8 表示这次连接里经过该 hook 的 8 个包全都在 `nf_hook_slow` 里停了一下，0 表示一个都没有。原始记录见 [netfilter-hooks.txt](netfilter-hooks.txt)。自己跑时总数不必正好是 8——握手、收尾的 FIN/ACK、`connect` 重试都会让包数上下浮动，要看的是某一列是 0 还是跟着连接数走。
 
 计数命令是一条一行的 bpftrace，`arg1` 是 `nf_hook_state`，hook 号就从这个结构体里读：
 
@@ -381,16 +392,26 @@ sudo bpftrace -e 'kprobe:tcf_classify { @tc = count(); }'
 三列对应的配置这样造：
 
 ```bash
-# 空基链：两个 netns 各装五个
-for h in prerouting input forward output postrouting; do
-  ip netns exec nslab-a nft add chain ip t $h "{ type filter hook $h priority 0 ; }"
+# A 组：先把上一组留下的规则和过滤器清空
+sudo ip netns exec nslab-a nft delete table ip t 2>/dev/null
+sudo ip netns exec nslab-b nft delete table ip t 2>/dev/null
+sudo ip netns exec nslab-a tc qdisc del dev a0 clsact 2>/dev/null
+
+# B 组：两个 netns 各建一张表，再各装五个空基链
+for ns in nslab-a nslab-b; do
+  sudo ip netns exec $ns nft add table ip t
+  for h in prerouting input forward output postrouting; do
+    sudo ip netns exec $ns nft add chain ip t $h "{ type filter hook $h priority 0 ; }"
+  done
 done
 
-# 再加 tc 过滤器
-ip netns exec nslab-a tc qdisc add dev a0 clsact
-ip netns exec nslab-a tc filter add dev a0 egress  matchall action gact pass
-ip netns exec nslab-a tc filter add dev a0 ingress matchall action gact pass
+# C 组：再加 clsact 与 matchall
+sudo ip netns exec nslab-a tc qdisc add dev a0 clsact
+sudo ip netns exec nslab-a tc filter add dev a0 egress  matchall action gact pass
+sudo ip netns exec nslab-a tc filter add dev a0 ingress matchall action gact pass
 ```
+
+`nft add chain ip t …` 之前这张表必须存在，否则报 `No such file or directory`——所以先 `add table ip t`。每一组的测法是同一个套路：一个终端跑上面那行计数，另一个终端跑 1.2 节那次五字节收发，收发结束 Ctrl-C 看汇总。
 
 三列对比能读出两件事：
 
@@ -402,9 +423,10 @@ ip netns exec nslab-a tc filter add dev a0 ingress matchall action gact pass
 在一个全新的、`nft list ruleset` 为空的 netns 里 ping 三次回环，`nf_hook_slow` 仍然在 hook 3 和 hook 4 各被调用 6 次。把表项里的函数地址打出来：
 
 ```bash
-ip netns add probe
-ip -n probe link set lo up          # 新建的 netns 里 lo 默认是 down
+sudo ip netns add probe
+sudo ip -n probe link set lo up          # 新建的 netns 里 lo 默认是 down
 sudo bpftrace -c 'ip netns exec probe ping -c 3 127.0.0.1' hooks.bt
+sudo ip netns del probe
 ```
 
 ```text
@@ -457,30 +479,30 @@ hook=4 pf=2 num=1 fn=apparmor_ip_postroute
 
 | 命令 | 用途 | 关键输出 |
 | --- | --- | --- |
-| `wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c` | 取实验源码与建网脚本 | 落到当前目录，`lab.sh` 同理 |
+| `wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c` | 取源码、建网脚本、三个 bt 脚本 | 落到当前目录，其余四个同理 |
 | `write(fd, buf, 5)` | 发送 5 字节 | 返回 5 只表示进了内核队列 |
 | `sudo bash lab.sh direct` | 建两个 netns 加一对 veth | `nslab-a` / `nslab-b`，`lab.sh clean` 清掉 |
 | `sudo ip netns exec nslab-b ./netdemo tcp-server IP PORT 1500 &` | 起服务端 | `ready TCP`，接上后等 1500 ms 再读 |
 | `sudo ip netns exec nslab-a ./netdemo tcp-client IP PORT 5` | 发 5 字节 | 客户端 `write accepted=5 bytes`，服务端 `received=5 bytes` |
 | `sudo ip netns exec nslab-a ./netdemo tcp-fill IP PORT` | 打满发送队列 | `send=EAGAIN`，然后持 fd 挂 4 秒 |
-| `strace -e trace=write ./netdemo tcp-client IP PORT 5` | 确认系统调用 | `write(3, "AAAAA", 5) = 5` |
-| `tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'` | 看链路层帧 | `length 71`，末尾 5 字节是负载 |
+| `sudo strace -e trace=write ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5` | 确认系统调用 | `write(3, "AAAAA", 5) = 5` |
+| `sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'` | 看链路层帧 | `length 71`，末尾 5 字节是负载 |
 | `sudo bpftrace -e 'kprobe:tcp_sendmsg { @=count(); }'` | 统计某函数调用次数 | `@: N` |
 | `sudo bpftrace -e 'kprobe:nf_hook_slow { @[((struct nf_hook_state *)arg1)->hook]=count(); }'` | 看 hook 是否参与 | 按 hook 号分组计数 |
 | `sudo bpftrace -e 'kprobe:tcf_classify { @=count(); }'` | 看 tc 是否参与 | 没装 filter 时为 0 |
-| `tc -s qdisc show dev DEV` | 看排队与丢弃 | `sent/backlog/drops` |
-| `tc filter show dev DEV egress` | 看过滤器 | `matchall`、`action` |
+| `tc -s qdisc show dev enp10s0` | 看排队与丢弃 | `sent/backlog/drops` |
+| `tc filter show dev enp10s0 egress` | 看过滤器 | `matchall`、`action` |
 | `nft list ruleset` | 看 nft 规则 | 空不等于 hook 没参与 |
-| `ethtool -g DEV` | 看环形缓冲 | RX/TX 256 |
-| `ethtool -S DEV \| grep -i drop` | 看网卡侧丢弃 | `rx_missed_errors` 等 |
+| `ethtool -g enp10s0` | 看环形缓冲 | RX/TX 256 |
+| `ethtool -S enp10s0 \| grep -i drop` | 看网卡侧丢弃 | `rx_missed_errors` 等 |
 | `cat /proc/interrupts` | 看中断分布 | 每队列一条 MSI-X |
 | `cat /proc/softirqs` | 看软中断分布 | `NET_RX` 两列对应 CPU |
 | `ss -ti` | 看 TCP 内部状态 | `cwnd`、`rtt`、`retrans` |
 | `ss -mni` | 看 socket 内存与队列 | `skmem`、`recv-q` |
-| `ip -s link show DEV` | 看设备计数 | `RX/TX packets/errors/dropped` |
+| `ip -s link show enp10s0` | 看设备计数 | `RX/TX packets/errors/dropped` |
 | `nstat -az` | 看协议栈统计 | `IpInReceives`、`TcpInErrs` |
 | `sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client IP 18082 5'` | 抓 27 点函数时间线 | 带 `tid`、`cpu`，顺序为主 |
-| `nc -l 9002` + 对端灌 20 MB | 造批量收包流量 | 配合 `gro3.bt` 看合并比 |
+| `nc -l 9002` + 宿主机灌 20 MB | 造批量收包流量 | 配合 `gro3.bt` 看合并比 |
 | `sudo bpftrace gro3.bt` | 数 skb、ip_list_rcv、poll、中断 | 7 个计数点 |
 | `sudo bpftrace -c '... ping -c 3 127.0.0.1' hooks.bt` | 看 hook 上挂了谁 | `num` 与函数符号名 |
 
