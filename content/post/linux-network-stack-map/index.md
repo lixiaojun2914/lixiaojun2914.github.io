@@ -32,9 +32,12 @@ tags:
 
 路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。先把两个文件下到同一个工作目录，后面所有命令都在这个目录里跑：
 
-源码：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)
+源码：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)。也可以直接抓下来，省得复制粘贴：
 
 ```bash
+mkdir -p ~/nslab && cd ~/nslab
+wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c
+wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/lab.sh
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
 sudo bash lab.sh direct
 ```
@@ -454,6 +457,7 @@ hook=4 pf=2 num=1 fn=apparmor_ip_postroute
 
 | 命令 | 用途 | 关键输出 |
 | --- | --- | --- |
+| `wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c` | 取实验源码与建网脚本 | 落到当前目录，`lab.sh` 同理 |
 | `write(fd, buf, 5)` | 发送 5 字节 | 返回 5 只表示进了内核队列 |
 | `sudo bash lab.sh direct` | 建两个 netns 加一对 veth | `nslab-a` / `nslab-b`，`lab.sh clean` 清掉 |
 | `sudo ip netns exec nslab-b ./netdemo tcp-server IP PORT 1500 &` | 起服务端 | `ready TCP`，接上后等 1500 ms 再读 |
