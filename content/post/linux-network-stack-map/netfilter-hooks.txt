@@ -1,0 +1,48 @@
+# 规则与 hook：三组对照（原始记录）
+
+环境：nslab-a / nslab-b，内核 7.0.0-44
+计数方式：kprobe:nf_hook_slow 读 ((struct nf_hook_state *)arg1)->hook
+
+## A. 不装任何 nft 规则、不装 tc filter
+
+一次完整连接（SYN / SYN-ACK / ACK / 5 字节数据 / ACK / FIN ...）：
+
+  @hook[3]: 8     LOCAL_OUT
+  @hook[4]: 8     POST_ROUTING
+  hook 0、1 不出现
+  tcf_classify 不出现
+
+## B. 两个 netns 各装五个空的 filter 基链
+
+  nft add table ip t
+  nft add chain ip t <prerouting|input|forward|output|postrouting> "{ type filter hook <hook> priority 0 ; }"
+
+  @hook[0]: 8     PRE_ROUTING
+  @hook[1]: 8     LOCAL_IN
+  @hook[3]: 8     LOCAL_OUT
+  @hook[4]: 8     POST_ROUTING
+  hook 2（FORWARD）不出现，因为没有转发包
+
+## C. 再加 clsact 与 matchall 过滤
+
+  tc qdisc add dev a0 clsact
+  tc filter add dev a0 egress matchall action gact pass
+  tc filter add dev a0 ingress matchall action gact pass
+
+  @hook[0..4] 与 B 相同，@tc: 8
+
+## 为什么没有规则时出方向仍然进 nf_hook_slow
+
+新建一个只有 lo 的 netns，nft 规则集为空，ping 127.0.0.1 三次：
+
+  @hook[3]: 6
+  @hook[4]: 6
+
+打印表项里的函数地址并用 ksym() 解析：
+
+  hook=3 n=1 fn=apparmor_ip_localout  pf=2
+  hook=4 n=1 fn=apparmor_ip_postroute  pf=2
+
+结论：Ubuntu 的 AppArmor 在出方向的两个 hook 上常驻一条表项，与 nft 规则无关；
+入方向没有表项，所以 nf_hook_slow 根本不会被调用。
+判断 hook 是否参与，看 nf_hook_slow 有没有被调用，而不是看 nft list ruleset 有没有内容。

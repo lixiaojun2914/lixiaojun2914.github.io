@@ -1,0 +1,65 @@
+# 网卡侧：中断、NAPI 与 GRO（原始记录）
+
+环境：同一台虚拟机，enp10s0 / enp2s0 都是 e1000e
+驱动：ethtool -i enp2s0 → driver: e1000e, firmware-version: 1.8-0, bus-info: 0000:02:00.0
+队列：/sys/class/net/enp2s0/queues/ 下只有 rx-0 与 tx-0
+环形缓冲：ethtool -g enp2s0 → RX 256 / TX 256（上限都是 4096）
+中断：/proc/interrupts 里 50/51/52 三条 MSI-X，分别是 enp2s0-rx-0、enp2s0-tx-0、enp2s0
+排队规则：tc qdisc show dev enp10s0 → fq_codel，limit 10240p，target 5ms
+
+## 一、低速率：20 个 ping
+
+命令：ping -c 20 -i 0.05 -q 192.168.126.2
+
+enp2s0-rx-0 中断      1814 → 1835    (+21)
+enp2s0-tx-0 中断      2103 → 2124    (+21)
+/proc/softirqs NET_RX  5458 → 5479    (+21)，cpu1 的 48 没变
+
+结论：这个速率下一个包一次中断、一次软中断，看不到合并。
+
+## 二、洪水 ping：3000 个包
+
+命令：sudo ping -f -c 3000 -w 3 192.168.126.2
+rx_packets +3000，enp2s0-rx-0 中断 +3000，NET_RX +3000
+
+结论：仍然是 1:1。这块模拟网卡没有做中断合并，所以不能拿它证明 NAPI 的批量效果；
+批量要看实验四里一次 poll 处理多少个包。
+
+## 三、20MB TCP 接收：GRO 合并了多少
+
+命令：宿主机 python3 向 192.168.190.10:9002 连续写 20MB
+rx_packets：17919 → 32494，共 14575 个报文
+
+bpftrace 计数（kprobe，按次累加）：
+
+  @skb_built  eth_type_trans    14573
+  @ip_list_rcv                  540
+  @ip_core    ip_rcv_core       600
+  @tcp_rcv    tcp_v4_rcv        600
+
+结论：14573 个 skb 经过 GRO 合并成约 600 次 IP 层交付，约 24:1；
+每次 ip_list_rcv 平均带走约 27 个 skb。
+
+## 四、同一批流量：硬中断与 poll 的次数
+
+另一次 20MB 传输，rx_packets 14574：
+
+  @irq_hard     e1000_intr_msix_rx     99
+  @napi_poll    e1000_clean_rx_irq    319
+  @softirq_run  net_rx_action         314
+
+结论：14575 个包只进了 99 次硬中断，其余都由 poll 在软中断里取走。
+
+## 五、两个入口：ip_rcv 与 ip_list_rcv
+
+网卡批量接收（ping -c 5）：
+
+  ip_list_rcv   5
+  ip_sublist_rcv 5
+  ip_rcv_core   5
+  ip_rcv        0
+
+veth 单个接收：ip_rcv 被调用，见 trace-5byte.txt。
+
+结论：7.0 上单包走 ip_rcv，批量走 ip_list_rcv → ip_sublist_rcv → ip_rcv_core。
+只写 ip_rcv 的路径图，在网卡这条路上会对不上。

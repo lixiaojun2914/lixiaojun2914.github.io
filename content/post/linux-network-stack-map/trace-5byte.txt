@@ -1,0 +1,41 @@
+# 一次五字节发送的函数级时间线（原始记录）
+
+环境：Ubuntu ARM64 / 内核 7.0.0-44-generic / 2 vCPU
+拓扑：nslab-a(10.77.1.1) --veth-- nslab-b(10.77.1.2)
+命令：sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5'
+说明：nsecs 是单调时钟纳秒；tid 相同表示同一线程；hook= 后是 nf_hook_state.hook。
+
+要点：
+1. 27 个点全部是 tid=4443、cpu=0，接收半程没有换成另一个线程。
+2. hook=3 是 LOCAL_OUT，hook=4 是 POST_ROUTING，hook=0 是 PRE_ROUTING，hook=1 是 LOCAL_IN。
+3. 首末间隔 18665 ns，其中包含 26 个探针的开销，只能看顺序和量级。
+
+1965233520794 __sock_sendmsg               tid=4443 cpu=0
+1965233523252 tcp_sendmsg                  tid=4443 cpu=0
+1965233528752 tcp_write_xmit               tid=4443 cpu=0
+1965233530460 ip_queue_xmit                tid=4443 cpu=0
+1965233530835 __ip_local_out               tid=4443 cpu=0
+1965233531168 NFHOOK                       hook=3 tid=4443
+1965233531668 ip_output                    tid=4443 cpu=0
+1965233531918 NFHOOK                       hook=4 tid=4443
+1965233532293 ip_finish_output             tid=4443 cpu=0
+1965233532668 ip_finish_output2            tid=4443 cpu=0
+1965233533085 __dev_queue_xmit             tid=4443 cpu=0
+1965233533418 tcf_classify                 tid=4443 cpu=0
+1965233534126 dev_hard_start_xmit          tid=4443 cpu=0
+1965233534460 eth_type_trans               tid=4443 cpu=0
+1965233534793 enqueue_to_backlog           tid=4443 cpu=0
+1965233535293 net_rx_action                tid=4443 cpu=0
+1965233535668 __netif_receive_skb          tid=4443 cpu=0
+1965233536126 ip_rcv                       tid=4443 cpu=0
+1965233536376 ip_rcv_core                  tid=4443 cpu=0
+1965233536710 NFHOOK                       hook=0 tid=4443
+1965233537209 ip_rcv_finish                tid=4443 cpu=0
+1965233537751 ip_local_deliver             tid=4443 cpu=0
+1965233537959 NFHOOK                       hook=1 tid=4443
+1965233538293 ip_local_deliver_finish      tid=4443 cpu=0
+1965233538626 ip_protocol_deliver_rcu      tid=4443 cpu=0
+1965233538918 tcp_v4_rcv                   tid=4443 cpu=0
+1965233539459 tcp_v4_do_rcv                tid=4443 cpu=0
+
+首末间隔 18665 ns

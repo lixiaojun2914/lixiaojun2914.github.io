@@ -1,16 +1,30 @@
-$ uname -a; ip -V; tc -V; nft --version; strace -V | head -1; ethtool -i enp2s0
-Linux master 6.8.0-149-generic #149-Ubuntu SMP PREEMPT_DYNAMIC Fri Oct 23 13:37:55 UTC 2026 aarch64 GNU/Linux
-ip utility, iproute2-6.19.0, libbpf 1.6.3
-tc utility, iproute2-6.19.0, libbpf 1.6.3
-nftables v1.1.6 (Commodore Bullmoose #7)
-strace -- version 6.19
-driver: e1000e
-version: 6.8.0-149-generic
-firmware-version: 1.8-0
-expansion-rom-version:
-bus-info: 0000:02:00.0
-supports-statistics: yes
-supports-test: yes
-supports-eeprom-access: yes
-supports-register-dump: yes
-supports-priv-flags: yes
+环境记录
+
+采集时间：2026-11-27
+主机形态：VMware Fusion 虚拟机
+发行版：Ubuntu，aarch64
+
+uname -a
+Linux master 7.0.0-44-generic #44-Ubuntu SMP PREEMPT_DYNAMIC Fri Nov  6 02:50:28 UTC 2026 aarch64 GNU/Linux
+
+CPU / 内存
+nproc = 2
+MemTotal = 3892 MB
+
+网卡
+enp2s0 / enp10s0，驱动 e1000e（firmware-version 1.8-0，bus-info 0000:02:00.0）
+单收发队列，RX/TX 环形缓冲各 256（ethtool -g），MSI-X 三条
+enp10s0 的排队规则是 fq_codel
+
+工具链
+gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+bpftrace v0.25.0
+iproute2-6.19.0（libbpf 1.6.3）
+nftables v1.1.6
+
+源码版本
+上游 Linux v7.0
+
+实验隔离
+所有拓扑建在 nslab-a / nslab-b 两个 network namespace 里，
+用一对 veth 相连，不经过宿主机的任何物理网卡。
