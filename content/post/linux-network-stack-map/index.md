@@ -37,8 +37,6 @@ gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
 sudo bash lab.sh direct
 ```
 
-两个文件也在同目录：[netdemo.c](netdemo.c) 是收发程序，[lab.sh](lab.sh) 负责建网和清理（`lab.sh clean`）。
-
 建完网，一次完整的收发按这个顺序来：**先抓包，再起服务端，最后发客户端**。三个终端各跑一条：
 
 ```bash
@@ -56,9 +54,7 @@ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5
 
 `'tcp port 18082'` 这个过滤条件不是可选项。新建的 netns 里接口刚起来那两三秒，IPv6 会发 DAD 和 MLD 组播，不加过滤时 `-c 8` 会被这些帧吃光：实测这样抓 8 帧全是 `ethertype IPv6`，握手一帧没进来。
 
-参数位置要记一下：服务端的第 4 个参数是"accept 之后等多少毫秒才开始读"，客户端的是"写多少字节"（不给就是 5）。成功时两边各打一行：服务端 `ready TCP 10.77.1.2:18082` 和 `received=5 bytes`，客户端 `write accepted=5 bytes in … ms`。只看到 `ready` 而没看到 `received`，说明服务端还在那 1500 ms 的等待里。
-
-`tcp-fill` 是另一个方向：客户端把 `SO_SNDBUF` 压到 16 KB 后一直非阻塞写，直到 `EAGAIN`，然后抱着 fd 挂 4 秒——用来制造"发送队列满、包堵在 qdisc 里"的场景。
+服务端第 4 个参数是"accept 之后等多少毫秒才开始读"，客户端的是"写多少字节"（不给就是 5）。成功时两边各打一行：服务端 `ready TCP 10.77.1.2:18082` 和 `received=5 bytes`，客户端 `write accepted=5 bytes in … ms`。只看到 `ready` 而没看到 `received`，说明服务端还在那 1500 ms 的等待里。
 
 A 是 `10.77.1.1/24`，B 是 `10.77.1.2/24`，中间没有网关。[环境记录](environment.txt)、[抓包原文](wire-71bytes.txt)、[函数时间线](trace-5byte.txt)、[网卡侧计数](nic-napi.txt)、[hook 对照](netfilter-hooks.txt) 都在同目录，也可以直接下[实验记录包](experiment-records.zip)。
 
