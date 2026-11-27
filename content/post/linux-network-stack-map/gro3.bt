@@ -1,0 +1,7 @@
+kprobe:eth_type_trans { @skb_built = count(); }
+kprobe:ip_list_rcv { @ip_list = count(); }
+kprobe:ip_rcv_core { @ip_core = count(); }
+kprobe:tcp_v4_rcv { @tcp_rcv = count(); }
+kprobe:e1000_intr_msix_rx { @irq_hard = count(); }
+kprobe:e1000_clean_rx_irq { @napi_poll = count(); }
+kprobe:net_rx_action { @softirq_run = count(); }

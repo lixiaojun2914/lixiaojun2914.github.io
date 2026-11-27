@@ -28,6 +28,8 @@ tags:
 
 实测环境是 VMware Fusion 里的 Ubuntu ARM64，内核 `7.0.0-44-generic`，2 vCPU，3892 MB 内存；源码参照上游 Linux v7.0。宿主机两块网卡都是 `e1000e`，单收发队列，RX/TX 环形缓冲各 256，排队规则 `fq_codel`。
 
+接口名在重启后会互换：记录里承载实验流量的那块是 `enp2s0`，这次重跑变成了 `enp10s0`。下文命令统一用 `DEV` 指代承载流量的网卡，换成自己机器上的名字即可。
+
 路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡：
 
 ```bash
@@ -50,6 +52,12 @@ veth 能把 S1 到 R6 完整走通，且耗时在微秒级，适合看顺序；�
 ### 2.1 抓包看到的 71 字节
 
 在 A 的 `a0` 口抓一次，五字节数据那一帧是这样的：
+
+```bash
+sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8
+```
+
+`-e` 打出链路层头（这样才看得到两端的 MAC 和 ethertype），`-X` 打出从 IP 头开始的十六进制，`-nn` 不做端口和协议名解析，`-c 8` 只抓 8 个包，够覆盖握手、数据和挥手开头。
 
 ```text
 08:56:40.337619 ... length 71: 10.77.1.1.57658 > 10.77.1.2.18083: Flags [P.], seq 1:6, length 5
@@ -156,7 +164,13 @@ qdisc 差别很大：
 
 网卡拿到通知后自己发 DMA 读请求，把内存里的数据搬到片上、组帧、发到线路上。**CPU 到这一步就不再参与搬运**，这也是为什么大包吞吐主要由 DMA 和总线决定，而不是 CPU 频率。
 
-这一步的参数是实测的：RX/TX 环形缓冲各 256 个描述符（`ethtool -g`），队列只有一组（`/sys/class/net/enp2s0/queues/` 下只有 `rx-0` 和 `tx-0`），MSI-X 中断三条。
+这一步的参数是查出来的，三条命令各看一层：
+
+```bash
+ethtool -g DEV                    # RX/TX 环形缓冲：各 256，上限 4096
+ls /sys/class/net/DEV/queues/     # 只有 rx-0 与 tx-0，单队列
+grep DEV /proc/interrupts         # 三条 MSI-X：rx-0、tx-0、其他
+```
 
 veth 没有这一站。`dev_hard_start_xmit` 会直接调 `veth_xmit`，把 skb 交给对端 netns 的接收路径——这就是下一节开头那个反直觉现象的来源。
 
@@ -168,28 +182,44 @@ veth 没有这一站。`dev_hard_start_xmit` 会直接调 `veth_xmit`，把 skb 
 
 关中断这个动作是 NAPI 的核心：中断只负责"叫醒"，搬运交给轮询。
 
-实测 20 MB 传输里 14575 个报文只触发了 99 次硬中断，比例约 147:1。
+实测一次 20 MB TCP 接收：`rx_packets` 从 57479 涨到 72038，共 14559 个报文；`enp10s0-rx-0` 这条中断从 20428 涨到 20510，只进了 82 次硬中断，约 178:1。
+
+```bash
+cat /sys/class/net/DEV/statistics/rx_packets   # 传输前后各跑一次，差值即报文数
+grep DEV-rx-0 /proc/interrupts                 # 同上，差值即硬中断数
+```
 
 ### 4.2 R2：一次 poll 取走一批
 
 软中断 `net_rx_action` 遍历挂起的 napi 实例，按预算（`NAPI_POLL_WEIGHT`，默认 64）调 `napi_poll`，e1000e 里是 `e1000_clean_rx_irq`。它从环上按顺序取描述符，为每个描述符建 `skb`（`napi_alloc_skb`），再用 `eth_type_trans` 从帧头取出 ethertype 写进 `skb->protocol`。
 
-实测 14575 个报文触发了 319 次 poll，平均一次取 46 个；`eth_type_trans` 被调用 14573 次，基本等于一个包一次。
+实测同一轮 14559 个报文，`e1000_clean_rx_irq` 进了 305 次、`net_rx_action` 300 次，平均一次 poll 取走 48 个包；`eth_type_trans` 被调用 14556 次，基本等于一个包一次。这三个计数来自 4.3 节那段 bpftrace。
 
 ### 4.3 R3：GRO 把同一条流的小段焊起来
 
 `napi_gro_receive` 在交给协议栈之前做一次合并：同一条流、同方向、序号连续的段，能合就合进前一个 skb 的 frags 里。合并后的 skb 长度可以远超 MTU，因为它已经不是"链路上的帧"，而是"给协议栈看的段"。
 
-实测最能说明问题：
+实测最能说明问题。计数脚本是 [gro3.bt](gro3.bt)，七个 kprobe 各数一件事；流量由对端灌入 20 MB，接收端先起 `nc` 等：
+
+```bash
+# 接收端
+nc -l 9002 > /dev/null
+sudo bpftrace gro3.bt          # 另开一个终端，Ctrl-C 结束
+
+# 发送端（对端机器），连发 20 MB
+python3 -c 'import socket; s=socket.create_connection(("RECEIVER_IP",9002)); b=b"A"*(1<<20)
+for _ in range(20): s.sendall(b)
+s.close()'
+```
 
 | 计数点 | 次数 | 含义 |
 | --- | --- | --- |
-| `eth_type_trans` | 14573 | 建了多少个 skb，约等于报文数 |
-| `ip_list_rcv` | 540 | 多少次批量交付 |
-| `ip_rcv_core` | 600 | 多少次真正进入 IP 层 |
-| `tcp_v4_rcv` | 600 | 多少次交给 TCP |
+| `eth_type_trans` | 14556 | 建了多少个 skb，约等于报文数 |
+| `ip_list_rcv` | 569 | 多少次批量交付 |
+| `ip_rcv_core` | 610 | 多少次真正进入 IP 层 |
+| `tcp_v4_rcv` | 610 | 多少次交给 TCP |
 
-14573 个 skb 只换来 600 次 IP 层处理，合并比约 24:1。**GRO 省的不是中断，是上层遍历 skb 的次数。**
+14556 个 skb 只换来 610 次 IP 层处理，合并比约 24:1；每次 `ip_list_rcv` 平均带走约 26 个 skb。**GRO 省的不是中断，是上层遍历 skb 的次数。**
 
 ### 4.4 R4：二层分发，tc 在 ptype 之前
 
@@ -229,7 +259,15 @@ veth 没有这一站。`dev_hard_start_xmit` 会直接调 `veth_xmit`，把 skb 
 
 ### 5.1 二十七个点
 
-下面是 S1 到 R6 的完整记录，原始文件在 [trace-5byte.txt](trace-5byte.txt)。`Δ` 是与上一个点的时间差，`累计` 从 `__sock_sendmsg` 起算。
+下面是 S1 到 R6 的完整记录，原始文件在 [trace-5byte.txt](trace-5byte.txt)，探针脚本是 [tl3.bt](tl3.bt)。`Δ` 是与上一个点的时间差，`累计` 从 `__sock_sendmsg` 起算。
+
+采集方式是让 bpftrace 直接把被测进程拉起来，这样 27 个探针只记录这一次运行：
+
+```bash
+sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5'
+```
+
+脚本里每个 kprobe 的正文只有一行 `printf`，打印 `nsecs`、函数名、`tid`、`cpu`；`nf_hook_slow` 那一条额外读 `((struct nf_hook_state *)arg1)->hook` 把 hook 号带出来。加上 `/comm == "netdemo"` 过滤是为了把 ssh、systemd 这些无关调用挡掉。
 
 | # | 函数 | Δ ns | 累计 µs |
 | --- | --- | --- | --- |
@@ -305,6 +343,27 @@ netfilter 的 IPv4 hook 有五个，编号和出现位置固定：
 
 表里的数字是同一次完整连接的计数：8 表示这次连接里经过该 hook 的 8 个包全都在 `nf_hook_slow` 里停了一下，0 表示一个都没有。原始记录见 [netfilter-hooks.txt](netfilter-hooks.txt)。
 
+计数命令是一条一行的 bpftrace，`arg1` 是 `nf_hook_state`，hook 号就从这个结构体里读：
+
+```bash
+sudo bpftrace -e 'kprobe:nf_hook_slow { @hook[((struct nf_hook_state *)arg1)->hook] = count(); }'
+sudo bpftrace -e 'kprobe:tcf_classify { @tc = count(); }'
+```
+
+三列对应的配置这样造：
+
+```bash
+# 空基链：两个 netns 各装五个
+for h in prerouting input forward output postrouting; do
+  ip netns exec nslab-a nft add chain ip t $h "{ type filter hook $h priority 0 ; }"
+done
+
+# 再加 tc 过滤器
+ip netns exec nslab-a tc qdisc add dev a0 clsact
+ip netns exec nslab-a tc filter add dev a0 egress  matchall action gact pass
+ip netns exec nslab-a tc filter add dev a0 ingress matchall action gact pass
+```
+
 三列对比能读出两件事：
 
 - **装了空的 filter 基链，入方向的两个 hook 才出现**。规则为空也照样进 `nf_hook_slow`，只是立即返回；没装基链时，`net->nf.hooks_ipv4[hook]` 是空的，`nf_hook()` 直接跳过。
@@ -314,10 +373,18 @@ netfilter 的 IPv4 hook 有五个，编号和出现位置固定：
 
 在一个全新的、`nft list ruleset` 为空的 netns 里 ping 三次回环，`nf_hook_slow` 仍然在 hook 3 和 hook 4 各被调用 6 次。把表项里的函数地址打出来：
 
-```text
-hook=3 n=1 fn=apparmor_ip_localout  pf=2
-hook=4 n=1 fn=apparmor_ip_postroute  pf=2
+```bash
+ip netns add probe
+ip -n probe link set lo up          # 新建的 netns 里 lo 默认是 down
+sudo bpftrace -c 'ip netns exec probe ping -c 3 127.0.0.1' hooks.bt
 ```
+
+```text
+hook=3 pf=2 num=1 fn=apparmor_ip_localout
+hook=4 pf=2 num=1 fn=apparmor_ip_postroute
+```
+
+脚本是 [hooks.bt](hooks.bt)。`nf_hook_slow(skb, state, entries, index)` 的第三个参数就是这张表，`num_hook_entries` 说明每个 hook 上只有一条表项，`ksym()` 把函数地址解析成符号名。
 
 是 AppArmor。Ubuntu 默认启用 AppArmor，它在出方向的两个 hook 上常驻一条表项，和 nft 规则无关。
 
@@ -379,6 +446,10 @@ hook=4 n=1 fn=apparmor_ip_postroute  pf=2
 | `ss -mni` | 看 socket 内存与队列 | `skmem`、`recv-q` |
 | `ip -s link show DEV` | 看设备计数 | `RX/TX packets/errors/dropped` |
 | `nstat -az` | 看协议栈统计 | `IpInReceives`、`TcpInErrs` |
+| `sudo bpftrace tl3.bt -c 'ip netns exec nslab-a ./netdemo tcp-client IP 18082 5'` | 抓 27 点函数时间线 | 带 `tid`、`cpu`，顺序为主 |
+| `nc -l 9002` + 对端灌 20 MB | 造批量收包流量 | 配合 `gro3.bt` 看合并比 |
+| `sudo bpftrace gro3.bt` | 数 skb、ip_list_rcv、poll、中断 | 7 个计数点 |
+| `sudo bpftrace -c '... ping -c 3 127.0.0.1' hooks.bt` | 看 hook 上挂了谁 | `num` 与函数符号名 |
 
 ## 九、名词解释
 

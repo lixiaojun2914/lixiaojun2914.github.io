@@ -12,9 +12,22 @@ nproc = 2
 MemTotal = 3892 MB
 
 网卡
-enp2s0 / enp10s0，驱动 e1000e（firmware-version 1.8-0，bus-info 0000:02:00.0）
+两块 e1000e，参数相同；接口名每次启动后要按 ip -br addr 重新确认。
+
+  ip -br addr
+  enp2s0   UP  192.168.126.135/24  fe80::20c:29ff:fe3d:848f/64
+  enp10s0  UP  192.168.190.10/24   fe80::20c:29ff:fe3d:8499/64
+
+  enp2s0   bus 0000:02:00.0  MSI-X 50/51/52
+  enp10s0  bus 0000:0a:00.0  MSI-X 59/60/61
+
+承载实验流量的网卡：本次是 enp10s0（192.168.190.10）。
+早期记录里同一网段显示为 enp2s0，重启后换成了 enp10s0，所以正文命令用 DEV 代指。
+
 单收发队列，RX/TX 环形缓冲各 256（ethtool -g），MSI-X 三条
-enp10s0 的排队规则是 fq_codel
+排队规则：fq_codel（tc qdisc show dev enp10s0）
+
+驱动：ethtool -i enp10s0 → driver: e1000e, firmware-version: 1.8-0, bus-info 0000:0a:00.0
 
 工具链
 gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0

@@ -63,3 +63,47 @@ veth 单个接收：ip_rcv 被调用，见 trace-5byte.txt。
 
 结论：7.0 上单包走 ip_rcv，批量走 ip_list_rcv → ip_sublist_rcv → ip_rcv_core。
 只写 ip_rcv 的路径图，在网卡这条路上会对不上。
+
+## 六、2026-11-27 重跑：完整命令链
+
+注意：承载 192.168.190.10 的网卡这次是 enp10s0（早期记录里显示为 enp2s0），
+两块都是 e1000e、参数相同，命令里换成自己机器上的名字即可。
+
+接收端（虚拟机，先备好）：
+
+  nc -l 9002 > /dev/null
+  sudo bpftrace gro3.bt > /tmp/gro3b.txt &
+
+发送端（宿主机，连发 20 MB）：
+
+  python3 -c 'import socket; s=socket.create_connection(("192.168.190.10",9002)); b=b"A"*(1<<20)
+  for _ in range(20): s.sendall(b)
+  s.close()'
+
+传输前后各读一次：
+
+  cat /sys/class/net/enp10s0/statistics/rx_packets
+  grep enp10s0-rx-0 /proc/interrupts
+
+结果：
+
+  rx_packets     57479 → 72038   (+14559)
+  enp10s0-rx-0   20428 → 20510   (+82)
+
+  @skb_built     eth_type_trans      14556
+  @ip_list       ip_list_rcv           569
+  @ip_core       ip_rcv_core           610
+  @tcp_rcv       tcp_v4_rcv            610
+  @irq_hard      e1000_intr_msix_rx     82
+  @napi_poll     e1000_clean_rx_irq    305
+  @softirq_run   net_rx_action         300
+
+比例：
+
+  14559 包 / 82 次硬中断      ≈ 178:1
+  14559 包 / 305 次 poll      ≈ 48 包每次
+  14556 skb / 610 次 IP 交付  ≈ 24:1
+  14556 / 569                 ≈ 26 skb 每次 ip_list_rcv
+
+早期在 enp2s0 名下测得的一组是 14575 / 99 / 319 / 314，
+与这一组的比例一致，说明结论与网卡名字无关。

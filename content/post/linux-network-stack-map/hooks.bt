@@ -1,0 +1,6 @@
+kprobe:nf_hook_slow
+{
+    $st = (struct nf_hook_state *)arg1;
+    $e  = (struct nf_hook_entries *)arg2;
+    printf("hook=%d pf=%d num=%d fn=%s\n", $st->hook, $st->pf, $e->num_hook_entries, ksym($e->hooks[0].hook));
+}
