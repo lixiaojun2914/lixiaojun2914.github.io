@@ -55,8 +55,8 @@ sudo bash lab.sh direct
 # 终端一：先把 tcpdump 起起来，-c 8 抓够自己退
 sudo ip netns exec nslab-a tcpdump -i a0 -nn -e -X -c 8 'tcp port 18082'
 
-# 终端二：B 侧监听，接上之后先等 1500 ms 再 read
-sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18082 1500 &
+# 终端二：B 侧监听，前台跑着，接上之后先等 1500 ms 再 read
+sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18082 1500
 
 # 终端三：A 侧连过去，写 5 个字节
 sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5
@@ -482,7 +482,7 @@ hook=4 pf=2 num=1 fn=apparmor_ip_postroute
 | `wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c` | 取源码、建网脚本、三个 bt 脚本 | 落到当前目录，其余四个同理 |
 | `write(fd, buf, 5)` | 发送 5 字节 | 返回 5 只表示进了内核队列 |
 | `sudo bash lab.sh direct` | 建两个 netns 加一对 veth | `nslab-a` / `nslab-b`，`lab.sh clean` 清掉 |
-| `sudo ip netns exec nslab-b ./netdemo tcp-server IP PORT 1500 &` | 起服务端 | `ready TCP`，接上后等 1500 ms 再读 |
+| `sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18082 1500` | 起服务端（前台） | `ready TCP`，接上后等 1500 ms 再 `received=5 bytes` |
 | `sudo ip netns exec nslab-a ./netdemo tcp-client IP PORT 5` | 发 5 字节 | 客户端 `write accepted=5 bytes`，服务端 `received=5 bytes` |
 | `sudo ip netns exec nslab-a ./netdemo tcp-fill IP PORT` | 打满发送队列 | `send=EAGAIN`，然后持 fd 挂 4 秒 |
 | `sudo strace -e trace=write ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5` | 确认系统调用 | `write(3, "AAAAA", 5) = 5` |
