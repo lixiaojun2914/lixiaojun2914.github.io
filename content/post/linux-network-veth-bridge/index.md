@@ -24,13 +24,36 @@ tags:
 
 ### 1.1 创建
 
-第一篇的 `lab.sh direct` 里是这条命令：
+这一篇从 direct 拓扑起步，2.1 再换成 bridge：
+
+```bash
+sudo bash lab.sh clean
+sudo bash lab.sh direct
+```
+
+第一篇的脚本里，这两个设备是这条命令建的（前提是两个 netns 已经存在）：
 
 ```bash
 sudo ip link add a0 netns nslab-a type veth peer name b0 netns nslab-b
 ```
 
-前提是两个 netns 已经存在。它造的是一对设备，不是两块互不相干的网卡：`a0` 发出的帧从 `b0` 的接收方向进来，反过来也一样。两端分在不同环境时，帧随之进入对端的协议处理。
+它造的是一对设备，不是两块互不相干的网卡：`a0` 发出的帧从 `b0` 的接收方向进来，反过来也一样。两端分在不同环境时，帧随之进入对端的协议处理。
+
+"一对"可以核对，不用只信命令：
+
+```bash
+sudo ip netns exec nslab-a ip -br link show a0
+sudo ip netns exec nslab-a cat /sys/class/net/a0/iflink
+sudo ip netns exec nslab-b cat /sys/class/net/b0/ifindex
+```
+
+```text
+a0@if2           UP             02:00:00:77:01:01 <BROADCAST,MULTICAST,UP,LOWER_UP>
+2
+2
+```
+
+`@if2` 后面的数字不是 `a0` 自己的编号，而是 peer 的 `ifindex`；`iflink` 读的也是它，第三行从 `nslab-b` 读到 `b0` 的编号，是同一个数。`ifindex` 在每个命名空间里各自编号，`iflink` 是跨空间的指针，两端靠它互指。direct 拓扑里两边都只有 `lo` 加一个接口，编号恰好都是 2；到 2.1 的三端口拓扑，`a0` 指向 3、`b0` 指向 4，差别就显出来了。这些数字随拓扑重建变化，要核对的是两处相等。
 
 设备建好还要配地址、拉起链路。veth 不替应用决定 IP、路由和防火墙——它只负责把帧交给另一端。
 
@@ -63,6 +86,10 @@ A、B、C 的地址是 `10.77.1.1`、`.2`、`.3`，掩码 `/24`。每个端点�
 | C 的 `c0` | `pc` | `02:00:00:77:01:03` |
 
 脚本给端点固定了 MAC，图、FDB、抓包才能对得上。`br0` 这次不配 IP，也不需要开 IPv4 转发——它只做二层交换，`nslab-r` 这个名字在这里不代表三层路由。
+
+表里的地址属于端点，桥端口自己的是另一个。`ip -br link show pa` 打出的链路地址和 `a0` 不一样：veth 两端各生成一个地址，帧从 `a0` 出去时源地址不替换，所以从 `pa` 进桥学到的仍是 `02:00:00:77:01:01`，记在 `pa` 名下。端口自己的地址也在这张表里，带 `permanent` 后缀，例如 `fe:61:15:37:86:76 dev pa master br0 permanent`；学来的项没有这个后缀，会老化。
+
+`br0` 本身也有地址，取自三个端口中数值最小的那个。桥自己的地址和固定组播地址留在 `self` 表，和转发用的动态项分开。这些地址每次重建拓扑都会变，能对上的是"谁最小、谁 permanent"这样的关系。
 
 ![三对 veth 将 A、B、C 接入同一 bridge，FDB 记录各 MAC 所在端口](/p/linux-network-veth-bridge/bridge.svg)
 
