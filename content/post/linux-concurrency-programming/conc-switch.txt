@@ -1,0 +1,3 @@
+ucontext switches=400000 total=77295863 ns/switch=193.2
+spin rounds=200000 total=37593279 ns/round=188.0
+sem rounds=200000 total=4004939341 ns/round=20024.7

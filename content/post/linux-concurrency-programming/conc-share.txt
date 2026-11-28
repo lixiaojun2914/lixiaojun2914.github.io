@@ -1,0 +1,6 @@
+pack threads=2 iters=20000000 total=122032604 ns/op=3.05
+pack threads=2 iters=20000000 total=123878283 ns/op=3.10
+pack threads=2 iters=20000000 total=123571489 ns/op=3.09
+pad threads=2 iters=20000000 total=32007494 ns/op=0.80
+pad threads=2 iters=20000000 total=32259745 ns/op=0.81
+pad threads=2 iters=20000000 total=31930618 ns/op=0.80

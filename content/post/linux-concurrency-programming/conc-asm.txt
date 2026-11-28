@@ -1,0 +1,36 @@
+# 机器
+aarch64
+LEVEL1_DCACHE_LINESIZE=64
+gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0，-O2
+
+# 单条 store（gcc -O2 -S memorder.c，摘录）
+st_relaxed:   str  x1, [x0]
+st_release:   stlr x1, [x0]
+st_seq:       stlr x1, [x0]
+
+# 单条 load
+ld_relaxed:   ldr  x0, [x0]
+ld_acquire:   ldar x0, [x0]
+ld_seq:       ldar x0, [x0]
+
+# 发布一条消息：data 与 flag 两条写
+pub_relaxed:
+        str  x2, [x0]        ; data
+        str  x2, [x1]        ; flag
+
+pub_release:
+        str  x2, [x0]        ; data
+        stlr x2, [x1]        ; flag
+
+pub_seq:
+        stlr x2, [x0]
+        stlr x2, [x1]
+
+# 原子加法（objdump -d conc-lab，counter_fn 内）
+        bl  __aarch64_ldadd8_relax
+        bl  __aarch64_ldadd8_acq_rel
+
+# 普通变量分支（counter plain）
+        ldr x0, [x19, #32]
+        add x0, x0, x20
+        str x0, [x19, #32]

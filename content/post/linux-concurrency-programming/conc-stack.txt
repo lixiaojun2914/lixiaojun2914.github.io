@@ -1,0 +1,8 @@
+setstacksize(64 kB) = 22
+requested=64 kB actual=8192 kB used=37 kB rss=12 kB
+setstacksize(128 kB) = 0
+requested=128 kB actual=128 kB used=69 kB rss=12 kB
+setstacksize(256 kB) = 0
+requested=256 kB actual=256 kB used=133 kB rss=16 kB
+setstacksize(1024 kB) = 0
+requested=1024 kB actual=1024 kB used=517 kB rss=40 kB

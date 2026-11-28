@@ -1,0 +1,12 @@
+plain threads=2 iters=5000000 total=108750 ns/op=0.01 result=10000000
+plain threads=2 iters=5000000 total=131250 ns/op=0.01 result=10000000
+plain threads=2 iters=5000000 total=78750 ns/op=0.01 result=10000000
+mutex threads=2 iters=5000000 total=186609429 ns/op=18.66 result=10000000
+mutex threads=2 iters=5000000 total=146248257 ns/op=14.62 result=10000000
+mutex threads=2 iters=5000000 total=162424443 ns/op=16.24 result=10000000
+seq threads=2 iters=5000000 total=29500936 ns/op=2.95 result=10000000
+seq threads=2 iters=5000000 total=29330102 ns/op=2.93 result=10000000
+seq threads=2 iters=5000000 total=29959231 ns/op=3.00 result=10000000
+relaxed threads=2 iters=5000000 total=29269768 ns/op=2.93 result=10000000
+relaxed threads=2 iters=5000000 total=29163226 ns/op=2.92 result=10000000
+relaxed threads=2 iters=5000000 total=29194309 ns/op=2.92 result=10000000

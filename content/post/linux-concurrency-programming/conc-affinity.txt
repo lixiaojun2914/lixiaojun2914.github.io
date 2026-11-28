@@ -1,0 +1,6 @@
+split n=2000000 total=54044883 ns/msg=27.02
+split n=2000000 total=65432955 ns/msg=32.72
+split n=2000000 total=57916741 ns/msg=28.96
+same n=2000000 total=2550350 ns/msg=1.28
+same n=2000000 total=2591808 ns/msg=1.30
+same n=2000000 total=2650642 ns/msg=1.33

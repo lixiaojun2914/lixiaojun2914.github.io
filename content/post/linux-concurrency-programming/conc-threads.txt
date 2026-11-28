@@ -1,0 +1,14 @@
+## threads 8
+main tid=75569 stack=[0xffffd7edc000,0xffffd86dc000) size=8192 kB rss=8 kB
+thread 0 tid=75570 stack=[0xe413744e0000,0xe41374ce0000) size=8192 kB rss=52 kB
+thread 1 tid=75571 stack=[0xe41373cd0000,0xe413744d0000) size=8192 kB rss=64 kB
+thread 2 tid=75572 stack=[0xe413734c0000,0xe41373cc0000) size=8192 kB rss=64 kB
+thread 3 tid=75573 stack=[0xe41372cb0000,0xe413734b0000) size=8192 kB rss=64 kB
+thread 4 tid=75574 stack=[0xe413724a0000,0xe41372ca0000) size=8192 kB rss=56 kB
+thread 5 tid=75575 stack=[0xe41371c90000,0xe41372490000) size=8192 kB rss=48 kB
+thread 6 tid=75576 stack=[0xe41371480000,0xe41371c80000) size=8192 kB rss=40 kB
+thread 7 tid=75577 stack=[0xe41370c70000,0xe41371470000) size=8192 kB rss=32 kB
+## stack 64
+requested=64 kB actual=8192 kB touched_from_top=18446714653112674960 kB rss=12 kB
+## stack 2048
+requested=2048 kB actual=2048 kB touched_from_top=18446729064900085952 kB rss=72 kB
