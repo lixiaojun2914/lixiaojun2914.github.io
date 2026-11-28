@@ -398,7 +398,7 @@ Linux 中常见的两个入口是 **HugeTLB** 和 **THP（Transparent Huge Pages
 
 **UMA（Uniform Memory Access，统一内存访问）**表示 CPU 对主存的访问成本在拓扑上大致一致。**NUMA（Non-Uniform Memory Access，非统一内存访问）**表示访问成本随内存所在节点而变化，本地访问通常比远端访问更便宜。
 
-Linux 用 **node** 表示内存拓扑节点。节点可以有 CPU 和内存，也可能缺少其中一种资源。同一种 zone 类型可以在多个 node 内分别存在。实验虚拟机的 `cat /sys/devices/system/node/online` 输出 `0`，表示来宾看到一个在线节点。
+Linux 用 **node** 表示内存拓扑节点。节点可以有 CPU 和内存，也可能缺少其中一种资源。同一种 zone 类型可以在多个 node 内分别存在。实验虚拟机的 `cat /sys/devices/system/node/online` 输出 `0`，表示虚拟机里只看到一个在线节点。
 
 ![双节点 NUMA 示例，每组 CPU 有本地节点，也可以访问远端节点](numa-nodes-zones.svg)
 

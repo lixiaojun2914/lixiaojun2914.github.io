@@ -40,7 +40,7 @@ Linux 对外提供多种时钟标识。读时间前需要先决定要回答哪�
 
 Unix Epoch 是 `1970-01-01 00:00:00 UTC`。普通 POSIX 时间戳不把闰秒作为额外累计秒数表达。Linux 还提供国际原子时（TAI，International Atomic Time）基准的 `CLOCK_TAI`，用于有相应需求的场景，其正确性依赖系统维护正确的 TAI 偏移。本篇主要使用前表中的时钟。[clock_gettime 接口与时钟语义](https://man7.org/linux/man-pages/man2/clock_gettime.2.html)
 
-这里的“系统挂起”是操作系统的 suspend。**进程调用 `sleep()` 时，MONOTONIC 仍然前进**；虚拟机被宿主机暂停时怎样处理经过时间，还取决于虚拟化平台，不能直接等同于来宾系统执行 suspend。
+这里的“系统挂起”是操作系统的 suspend。**进程调用 `sleep()` 时，MONOTONIC 仍然前进**；虚拟机被宿主机暂停时怎样处理经过时间，还取决于虚拟化平台，不能直接等同于虚拟机内部执行 suspend。
 
 ### 1.2 用一个程序读取六种时钟
 
@@ -138,7 +138,7 @@ rtc-efi rtc-efi.0
 1
 ```
 
-`rtc-efi` 是来宾看到的 RTC 驱动名称，虚拟机中并不意味着来宾直接控制一块独立电池供电芯片。`hctosys=1` 表示该 RTC 用于启动时的系统时间设置，不能据此判断运行中的系统时间是否已经与网络时间同步。
+`rtc-efi` 是虚拟机里看到的 RTC 驱动名称；这不意味着虚拟机直接控制一块独立电池供电芯片。`hctosys=1` 表示该 RTC 用于启动时的系统时间设置，不能据此判断运行中的系统时间是否已经与网络时间同步。
 
 RTC 常按 UTC 保存，时区转换留给系统软件。后面的 `timedatectl` 输出中，`LocalRTC=no` 就表示 RTC 未按本地时区解释。
 

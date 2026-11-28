@@ -13,7 +13,7 @@ tags:
 
 `malloc()` 返回的是一段可用的用户地址。分配器已经可能写过块头，但对象里尚未访问到的其他页仍可以没有物理后备。随后一次普通赋值，会把“合法的虚拟区间”推进为“具有数据页的有效映射”。
 
-本篇沿“进程 → 虚拟地址空间 → 页表映射 → 物理页”的顺序，把分配和首次写入接在一起。源码对照 GNU C 库（glibc，GNU C Library）2.42、Linux v6.8，实验来宾当前为 Ubuntu 26.04.1 ARM64、glibc 2.43，运行内核 `6.8.0-149-generic`。用户态库的具体调用选择以本次跟踪为准。[第二篇](/p/linux-virtual-address-translation/)已经展开硬件地址翻译。
+本篇沿“进程 → 虚拟地址空间 → 页表映射 → 物理页”的顺序，把分配和首次写入接在一起。源码对照 GNU C 库（glibc，GNU C Library）2.42、Linux v6.8，实验虚拟机当前为 Ubuntu 26.04.1 ARM64、glibc 2.43，运行内核 `6.8.0-149-generic`。用户态库的具体调用选择以本次跟踪为准。[第二篇](/p/linux-virtual-address-translation/)已经展开硬件地址翻译。
 
 本篇使用的对象、虚拟区间、物理页及 `mmap / madvise` 接口关系，可对照[第一篇的概念说明](/p/linux-memory-management-basics/)。
 
