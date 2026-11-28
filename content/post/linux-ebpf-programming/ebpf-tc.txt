@@ -1,0 +1,35 @@
+[sudo] password for lxj: == 编译完成
+ns1=10.0.0.1  ns2=10.0.0.2
+== filter 已挂
+filter protocol all pref 49152 bpf chain 0 
+filter protocol all pref 49152 bpf chain 0 handle 0x1 tc_ping.bpf.o:[tc] direct-action not_in_hw id 467 name tc_ping tag 167365c1eca9b55a jited 
+== ns2 向 ns1 ping
+PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
+ping: sendmsg: No buffer space available
+ping: sendmsg: No buffer space available
+
+--- 10.0.0.1 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 3058ms
+
+== map
+[{
+        "key": ["0x00","0x00","0x00","0x00"
+        ],
+        "value": ["0x04","0x00","0x00","0x00","0x00","0x00","0x00","0x00"
+        ],
+        "formatted": {
+            "key": 0,
+            "value": 4
+        }
+    },{
+        "key": ["0x01","0x00","0x00","0x00"
+        ],
+        "value": ["0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00"
+        ],
+        "formatted": {
+            "key": 1,
+            "value": 0
+        }
+    }
+]
+== 已清理

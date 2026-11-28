@@ -1,0 +1,14 @@
+[sudo] password for lxj: == 编译完成
+== sock_ops 已挂到 cgroup
+server accepted
+client connected
+== sockhash 内容
+Found 0 elements
+== hits
+[{
+        "key": 0,
+        "value": 1
+    }
+]
+== printk
+== 已清理

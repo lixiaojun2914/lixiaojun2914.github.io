@@ -1,0 +1,17 @@
+[sudo] password for lxj: == 编译完成
+libbpf: prog 'bad_access': BPF program load failed: -EACCES
+libbpf: prog 'bad_access': -- BEGIN PROG LOAD LOG --
+0: R1=ctx() R10=fp0
+; void *data = (void *)(long)ctx->data; @ bad_access.bpf.c:9
+0: (61) r1 = *(u32 *)(r1 +0)          ; R1=pkt(r=0)
+; return eth->h_proto;		/* 没有校验 data + sizeof(*eth) <= data_end */ @ bad_access.bpf.c:12
+1: (69) r0 = *(u16 *)(r1 +12)
+invalid access to packet, off=12 size=2, R1(id=0,off=12,r=0)
+R1 offset is outside of the packet
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'bad_access': failed to load: -EACCES
+libbpf: failed to load object 'bad_access.bpf.o'
+Error: failed to load object file
+== 加载结束 rc=0
+pin 未创建

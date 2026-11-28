@@ -1,0 +1,10 @@
+[sudo] password for lxj: == 编译完成
+ns1=10.0.0.1  ns2=10.0.0.2
+== 未挂载时直连
+direct connect ok
+server accepted
+== 已加载
+== 已挂到 cgroup
+== 同一 cgroup 内再连
+connect failed: [Errno 1] Operation not permitted
+== 已清理

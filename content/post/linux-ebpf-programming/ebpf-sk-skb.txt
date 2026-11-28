@@ -1,0 +1,10 @@
+[sudo] password for lxj: sk_skb_loader.c: In function ‘do_server’:
+sk_skb_loader.c:44:17: warning: ignoring return value of ‘write’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   44 |                 write(s, "HELLO", 5);
+      |                 ^~~~~~~~~~~~~~~~~~~~
+== 编译完成
+verdict attached to sockmap
+accepted fd=8, inserted into sockmap
+server recv: EOF
+== printk
+== 已清理
