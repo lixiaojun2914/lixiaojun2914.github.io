@@ -1,0 +1,2 @@
+listen fd=3 addr=127.0.0.1:42909
+mode=uring conns=8 accepted=8 bytes=56 loops=24

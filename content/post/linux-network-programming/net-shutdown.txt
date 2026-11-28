@@ -1,0 +1,4 @@
+listen fd=3 addr=127.0.0.1:45741
+server first recv 4 bytes: ping
+server second recv 0 (0 = 对端关了写方向)
+client after SHUT_WR: recv 3 bytes: bye

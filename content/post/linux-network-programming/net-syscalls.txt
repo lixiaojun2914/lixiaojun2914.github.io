@@ -1,0 +1,9 @@
+88115 socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, IPPROTO_IP) = 3
+88115 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
+88115 bind(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("127.0.0.1")}, 16) = 0
+88115 listen(3, 8)                      = 0
+88115 getsockname(3, {sa_family=AF_INET, sin_port=htons(42251), sin_addr=inet_addr("127.0.0.1")}, [16]) = 0
+88115 accept(3, {sa_family=AF_INET, sin_port=htons(56310), sin_addr=inet_addr("127.0.0.1")}, [16]) = 4
+88115 recvfrom(4, "hello", 256, 0, NULL, NULL) = 5
+88115 sendto(4, "hello", 5, 0, NULL, 0) = 5
+88115 +++ exited with 0 +++
