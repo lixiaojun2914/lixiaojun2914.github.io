@@ -225,11 +225,12 @@ ECN（显式拥塞通知）在条件满足时用标记代替丢弃来传话。�
 | 策略 | 提供什么 | 分析时看什么 |
 | --- | --- | --- |
 | FIFO | 按到达顺序排队 | 队列长度、流之间互相挤压 |
+| HTB | 按类分层限速，每类有 `rate` 与 `ceil` | 各类的 `tokens`、`borrowed`，谁在积压、谁在借额度 |
 | FQ-CoDel | 流调度 + 延迟控制 | 持续积压、交互延迟、丢弃与标记 |
 | fq | 按流组织，支持 pacing | socket 给出的发送时间与流服务 |
 | netem | 人为制造延迟、丢包、重排 | 搭实验环境，不是队列管理机制本身 |
 
-pacing、AQM、调度是三件事：pacing 安排发送时刻，AQM 处理持续积压，调度决定谁先谁后。相关，但别混成一个词。FQ-CoDel 的算法见 [RFC 8290](https://www.rfc-editor.org/rfc/rfc8290) 和[实现](https://github.com/torvalds/linux/blob/v7.0/net/sched/sch_fq_codel.c)。
+pacing、AQM、调度是三件事：pacing 安排发送时刻，AQM 处理持续积压，调度决定谁先谁后。相关，但别混成一个词。HTB 属于整形：它按类压速率，`rate` 是保证、`ceil` 是上限，空闲额度会按 `borrowed` 借出去，所以 2.3 里两档速率的类在负载不均时并不是硬隔离。FQ-CoDel 的算法见 [RFC 8290](https://www.rfc-editor.org/rfc/rfc8290) 和[实现](https://github.com/torvalds/linux/blob/v7.0/net/sched/sch_fq_codel.c)。
 
 BDP 是速率乘时延，用来估算路径上在途的数据量，不是"队列必须设这么大"的规定。流数、拥塞控制、瓶颈位置都会改变结论。
 
