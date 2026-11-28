@@ -121,38 +121,46 @@ ping 返回后，把上面那三条再跑一遍。两轮输出相减就是下表
 
 ### 3.2 poll 的工作量与预算
 
-在专属实例里跟踪 poll（同样是上一轮留下的实例先清掉）：
+在专属实例里跟踪 poll。整块一次贴进去，不用先 `sudo -i` 另开 shell：
 
 ```bash
-sudo -i
+sudo bash -c '
 rmdir /sys/kernel/tracing/instances/nslab 2>/dev/null
 mkdir /sys/kernel/tracing/instances/nslab
 cd /sys/kernel/tracing/instances/nslab
 echo 1 > events/napi/napi_poll/enable
 ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
+sleep 0.5
 echo 0 > events/napi/napi_poll/enable
-grep 'device enp2s0' trace | head -n 1
-grep -c 'device enp2s0' trace
+grep -c "device enp2s0" trace
+grep "device enp2s0" trace | head -n 1
+grep "device enp2s0" trace | grep -o "work [0-9]*" | sort | uniq -c
+'
 ```
 
-最后一条 `grep -c` 数出这次跟踪里有多少条 `enp2s0` 的 poll 记录，文中说的"15 条"就是它的输出。
+三条 `grep` 分别给条数、第一条原文和工作量分布。本机这一轮的输出：
 
 ```text
-          <idle>-0       [000] .Ns1. 23128.599083: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+16
+          <idle>-0       [000] ..s1. 80455.529207: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64
+      1 work 0
+     15 work 1
 ```
 
-15 个 ping 对应 15 条 poll 记录，时间戳从 23128.599083 到 23129.040791，间隔约 31 ms，和 ping 的 0.03 秒一致。
+16 条里 15 条 `work 1`，1 条 `work 0`。`work` 是这次回调的返回值，也就是处理了几个工作单元；`budget 64` 是允许的上限，绝不等于"这次收了 64 个包"。
 
-`work 1` 是这次回调的返回值，也就是处理了 1 个工作单元；`budget 64` 是允许的上限。它绝不等于"这次收了 64 个包"。这一轮 15 条记录全是 `work 1`，没有一条触到上限，说明低负载下 poll 每次只取一个就收尾了，批处理的优势根本用不上。
+条数比 ping 的 15 多一条是常态：多出来的可能是收尾那次空转（`work 0`），也可能是别的流量捎带的一个帧。所以别把"条数等于 ping 数"当规律，要看的是**分布**——绝大多数是 `work 1`，没有一条触到 `budget`，说明低负载下每次只取一个就收尾，批处理的优势用不上。
 
-15 条的上下文都是 `<idle>-0`，即软中断在空闲任务里执行。持续流量下同样的回调可能落在别的上下文，这与 NAPI 的调度方式有关，不是固定的。
+相邻两条 `enp2s0` 记录的时间差约 31 ms（这一轮从 80455.529 到 80455.561），和 ping 的 0.03 秒对得上；最后那条 `work 0` 落在 80456.424，比前一条晚了近半秒，是流量停了之后的收尾。
+
+这轮的上下文都是 `<idle>-0`，即软中断在空闲任务里执行；持续流量下同样的回调可能落在别的上下文，这与 NAPI 的调度方式有关，不是固定的。跟踪里还能看到一条 `enp10s0` 的记录，那是 SSH 自己产生的流量——实例记录的是整机 NAPI，不是某块网卡独占。
 
 [完整记录](/p/linux-network-driver-napi/napi-trace.txt)、[前后计数](/p/linux-network-driver-napi/napi-counters.txt) 可以直接对照。
 
+清理：
+
 ```bash
-cd /
-rmdir /sys/kernel/tracing/instances/nslab
-exit
+sudo bash -c 'cd /; rmdir /sys/kernel/tracing/instances/nslab'
 ```
 
 ## 四、压力判断的四个落点

@@ -92,11 +92,10 @@ sudo bash lab.sh clean
 sudo bash lab.sh direct
 ```
 
-另开一个 root shell，建一个专属跟踪实例。上一轮留下的同名实例先清掉，否则 `mkdir` 会报文件已存在，后面每一步都会跟着报错。
+下面这一整块一次贴进终端。用 `sudo bash -c` 而不是先 `sudo -i`：`sudo -i` 会另起一个 shell，后面粘进去的行有概率被密码提示吃掉，屏幕上就只剩"什么都没执行"的样子；`bash -c` 只有一个 shell，步骤顺序就是字面顺序。
 
 ```bash
-sudo -i
-cd /home/lxj/nslab                       # 第一篇下载六个文件的目录，换成自己的
+sudo bash -c '
 rmdir /sys/kernel/tracing/instances/nslab 2>/dev/null
 mkdir /sys/kernel/tracing/instances/nslab
 cd /sys/kernel/tracing/instances/nslab
@@ -104,16 +103,21 @@ echo 1 > events/skb/kfree_skb/enable
 ip netns exec nslab-a /home/lxj/nslab/netdemo udp-client 10.77.1.2 19999; echo "client exit=$?"
 sleep 0.5
 echo 0 > events/skb/kfree_skb/enable
-grep -c 'reason: NO_SOCKET' trace
-grep 'reason: NO_SOCKET' trace
+grep -c "reason: NO_SOCKET" trace
+grep "reason: NO_SOCKET" trace
+'
 ```
 
-`netdemo` 就是第一篇编译出来的那个程序。这一段屏幕上会出现两样东西，都不是故障：
+`/home/lxj/nslab` 换成第一篇下载六个文件的目录，`netdemo` 就是那里编译出来的那个程序。正常情况下这一段会按顺序给出四样东西：
 
-```text
-send: Connection refused
-client exit=1
-```
+| 输出 | 说明 |
+| --- | --- |
+| `send: Connection refused` | 第二个数据报没发出去，见下 |
+| `client exit=1` | 客户端以非零码结束，同样不是故障 |
+| `1` 或 `2` | `grep -c` 数到几条 `kfree_skb` 事件 |
+| 一行 `kfree_skb: ... reason: NO_SOCKET` | 要的那条证据 |
+
+任何一步没有回话，就停在原地查，别接着往下跑——否则后面的 `grep` 读的是空文件，看起来像"命令没执行"。
 
 `udp-client` 发两个数据报，第一个正常出去，B 上没有监听者，B 的协议栈回一个 ICMP 端口不可达；第二个数据报还没离开本机，这次 `send` 就直接拿到 `ECONNREFUSED`，程序按约定退出码 1 结束。所以退出码非零是"端口没人收"的直接后果，不是环境搭错了。
 
@@ -144,9 +148,7 @@ client exit=1
 清理：
 
 ```bash
-cd /
-rmdir /sys/kernel/tracing/instances/nslab
-exit
+sudo bash -c 'cd /; rmdir /sys/kernel/tracing/instances/nslab'
 sudo bash lab.sh clean
 ```
 
