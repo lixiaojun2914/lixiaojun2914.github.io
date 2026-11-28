@@ -230,7 +230,7 @@ struct bpf_link *link = bpf_program__attach(prog);                 /* 挂载 */
 
 加载时有两个容易踩的点：
 
-- **license**。程序里必须有 `char _license[] SEC("license") = "GPL";`。写成 `"GPL"` 才能调用标记为 GPL-only 的 helper（如 `bpf_probe_read_kernel`、`bpf_skb_load_bytes` 的一部分）；写成 `"Dual BSD/GPL"` 也行。不写 license，加载时报 `license` 相关错误。
+- **license**。程序里必须有 `char _license[] SEC("license") = "GPL";`。写成 `"GPL"` 才能调用标记为 GPL-only 的 helper（如 `bpf_probe_read_kernel`、`bpf_override_return`、`bpf_get_stackid` 的一部分）；写成 `"Dual BSD/GPL"` 也行。不写 license，加载时报 `license` 相关错误。
 - **`type` 参数不要乱传**。`bpftool prog load x.bpf.o DIR type cgroup_sock_addr` 会让 bpftool 按这个名字去猜 section，报 `failed to guess program type from ELF section 'cgroup_sock_addr/'`。让 `SEC("cgroup/connect4")` 自己决定类型，不传 `type`。
 
 ### 3.2 校验器检查什么
