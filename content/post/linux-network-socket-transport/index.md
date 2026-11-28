@@ -183,7 +183,9 @@ struct tcp_sock {
 
 ### 4.1 一次截断
 
-终端三起 UDP 服务端，接收缓冲区 3 字节：
+`udp-server` 的第四个参数是每次 `recv()` 最多取多少字节。这里给 3，也就是让缓冲区装不下整条报文。
+
+终端三起服务端：
 
 ```bash
 sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18081 3
@@ -195,18 +197,33 @@ sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18081 3
 sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18081
 ```
 
+```text
+sent datagrams: 6 bytes, 2 bytes
+```
+
 服务端输出：
 
 ```text
-recv[0]=3 content=ABC
-recv[1]=2 content=FG
+recv[0] len=6 copied=3 content=ABC
+recv[1] len=2 copied=2 content=FG
 ```
 
-`recv[0]` 只拿到 `ABC`。`D`、`E`、`F` 不是留在队列里等下一次读——它们随这条数据报一起被丢弃，下一次读到的是下一条报文 `FG`。UDP 保留边界，也就保留了这个后果。
+`len` 是这条报文原本的长度，`copied` 是真正落进缓冲区的字节。程序在 `recv()` 上带了 `MSG_TRUNC`，两者才能同时看到；不带这个标志时，返回值只有 `copied`，被截掉多少就无从得知。
 
-把缓冲区改回 1024 字节，同一条数据报会完整读回 6 字节；截断只在缓冲区装不下时发生。
+`D`、`E`、`F` 不是留在队列里等下一次读——它们随这条数据报一起被丢弃，下一次读到的是下一条报文 `FG`。UDP 保留边界，也就保留了这个后果。
 
-`recvmsg()` 加 `MSG_TRUNC` 可以拿到被截断的长度，用来判断"这条报文本来多大"。`recv()` 拿不到这个信息。
+把第四个参数换成 1024，同一条报文就完整回来了：
+
+```bash
+sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18081 1024
+```
+
+```text
+recv[0] len=6 copied=6 content=ABCDEF
+recv[1] len=2 copied=2 content=FG
+```
+
+这里改的是**每次读取的长度**，不是 socket 的接收缓冲区。后者是内核排队的地方，用 `SO_RCVBUF` 设置，`ss -u` 的 `Recv-Q` 看的是排了多少字节。
 
 ### 4.2 与 TCP 的分界
 
@@ -286,7 +303,7 @@ ET 不是更快，是把"检查"的责任交给应用。它省掉的是重复报
 | --- | --- |
 | 看队列深度与内存 | `ss -tinm 'sport = :18081'` |
 | 非阻塞发送到 EAGAIN | `./netdemo tcp-fill <ip> <port> [hold_ms]` |
-| UDP 截断复现 | `./netdemo udp-server <ip> <port> 3` |
+| UDP 截断复现 | `./netdemo udp-server <ip> <port> [recv_bytes] [delay_ms]` |
 | 观察系统调用 | `strace -f -e trace=network,read,write ./netdemo ...` |
 | 四写法对照 | `./muxdemo thread <port>`，`epoll-lt`、`epoll-et` 同参数；多线程用 `epoll-mt <port> 4` |
 | 一次灌 256 KiB | `./muxdemo blast <ip> <port> 262144 6000` |

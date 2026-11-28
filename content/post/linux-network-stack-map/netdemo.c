@@ -15,8 +15,10 @@
  *   netdemo tcp-server IP PORT [delay_ms]   accept 后先等 delay_ms 再读，读完打印总数
  *   netdemo tcp-client IP PORT [bytes]      connect 后写 bytes 字节（默认 5），打印耗时
  *   netdemo tcp-fill   IP PORT [hold_ms]   把发送队列写满，停在 EAGAIN，然后挂 hold_ms（默认 4000）
- *   netdemo udp-server IP PORT [delay_ms]   收两个报文，打印各自长度与内容
- *   netdemo udp-client IP PORT              发两个报文：5 字节、2 字节
+ *   netdemo udp-server IP PORT [recv_bytes] [delay_ms]
+ *                                           收两个报文，每次最多取 recv_bytes 字节（默认 3），
+ *                                           带 MSG_TRUNC 打印报文原始长度与实际拿到的字节
+ *   netdemo udp-client IP PORT              发两个报文：6 字节、2 字节
  *
  * 退出码：0 正常；1 某个系统调用失败（perror 打印 errno 原文）；2 参数不对。
  */
@@ -59,7 +61,7 @@ static void pause_ms(int ms) {
 
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr,"usage: %s tcp-server|tcp-client|tcp-fill|udp-server|udp-client IP PORT [delay_ms|bytes]\n",argv[0]);
+        fprintf(stderr,"usage: %s tcp-server|tcp-client|tcp-fill|udp-server|udp-client IP PORT [recv_bytes|delay_ms|bytes] [delay_ms]\n",argv[0]);
         return 2;
     }
     /* 关掉 stdio 缓冲：输出常被重定向到文件（配合 bpftrace -c 观察顺序），
@@ -82,19 +84,23 @@ int main(int argc, char **argv) {
         /* accept 之后立刻关掉监听 fd，后续只用同一个 fd 收发：
          * strace 里看到的 read/write 全部落在同一个 fd 上，好读。 */
         if (!udp) { int c=accept(s,NULL,NULL); if(c<0) die("accept"); close(s); s=c; }
-        /* 先睡一会儿再读。作用是让"数据已经到了、应用还没读"这个状态
-         * 存续一段时间：tcpdump、ss -mni、bpftrace 都在这个窗口里能抓到东西。 */
-        if (argc>4) pause_ms(atoi(argv[4]));
         char buf[4096]; size_t total=0;
         if (udp) {
-            /* UDP 收两次，每次最多 3 字节。对端发的是 5 字节和 2 字节，
-             * 第一次只能拿到 3 字节，剩下的被丢弃——这就是报文边界：
-             * 内核不会把两条报文拼起来交给你，超出缓冲的部分直接没了。 */
+            /* 第四个参数是每次最多取多少字节，默认 3；第五个才是先睡多久。
+             * MSG_TRUNC 让 recv 返回整条报文的长度，缓冲区里只放得下前 rcv 个字节，
+             * 于是"本来多大、拿到多少"能一次打印出来。 */
+            int rcv = argc>4 ? atoi(argv[4]) : 3;
+            if (rcv<1) rcv=1; if (rcv>(int)sizeof buf) rcv=(int)sizeof buf;
+            if (argc>5) pause_ms(atoi(argv[5]));
             for (int i=0;i<2;i++) {
-                ssize_t n=recv(s,buf,3,0); if(n<0) die("recv");
-                printf("recv[%d]=%zd content=%.*s\n",i,n,(int)n,buf);
+                ssize_t n=recv(s,buf,(size_t)rcv,MSG_TRUNC); if(n<0) die("recv");
+                int copied = n<rcv ? (int)n : rcv;
+                printf("recv[%d] len=%zd copied=%d content=%.*s\n",i,n,copied,copied,buf);
             }
         } else {
+            /* 先睡一会儿再读。作用是让"数据已经到了、应用还没读"这个状态
+             * 存续一段时间：tcpdump、ss -mni、bpftrace 都在这个窗口里能抓到东西。 */
+            if (argc>4) pause_ms(atoi(argv[4]));
             /* TCP 一直读到 EOF（对端 close 或 shutdown），只打印总字节数。
              * 不按"读几次"打印，是因为字节流没有边界：一次 read 可能拿到
              * 1 字节，也可能拿到 5 字节，取决于到达时机与缓冲。 */
@@ -108,8 +114,8 @@ int main(int argc, char **argv) {
         if (udp) {
             /* 两条独立报文，中间没做任何合并：接收端若只给 3 字节缓冲，
              * 第二条 2 字节能收到，第一条会被截断。 */
-            if(send(s,"ABCDE",5,0)!=5 || send(s,"FG",2,0)!=2) die("send");
-            puts("sent datagrams: 5 bytes, 2 bytes");
+            if(send(s,"ABCDEF",6,0)!=6 || send(s,"FG",2,0)!=2) die("send");
+            puts("sent datagrams: 6 bytes, 2 bytes");
         } else if (!strcmp(argv[1],"tcp-fill")) {
             /* 造"发送队列满"：先把 socket 发送缓冲压小（内核会把设定值翻倍），
              * 再切成非阻塞，然后一直写。send 返回 EAGAIN 就说明内核已经收不下，
