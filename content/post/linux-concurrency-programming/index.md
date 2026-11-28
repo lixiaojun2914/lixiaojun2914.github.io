@@ -220,6 +220,52 @@ long id = (long)(intptr_t)arg;
 - 一个线程在栈上放的变量，别的线程拿不到，除非把地址传出去；
 - 一个线程调用 `exit()`，整个进程结束，所有线程一起退出。线程只想结束自己，用 `return` 或 `pthread_exit()`。
 
+### 2.5 pthread 底下是 clone
+
+`pthread_create` 不是独立的内核接口，它最后调 `clone` 或 `clone3`。`fork` 和 clone 的区别只有一点：fork 全部复制，clone 用 flags 逐项选择共享什么。glibc 的 `fork` 本身就是 `clone(SIGCHLD)`。
+
+```c
+#define _GNU_SOURCE
+#include <sched.h>
+
+int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...);
+int clone3(struct clone_args *args, size_t size);
+```
+
+`clone3` 把参数收进一个结构体，避开老 `clone` 变参传 pid/tls 指针的写法，glibc 2.34 以后新建线程走的是它。用 `strace` 看 `pthread_create` 到底发了什么（[记录](/p/linux-concurrency-programming/ipc-clone.txt)）：
+
+```
+clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM
+        |CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID,
+        exit_signal=0, stack=0x..., stack_size=0x80ea40, tls=0x...}) = 82365
+```
+
+这一串 flags 就是"线程共享什么"的逐项答案：
+
+| flag | 效果 | pthread 是否设置 |
+| --- | --- | --- |
+| `CLONE_VM` | 共享地址空间 | 是 |
+| `CLONE_FS` | 共享工作目录与 umask | 是 |
+| `CLONE_FILES` | 共享文件描述符表 | 是 |
+| `CLONE_SIGHAND` | 共享信号处理设置 | 是 |
+| `CLONE_THREAD` | 放进同一线程组，pid 相同、tid 不同 | 是 |
+| `CLONE_SYSVSEM` | 共享 System V 信号量的撤销列表 | 是 |
+| `CLONE_SETTLS` | 设置线程本地存储 | 是 |
+| `CLONE_PARENT_SETTID` | 把 tid 写回调用者给的地址 | 是 |
+| `CLONE_CHILD_CLEARTID` | 线程退出时清零该地址并唤醒等待者 | 是 |
+
+最后一位是 `pthread_join` 的基础：线程退出时内核把 tid 清零，并在那个地址上做一次 futex 唤醒，join 就是睡在这里等它。`exit_signal=0` 表示结束后不给父进程发信号——线程不是独立进程，不该被 `wait` 回收。
+
+`stack_size=0x80ea40` 约 8 MB，是 glibc 的默认线程栈，由它自己 `mmap` 出来的，多出来的一点是保护页。这也说明 `clone` 的栈由调用者提供，不是内核给的。
+
+实际写法上不要手写 clone 起线程：
+
+- 需要自己准备栈，还要自己处理 TLS，`errno` 会失效；
+- `malloc`、`printf`、动态链接器都不是为这种半初始化状态准备的；
+- 出错时的现象很难查，可能只是偶发的崩溃。
+
+`clone` 真正的用处是加 `CLONE_NEW*` 做命名空间隔离，那是容器的话题。理解它的 flags 的价值在于能解释现象：一个线程越界写会毁掉整个进程，因为 `CLONE_VM`；一个线程 `exit()` 会让全部退出，因为 `CLONE_THREAD`。
+
 ## 三、互斥锁：pthread_mutex_t
 
 ### 3.1 初始化
@@ -651,8 +697,9 @@ counter=200000 expected=200000 ok
 | 发布与读取 | `atomic_store_explicit(&f, v, memory_order_release)`、`atomic_load_explicit(&f, memory_order_acquire)` |
 | 共享内存 | `mmap(NULL, len, PROT_READ\|PROT_WRITE, MAP_SHARED\|MAP_ANONYMOUS, -1, 0)` |
 | 进程共享锁属性 | `pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED)` |
+| 看线程创建的真实调用 | `strace -f -e trace=clone,clone3 ./ipc-lab threads 2` |
 | 看线程 | `ps -eLf`、`top -H -p <pid>` |
-| 看锁与唤醒 | `strace -f -e trace=futex,clone ./ipc-lab cond` |
+| 看锁与唤醒 | `strace -f -e trace=futex ./ipc-lab cond` |
 | 看进程状态 | `ps -eo pid,ppid,stat,comm` |
 
 ## 十一、名词解释
