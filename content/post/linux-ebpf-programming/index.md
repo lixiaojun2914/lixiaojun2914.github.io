@@ -805,7 +805,7 @@ if (data + 5 > data_end)
 	return SK_PASS;
 ```
 
-结果 `bpf_printk` 打印 `verdict len=5 seg=0`：`skb->len` 是 5，但线性段长度是 0。数据不在 `skb->data` 指向的地方，边界检查直接判“太短”，程序返回 `SK_PASS`，服务端照常收到：
+结果 `bpf_printk` 打印 `verdict len=5 seg=0`（这一轮的完整输出在 `ebpf-sk-skb-before.txt`）：`skb->len` 是 5，但线性段长度是 0。数据不在 `skb->data` 指向的地方，边界检查直接判“太短”，程序返回 `SK_PASS`，服务端照常收到：
 
 ```
 server recv 5 bytes: HELLO
@@ -820,7 +820,7 @@ data = (void *)(long)skb->data;
 data_end = (void *)(long)skb->data_end;
 ```
 
-再跑，服务端收到的是 EOF：
+再跑，服务端收到的是 EOF（输出在 `ebpf-sk-skb.txt`）：
 
 ```
 server recv: EOF

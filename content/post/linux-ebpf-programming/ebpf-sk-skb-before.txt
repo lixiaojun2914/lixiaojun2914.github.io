@@ -1,0 +1,5 @@
+verdict attached to sockmap
+accepted fd=8, inserted into sockmap
+server recv 5 bytes: HELLO
+   sk_skb_loader-99160   [000] ...11 101631.419424: bpf_trace_printk: verdict len=5 seg=0
+           <...>-99229   [001] ...11 101636.259113: bpf_trace_printk: verdict len=5 seg=0
