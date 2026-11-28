@@ -1,0 +1,4 @@
+unsafe result=1000000 expected=2000000 LOST
+unsafe result=1002209 expected=2000000 LOST
+unsafe result=1606440 expected=2000000 LOST
+mutex result=2000000 expected=2000000 ok

@@ -1,0 +1,13 @@
+worker 0 enter  inside=1 at 0 ms
+worker 1 enter  inside=2 at 0 ms
+worker 4 enter  inside=3 at 0 ms
+worker 0 leave  inside=2 at 201 ms
+worker 5 enter  inside=3 at 201 ms
+worker 1 leave  inside=2 at 201 ms
+worker 2 enter  inside=3 at 201 ms
+worker 4 leave  inside=2 at 201 ms
+worker 3 enter  inside=3 at 201 ms
+worker 3 leave  inside=2 at 401 ms
+worker 5 leave  inside=1 at 401 ms
+worker 2 leave  inside=0 at 401 ms
+peak_inside=3 elapsed=401 ms

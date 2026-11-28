@@ -1,0 +1,7 @@
+parent pid=81487
+spawned child 0 pid=81488
+child 0 pid=81488 ppid=81487
+child 1 pid=81489 ppid=81487
+spawned child 1 pid=81489
+reaped pid=81488 status=0
+reaped pid=81489 status=0

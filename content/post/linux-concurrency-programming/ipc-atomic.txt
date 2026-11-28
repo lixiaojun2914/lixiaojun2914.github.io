@@ -1,0 +1,2 @@
+atomic relaxed result=2000000 expected=2000000 ok
+atomic seq result=2000000 expected=2000000 ok

@@ -1,10 +1,10 @@
 ---
-title: "Linux 并发编程：线程、原子与交接的代价"
+title: "Linux 并发编程：进程、线程与同步接口的用法"
 slug: linux-concurrency-programming
 date: "2026-11-28T18:30:00+08:00"
 lastmod: "2026-11-28"
 draft: false
-description: "同一个计数器有三种写法，发布一条消息可以只多一条指令；差别最后落在 cacheline 归谁、栈有多大、一次唤醒要走多远。"
+description: "fork、pthread、mutex、条件变量、信号量、stdatomic 各自怎么调用，返回值怎么判，常见的错法长什么样。"
 categories:
     - Linux 与系统编程
 tags:
@@ -12,476 +12,657 @@ tags:
     - 并发
 ---
 
-两个线程都要改同一个计数，能不能直接 `x++`？加一把锁贵多少？把两个变量分开放，为什么能快四倍？一个生产者、一个消费者，能不能不用锁？
+这一篇讲接口：Linux 给 C 程序提供了哪几组创建并发、协调并发的函数，每个函数的参数和返回值是什么意思，正确写法和常见错法分别长什么样。
 
-这一篇用同一台机器上的一组小程序回答这些问题：线程与栈、原子操作与内存顺序、伪共享、单生产者单消费者环、绑核、线程池、协程，每一节都给出改变一个条件前后的差别，并解释差别落在哪个对象上。
+范围是应用层能直接调用的东西：`fork`/`exec`/`wait`、`pthread_create`/`join`、`pthread_mutex`、读写锁与自旋锁、`pthread_cond`、`sem_t`、C11 的 `stdatomic.h`，最后是进程之间怎样共用一把锁。
 
-同步原语的实现不在本篇展开。[《Linux 用户态同步》](/p/linux-userspace-synchronization/)讲 mutex 的三态与 futex 怎样把等待交给内核，[《Linux 内核同步》](/p/linux-kernel-synchronization/)讲内核里自旋锁、等待队列和内存屏障怎么选。本篇只把那些结论当作已知，关心应用层怎么写、代价多大。
+这些接口在内核里怎么实现不在这里展开。[《Linux 用户态同步》](/p/linux-userspace-synchronization/)讲 mutex 的三态与 futex 怎样把等待交给内核，需要时去那里看。本篇只关心怎么把它们用对。
 
-实验机是 Ubuntu 26.04、内核 7.0.0-44、aarch64、2 vCPU、3892 MB，编译器 gcc 15.2，统一 `-O2`。ARM64 是弱内存序机器，第三节的指令差异与它有关。绝对耗时受两核限制，正文只用比值和量级，原始输出在同目录的记录文件里。
-
-程序是本篇的 [`conc-lab.c`](/p/linux-concurrency-programming/conc-lab.c)，一个文件带八种模式：
+程序是 [`ipc-lab.c`](/p/linux-concurrency-programming/ipc-lab.c)，一个文件带八个模式，每个模式对应本篇一节：
 
 ```bash
-wget -q https://lixiaojun2914.github.io/p/linux-concurrency-programming/conc-lab.c
-gcc -O2 -pthread -Wall -Wextra conc-lab.c -o conc-lab
+wget -q https://lixiaojun2914.github.io/p/linux-concurrency-programming/ipc-lab.c
+gcc -O2 -pthread -Wall -Wextra ipc-lab.c -o ipc-lab
 ```
 
-## 一、一个计数器，三种做法
+运行环境是 Ubuntu 26.04、内核 7.0.0-44、aarch64、2 vCPU。输出保存在同目录的 `ipc-*.txt` 里。
 
-### 1.1 不加同步时，编译器把循环合并了
+## 一、进程：fork、exec、wait
 
-先看最直觉的写法：一个全局 `long`，两个线程各加五百万次。
+### 1.1 fork 返回两次
 
-```bash
-./conc-lab counter plain 2 5000000
+```c
+#include <unistd.h>
+
+pid_t fork(void);
 ```
 
-```
-plain threads=2 iters=5000000 total=108750 ns/op=0.01 result=10000000
-```
+`fork` 调用一次，返回两次：父进程里返回新子进程的 pid，子进程里返回 0，失败返回 -1 并设置 `errno`。所以判断固定是这三个分支：
 
-结果正好是一千万，看起来没问题；耗时折算下来每次自增 0.01 ns，比一个时钟周期还短，这就不可能了。反汇编这个分支：
+```c
+pid_t pid = fork();
 
-```
-ldr  x0, [x19, #32]
-add  x0, x0, x20
-str  x0, [x19, #32]
-```
-
-五百万次循环只剩下一次加法：`x20` 是循环次数，编译器把整个循环归纳成了 `g_plain += 5000000`。在 C11 的内存模型里，两个线程不加同步地访问同一个非原子对象是数据竞争，行为未定义，编译器完全有权假定"没有别的线程在看这个变量"。所以这里的"结果正确"只是这次运行碰巧，换一个优化级别、换一个编译器版本，结果和耗时都会变。
-
-这条反例的价值不在计数本身，而在于：**任何绕过同步的共享访问，都无法用"跑出来对"来验证**。
-
-### 1.2 一把锁
-
-```bash
-./conc-lab counter mutex 2 5000000
+if (pid < 0) {
+        perror("fork");
+        return -1;
+}
+if (pid == 0) {
+        /* 只有子进程执行这里 */
+        _exit(0);
+}
+/* 父进程走到这里，pid 是子进程的号 */
 ```
 
-```
-mutex threads=2 iters=5000000 ns/op=16.24 result=10000000
-```
-
-两个线程争同一把锁，一次 `lock` 加一次 `unlock` 合计十几纳秒。这个数字说明大部分时间没有进内核：glibc 的 mutex 在无人持有时只做一次用户态原子交换，真正的等待与唤醒才走 futex。争用出现时，等的那一方会先在用户态自旋一小段，仍然不划算才睡。
-
-### 1.3 原子加减
-
-```bash
-./conc-lab counter seq 2 5000000
-./conc-lab counter relaxed 2 5000000
-```
+`./ipc-lab fork 2` 的输出（[原始记录](/p/linux-concurrency-programming/ipc-fork.txt)）：
 
 ```
-seq     threads=2 iters=5000000 ns/op=2.95 result=10000000
-relaxed threads=2 iters=5000000 ns/op=2.92 result=10000000
+parent pid=81487
+spawned child 0 pid=81488
+child 0 pid=81488 ppid=81487
+child 1 pid=81489 ppid=81487
+spawned child 1 pid=81489
+reaped pid=81488 status=0
+reaped pid=81489 status=0
 ```
 
-原子加减比加锁快五倍多，而 `seq_cst` 与 `relaxed` 在这里几乎一样。看汇编就明白：
+父子的打印交错出现，因为它们是两个独立的执行流，谁先跑由调度器决定，不是代码顺序。
+
+### 1.2 子进程拿到的是副本
+
+`fork` 之后子进程有自己的地址空间，内容是 fork 那一刻的拷贝（底层按页写时复制，语义就是副本）。父进程的全局变量、堆上的数据，子进程改了父进程看不到，反过来也一样。要共享必须显式映射共享内存，见第八节。
+
+继承下来的是：打开的文件描述符、当前工作目录、信号处理设置、用户和组。文件描述符是共享的——父子同时往同一个 fd 写，输出会交错。
+
+### 1.3 一个坑：stdio 缓冲被复制
+
+标准输出接管道或文件时是全缓冲的。fork 之前 `printf` 过但没刷新，那段内容留在缓冲区里，随地址空间一起被复制进子进程。子进程退出时刷新一遍，父进程再刷一遍，同一行就打印两次。
+
+第一次跑这个程序时看到的就是这样：
 
 ```
-bl  __aarch64_ldadd8_relax     ← relaxed
-bl  __aarch64_ldadd8_acq_rel   ← seq_cst
+parent pid=81346
+parent pid=81346
+child 0 pid=81347 ppid=81346
 ```
 
-两条路径都是 ARMv8 的 LSE 原子指令，一条指令完成"读—改—写"，由硬件保证该 cacheline 的独占。两者的差别只在指令内部是否附加屏障，而在这个基准里，真正的瓶颈是两核争同一条 cacheline 的独占权，屏障成本被摊薄到看不出来。
+修法是 fork 之前 `fflush(stdout)`：
 
-所以"`seq_cst` 一定更慢"不是规律。争用同一行时，独占才是主成本；屏障的代价要在没有争用的场景里单独看，第三节会看到它体现在指令选择上，而不是这个计数器上。
-
-## 二、线程的栈
-
-### 2.1 8 MB 是地址空间，不是内存
-
-```bash
-./conc-lab threads 8
+```c
+fflush(stdout);
+pid = fork();
 ```
 
+子进程结束时用 `_exit()` 而不是 `exit()`：`_exit` 不刷 stdio 缓冲、不执行 `atexit` 注册的函数，避免把父进程的缓冲再刷一遍。
+
+### 1.4 exec 换掉整个映像
+
+```c
+#include <unistd.h>
+
+int execve(const char *path, char *const argv[], char *const envp[]);
 ```
-main    stack=[0xffffd7edc000,0xffffd86dc000) size=8192 kB rss=8 kB
-thread 0 stack=[0xe413744e0000,0xe41374ce0000) size=8192 kB rss=52 kB
-thread 1 stack=[0xe41373cd0000,0xe413744d0000) size=8192 kB rss=64 kB
+
+`execve` 用新程序替换当前进程的代码、数据、堆和栈，pid 不变，成功时不返回，失败返回 -1。它通常和 fork 配对：子进程 fork 出来立刻 exec，父进程继续做自己的事。
+
+```c
+if (pid == 0) {
+        char *argv[] = { "ls", "-l", NULL };
+        execvp("ls", argv);
+        _exit(127);          /* 只有 exec 失败才会到这里 */
+}
+```
+
+exec 失败后一定要退出。漏了这行，子进程会继续往下执行父进程的代码，程序里出现两份相同的逻辑。
+
+### 1.5 wait 回收子进程
+
+```c
+#include <sys/wait.h>
+
+pid_t wait(int *wstatus);
+pid_t waitpid(pid_t pid, int *wstatus, int options);
+```
+
+子进程结束后，内核保留它的退出状态直到父进程来取，这段时间它是僵尸进程（`Z` 状态）。`wait` 取任意一个子进程，`waitpid` 可以指定 pid。返回值是回收到的子进程 pid，没有子进程可等时返回 -1。
+
+`wstatus` 不是退出码本身，要用宏解：
+
+```c
+int st;
+pid_t pid = wait(&st);
+
+if (WIFEXITED(st))
+        printf("exit code %d\n", WEXITSTATUS(st));
+else if (WIFSIGNALED(st))
+        printf("killed by %d\n", WTERMSIG(st));
+```
+
+不想阻塞时给 `waitpid` 加 `WNOHANG`。不关心退出状态时可以用 `signal(SIGCHLD, SIG_IGN)` 让内核自动回收，代价是拿不到退出码。
+
+## 二、线程：pthread_create、join、detach
+
+### 2.1 创建
+
+```c
+#include <pthread.h>
+
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+                   void *(*start)(void *), void *arg);
+```
+
+四个参数：传出线程号、线程属性（传 `NULL` 用默认）、入口函数、传给入口函数的指针。返回 0 表示成功，失败返回错误码——**不是设置 `errno`**，所以不能用 `perror` 打，要用 `strerror(rc)`。
+
+```c
+static void *worker(void *arg)
+{
+        long id = (long)arg;
+
+        printf("thread %ld started\n", id);
+        return NULL;               /* 返回值可以被 join 取到 */
+}
+```
+
+`./ipc-lab threads 3` 的输出（[记录](/p/linux-concurrency-programming/ipc-threads.txt)）：
+
+```
+process pid=81349 main tid=81349
+thread 0 tid=81350 pid=81349
+thread 1 tid=81351 pid=81349
+thread 2 tid=81352 pid=81349
+```
+
+tid 各不相同，pid 都是同一个：线程是同一进程里的执行流，共享地址空间。
+
+### 2.2 join 与 detach
+
+```c
+int pthread_join(pthread_t thread, void **retval);
+int pthread_detach(pthread_t thread);
+```
+
+`pthread_join` 等线程结束并回收它的资源，`retval` 接住入口函数的返回值。既不 join 也不 detach 的线程结束后，栈和线程描述符不会释放，和僵尸进程类似。
+
+`pthread_detach` 表示"不用等我"，线程结束后资源自动回收。两者只能选一个，detach 之后不能再 join。
+
+```c
+pthread_t th;
+
+pthread_create(&th, NULL, worker, (void *)1L);
+pthread_join(th, NULL);
+```
+
+### 2.3 参数不要传栈上变量的地址
+
+第 4 个参数是 `void *`，最常见的错法是传循环变量地址：
+
+```c
+for (int i = 0; i < 4; i++)
+        pthread_create(&th[i], NULL, worker, &i);   /* 错 */
+```
+
+四个线程拿到同一个地址，等它们真正开始跑，`i` 可能已经是 4，也可能被改了好几次。要么每个线程一份独立数据，要么把整数直接塞进指针：
+
+```c
+pthread_create(&th[i], NULL, worker, (void *)(intptr_t)i);
+/* 线程里 */
+long id = (long)(intptr_t)arg;
+```
+
+传结构体也一样：结构体要在线程结束前一直有效，不能是某个函数里的局部变量。
+
+### 2.4 线程共享什么
+
+![进程与线程各自拥有什么](/p/linux-concurrency-programming/address-space.svg)
+
+线程共享代码段、全局数据、堆和打开的文件描述符，各自只有独立的栈和寄存器。由此有三条推论：
+
+- 一个线程改全局变量，别的线程立刻能看到——这也是必须加锁的原因；
+- 一个线程在栈上放的变量，别的线程拿不到，除非把地址传出去；
+- 一个线程调用 `exit()`，整个进程结束，所有线程一起退出。线程只想结束自己，用 `return` 或 `pthread_exit()`。
+
+## 三、互斥锁：pthread_mutex_t
+
+### 3.1 初始化
+
+按锁的生命周期选两种方式之一：
+
+```c
+/* 静态分配：全局变量或 static，用宏 */
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* 动态分配：堆上或结构体成员，用 init/destroy */
+pthread_mutex_t lock;
+pthread_mutex_init(&lock, NULL);       /* 第二个参数是属性，NULL 为默认 */
 ...
+pthread_mutex_destroy(&lock);
 ```
 
-每个线程的栈都是 8 MB 的地址区间，实际驻留只有几十 KB：刚创建的线程只碰过栈顶附近几页，其余部分还是未分配的匿名映射，第一次写入才触发缺页。主线程的栈在 `[stack]` 段里，驻留 8 kB，其余页没有被触碰。
+`PTHREAD_MUTEX_INITIALIZER` 只能用于静态分配的锁。堆上或结构体里的锁必须 `init`，用完 `destroy`。
 
-相邻线程的栈顶相差 `0x810000`，即 8 MB 加 64 KB：那 64 KB 是 guard 区，栈溢出时先撞到它，进程收到 `SIGSEGV`，而不是悄悄踩坏相邻线程的数据。
+### 3.2 加锁与解锁
 
-### 2.2 栈大小有下限
-
-把栈改小，先看系统接受什么：
-
-```bash
-./conc-lab stack 64
-./conc-lab stack 128
-./conc-lab stack 1024
+```c
+int pthread_mutex_lock(pthread_mutex_t *mutex);
+int pthread_mutex_trylock(pthread_mutex_t *mutex);
+int pthread_mutex_unlock(pthread_mutex_t *mutex);
 ```
 
+- `lock`：拿不到就睡，直到别人解锁；
+- `trylock`：拿不到立刻返回 `EBUSY`，不睡；
+- `unlock`：释放，必须由持锁的线程调用。
+
+返回 0 成功，非 0 是错误码。
+
+### 3.3 不加锁会丢多少
+
+两个线程各把同一个变量加一百万次，期望两百万：
+
+```c
+for (i = 0; i < 1000000; i++)
+        g_count++;                  /* 读、加、写三步，不是原子操作 */
 ```
-setstacksize(64 kB) = 22
-requested=64 kB actual=8192 kB used=37 kB rss=12 kB
-setstacksize(128 kB) = 0
-requested=128 kB actual=128 kB used=69 kB rss=12 kB
-setstacksize(1024 kB) = 0
-requested=1024 kB actual=1024 kB used=517 kB rss=40 kB
+
+`./ipc-lab counter unsafe` 连跑三次（[记录](/p/linux-concurrency-programming/ipc-counter.txt)）：
+
+```
+unsafe result=1000000 expected=2000000 LOST
+unsafe result=1002209 expected=2000000 LOST
+unsafe result=1606440 expected=2000000 LOST
+mutex  result=2000000 expected=2000000 ok
 ```
 
-64 kB 被拒绝，返回 22 即 `EINVAL`；这台机器上最小 128 kB。被拒之后 `pthread_create` 仍用默认值，所以 `actual` 还是 8192——这也是一个容易忽略的点：`pthread_attr_setstacksize` 的返回值必须检查，否则会以为设置生效了。
+三次丢的量都不一样，最差丢了一半。`g_count++` 编译出来是"读进寄存器、加一、写回"三条指令，两个线程的这三步可以任意交错，后写的覆盖先写的。
 
-1 MB 栈里用掉 512 KB，`used` 是 517 kB，但驻留只有 40 kB：程序只写了首尾两个字节，中间 128 个页一个都没碰。栈的内存是按页懒分配的，改小栈省下的是地址空间和 guard 页，不是立刻省下物理内存。
+加锁版本：
 
-线程数上千时，这两者的差别就明显了：一万个线程按默认栈要 80 GB 地址空间，虽然驻留不多，但页表、`vm.max_map_count` 和地址空间碎片都会先出问题。
+```c
+pthread_mutex_lock(&lock);
+g_count++;
+pthread_mutex_unlock(&lock);
+```
 
-## 三、原子操作与内存顺序
+结果稳定是两百万。
 
-### 3.1 单条读写生成什么指令
+### 3.4 三条纪律
 
-把六种写法各编成一个函数，看 gcc 在 aarch64 上生成什么：
+- **谁加谁解**，并且每条返回路径都要解。函数中途 `return` 最容易漏，可以只在末尾返回，或者用 `goto out` 统一收尾。
+- **临界区要短**。锁里不做 I/O、不 `sleep`、不等另一个线程。持锁越久，别人等得越久。
+- **锁的顺序要固定**。两把锁 A、B，一个线程先 A 后 B，另一个先 B 后 A，就可能互等到死锁。全程序统一一个顺序，比如按编号或按地址。
 
-| 操作 | C11 写法 | 生成的指令 |
+## 四、读写锁与自旋锁
+
+### 4.1 读写锁：读多写少
+
+```c
+#include <pthread.h>
+
+int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
+int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
+```
+
+读锁可以多个线程同时持有，写锁独占。适合配置表、路由表这类读远多于写的数据。
+
+要注意写者饥饿：读请求一直不断时，写者可能长时间拿不到锁。glibc 的默认实现会让等待中的写者优先，但这是实现行为，不能当契约依赖。
+
+### 4.2 自旋锁：极短临界区
+
+```c
+int pthread_spin_lock(pthread_spinlock_t *lock);
+int pthread_spin_unlock(pthread_spinlock_t *lock);
+```
+
+拿不到锁就原地循环，不睡眠。只适合临界区只有几条指令、且确定不会阻塞的场景；临界区里做任何可能阻塞的事（I/O、`malloc`、`printf`）都是在白烧 CPU。
+
+用户态程序里它的用处不多，普通 mutex 的快路径已经足够快。
+
+### 4.3 怎么选
+
+| 场景 | 选择 |
+| --- | --- |
+| 普通互斥 | `pthread_mutex_t` |
+| 读远多于写 | `pthread_rwlock_t` |
+| 临界区几条指令，确定不阻塞 | `pthread_spinlock_t` |
+| 跨进程互斥 | mutex 设 `PTHREAD_PROCESS_SHARED`，见第八节 |
+
+## 五、条件变量：pthread_cond_t
+
+### 5.1 三个接口，必须配一把锁
+
+```c
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
+int pthread_cond_signal(pthread_cond_t *cond);
+int pthread_cond_broadcast(pthread_cond_t *cond);
+```
+
+- `wait`：原子地释放 mutex 并睡眠，被唤醒后重新拿到 mutex 才返回；
+- `signal`：唤醒一个等待者；
+- `broadcast`：唤醒全部。
+
+`wait` 的第二个参数是保护"条件"的那把锁，不能换成别的锁，也不能传 `NULL`。条件变量第一次用之前要 `pthread_cond_init`，静态的可以用 `PTHREAD_COND_INITIALIZER`。
+
+### 5.2 判断必须用 while
+
+```c
+pthread_mutex_lock(&mu);
+while (count == 0)                       /* 必须是 while，不是 if */
+        pthread_cond_wait(&not_empty, &mu);
+v = buf[head];
+pthread_mutex_unlock(&mu);
+```
+
+两个原因：
+
+1. 从被唤醒到真正拿到锁之间有一段时间，条件可能被别人改回去了；
+2. 条件变量允许虚假唤醒，没有 signal 也可能返回。
+
+用 `if` 只查一次，就可能在没数据时往下走。
+
+### 5.3 生产者消费者
+
+![条件变量在有界队列上的等待与唤醒](/p/linux-concurrency-programming/prodcons.svg)
+
+一个有界队列，容量 4，生产者放 20 条，消费者取 20 条：
+
+```c
+#define QCAP 4
+
+static void q_put(struct queue *q, int v)
+{
+        pthread_mutex_lock(&q->mu);
+        while (q->count == QCAP)                    /* 满了等 */
+                pthread_cond_wait(&q->not_full, &q->mu);
+        q->buf[q->tail] = v;
+        q->tail = (q->tail + 1) % QCAP;
+        q->count++;
+        pthread_cond_signal(&q->not_empty);         /* 叫醒消费者 */
+        pthread_mutex_unlock(&q->mu);
+}
+
+static int q_get(struct queue *q)
+{
+        int v;
+
+        pthread_mutex_lock(&q->mu);
+        while (q->count == 0)                       /* 空了等 */
+                pthread_cond_wait(&q->not_empty, &q->mu);
+        v = q->buf[q->head];
+        q->head = (q->head + 1) % QCAP;
+        q->count--;
+        pthread_cond_signal(&q->not_full);          /* 叫醒生产者 */
+        pthread_mutex_unlock(&q->mu);
+        return v;
+}
+```
+
+每个 `wait` 前面都有一把锁保护 `count`，队列的头尾下标也在这把锁里，所以队列本身不需要再多的同步。
+
+`./ipc-lab cond` 的开头几行（[完整记录](/p/linux-concurrency-programming/ipc-cond.txt)）：
+
+```
+put  1  count=1
+put  2  count=2
+put  3  count=3
+put  4  count=4
+get  1  count=3
+get  2  count=2
+...
+get 20  count=0
+consumer sum=210
+```
+
+count 到 4 就不再增加，说明生产者确实停在 `not_full` 上。消费者取走一条、count 降到 3，生产者才被唤醒继续放。最后 `sum=210` 是 1 到 20 的和，说明 20 条一条没漏、顺序也对。
+
+### 5.4 signal 还是 broadcast
+
+- 只有一个等待者，或每次只需要一个人干活：用 `signal`；
+- 等待者等的条件不同，或条件变化后所有人都该重查：用 `broadcast`。
+
+队列这种"放一条就够一个人取"的场景用 `signal`。线程池退出、状态切换这种"所有人都要重新判断"的场景用 `broadcast`，并且每个线程醒来都要用 while 重查——广播出去只代表"可能有变化"，不代表对它成立。
+
+## 六、信号量：sem_t
+
+### 6.1 四个接口
+
+```c
+#include <semaphore.h>
+
+int sem_init(sem_t *sem, int pshared, unsigned int value);
+int sem_wait(sem_t *sem);
+int sem_post(sem_t *sem);
+int sem_destroy(sem_t *sem);
+```
+
+`pshared` 为 0 时用于同一进程内的线程，非 0 时用于进程之间（此时信号量本身必须放在共享内存里）。`value` 是初始可用数量。
+
+- `sem_wait`：数量大于 0 就减一并返回，等于 0 就睡；
+- `sem_post`：数量加一，并唤醒一个等待者。
+
+返回 0 成功，-1 失败并设置 `errno`。
+
+### 6.2 限制并发数
+
+信号量最直接的用法是"同时最多几个"。3 个许可、6 个线程各占用 200 ms：
+
+```c
+sem_init(&permits, 0, 3);
+
+sem_wait(&permits);
+/* 这里最多 3 个线程同时执行 */
+usleep(200000);
+sem_post(&permits);
+```
+
+`./ipc-lab sem` 的输出（[记录](/p/linux-concurrency-programming/ipc-sem.txt)）：
+
+```
+worker 0 enter  inside=1 at 0 ms
+worker 1 enter  inside=2 at 0 ms
+worker 4 enter  inside=3 at 0 ms
+worker 0 leave  inside=2 at 201 ms
+worker 5 enter  inside=3 at 201 ms
+worker 1 leave  inside=2 at 201 ms
+worker 2 enter  inside=3 at 201 ms
+worker 4 leave  inside=2 at 201 ms
+worker 3 enter  inside=3 at 201 ms
+...
+peak_inside=3 elapsed=401 ms
+```
+
+同时在里边的峰值是 3，总耗时约 400 ms：6 个任务、每个 200 ms、3 路并发，正好两轮。第 2、3、5 号线程一开始就等在 `sem_wait` 上，前面有人 `post` 才被放进来。
+
+这里统计 `inside` 的计数器自己用了 mutex，它和信号量是两件事：信号量管"能不能进"，mutex 管"这个统计别算错"。信号量不保护数据，只发放许可。
+
+### 6.3 与条件变量怎么分工
+
+- 条件变量要配一把 mutex，还要自己维护"条件"这个变量，适合"等某个状态成立"；
+- 信号量自带计数，适合"资源还剩几个"，不需要额外的状态变量。
+
+队列也能用两个信号量写：一个记空槽位，一个记已放入条数。但头尾下标仍要一把锁保护，两种写法差别不大，选自己看得懂的那种。
+
+## 七、原子操作：stdatomic.h
+
+### 7.1 原子类型与加法
+
+```c
+#include <stdatomic.h>
+
+_Atomic long counter;            /* 等价写法：atomic_long counter; */
+
+long v = atomic_fetch_add_explicit(&counter, 1, memory_order_relaxed);
+```
+
+`atomic_fetch_add` 把加一做成一条不可分割的指令，返回加之前的值。不需要锁，也不会丢更新：
+
+```
+atomic relaxed result=2000000 expected=2000000 ok
+atomic seq     result=2000000 expected=2000000 ok
+```
+
+常用的一组是 `atomic_load`、`atomic_store`、`atomic_fetch_add`、`atomic_exchange`、`atomic_compare_exchange_strong`。带 `_explicit` 后缀的版本多一个内存序参数，不带的等价于 `memory_order_seq_cst`。
+
+原子类型不能随便当普通变量用：`_Atomic long` 的大小和对齐可能与 `long` 不同，不能对它的成员取地址传给需要非原子指针的函数，也不要 `memcpy` 进出。
+
+### 7.2 六种内存序
+
+| 内存序 | 含义 | 典型用途 |
 | --- | --- | --- |
-| 写 | `memory_order_relaxed` | `str` |
-| 写 | `memory_order_release` | `stlr` |
-| 写 | `memory_order_seq_cst` | `stlr` |
-| 读 | `memory_order_relaxed` | `ldr` |
-| 读 | `memory_order_acquire` | `ldar` |
-| 读 | `memory_order_seq_cst` | `ldar` |
+| `memory_order_relaxed` | 只保证这一条操作原子，不约束前后读写顺序 | 统计计数、序号递增 |
+| `memory_order_acquire` | 这条读之后的读写不能挪到它前面 | 读标志、取锁 |
+| `memory_order_release` | 这条写之前的读写不能挪到它后面 | 写标志、放锁 |
+| `memory_order_acq_rel` | 同时具备两者，用于读改写 | 引用计数减一 |
+| `memory_order_seq_cst` | 所有线程看到同一个全局顺序 | 两个变量之间要统一顺序的协议 |
+| `memory_order_consume` | 只约束数据依赖，实践中按 acquire 处理 | 几乎不用 |
 
-`stlr` 是带 release 语义的存储：它之前的所有写，不会被观察到晚于这一条。`ldar` 是带 acquire 语义的加载：它之后的所有读，不会被观察到早于这一条。`str` 与 `ldr` 没有这两层约束。
+记法是：`relaxed` 只管自己，`acquire`/`release` 管一边，`seq_cst` 管全局。默认（不带 `_explicit`）是 `seq_cst`，最保险也最贵；能说清为什么用弱序再用弱的。
 
-单条操作的 `seq_cst` 与 `release`、`acquire` 生成同一条指令，因为一条指令没有"前后的伙伴"可以重排。真正的区别出现在成对操作之间。
+### 7.3 发布一条消息
 
-### 3.2 发布一条消息：两条写的顺序
-
-生产者要把一份数据交给消费者，最自然的写法是两个变量：`data` 放内容，`flag` 放"已就绪"。三种内存序生成的代码如下：
-
-```
-pub_relaxed:   str  x2, [x0]      ← data
-               str  x2, [x1]      ← flag
-
-pub_release:   str  x2, [x0]      ← data
-               stlr x2, [x1]      ← flag
-
-pub_seq:       stlr x2, [x0]
-               stlr x2, [x1]
-```
-
-第一种写法里两条都是普通写。ARM64 允许它们以任意顺序被其他核看到，于是消费者可能先看到 `flag` 变成 1，再读 `data` 还是旧值——它拿到了一条"半成品消息"。
-
-第二种写法只把第二条改成 `stlr`：`data` 的普通写被挡在 `stlr` 之前，不可能晚于 `flag` 被看到。这就是 release 的全部含义，一条指令，不需要把 `data` 也做成原子写。
-
-第三种写法两条都是 `stlr`，语义更强，代价是每条写都带约束。
-
-对应的读侧也要配对：
+一个线程写数据、另一个线程等数据就绪，这是 release/acquire 最典型的用法：
 
 ```c
 /* 生产者 */
-atomic_store_explicit(&data, v, memory_order_relaxed);
-atomic_store_explicit(&flag, 1, memory_order_release);
+for (j = 0; j < 8; j++)
+        ring[i & (PCAP - 1)].payload[j] = i * 10 + j;
+atomic_store_explicit(&seq, i, memory_order_release);    /* 先写数据，再发布序号 */
 
 /* 消费者 */
-while (!atomic_load_explicit(&flag, memory_order_acquire))
-        ;
-v = atomic_load_explicit(&data, memory_order_relaxed);
+do {
+        s = atomic_load_explicit(&seq, memory_order_acquire);   /* 先取序号 */
+} while (s < i);
+/* 这里读到的 payload 一定是第 i 条写完的内容 */
 ```
 
-读侧的 `acquire` 不能省。少了它，编译器和 CPU 都可以把 `data` 的读提前到 `flag` 的读之前，于是循环还没结束，`v` 就已经是旧值装进寄存器了。release 管"先写数据再举手"，acquire 管"看到举手再读数据"，两者是一对。
+写侧只用 `release`，读侧只用 `acquire`，数据本身不需要是原子类型。`./ipc-lab pub` 发 1000 条、逐条校验 8 个字段（[记录](/p/linux-concurrency-programming/ipc-pub.txt)）：
 
-### 3.3 什么时候非 `seq_cst` 不可
+```
+messages=1000 bad=0 ok
+```
 
-acquire/release 只约束"这一对"的先后，不提供所有线程看到的统一顺序。一旦协议要求两个变量之间的顺序对所有线程一致，就必须用 `seq_cst`。典型的是双标志互斥：
+两块容易写错的地方：
+
+- 数据写完却用 `relaxed` 发布序号：CPU 可以让序号先被看到，消费者拿到半条消息；
+- 消费者用 `relaxed` 读序号：编译器和 CPU 可以把数据读提到序号判断之前，读到旧值。
+
+还有一层不属于内存序：缓冲区如果只有一格，生产者放下一条时会覆盖上一条内容，消费者即使拿到正确的序号，读到的也可能是后一条。程序里用 1024 格的环，1000 条不重叠，才保证每条都能校验。单格复用要靠消费者及时跟上，或者开够格数。
+
+### 7.4 什么时候用原子代替锁
+
+- 单个计数、单个标志、单个序号：原子足够，比锁快也不会阻塞；
+- 一组数据要一起变：仍然用锁。多个原子变量拼在一起不构成一个原子操作；
+- 需要"等某个条件成立"：用条件变量。原子不能让你睡。
+
+## 八、进程之间共享
+
+### 8.1 共享内存
 
 ```c
-/* 线程 0 */                      /* 线程 1 */
-flag0 = 1;                        flag1 = 1;
-if (flag1 == 0) enter();          if (flag0 == 0) enter();
+#include <sys/mman.h>
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 ```
 
-如果两条写都用 release、两条读都用 acquire，两个线程可以同时进入临界区：各自看到对方的写还没到，自己的写已经生效。这个协议要求"两个写有一个全局顺序"，只有 `seq_cst` 给得出。
-
-单条计数器不属于这一类。它只需要"加一不丢"，不需要和别的变量排先后，`relaxed` 就够；需要读到一个准确快照时，用 `seq_cst` 或加锁。
-
-### 3.4 乱序的可见性：这条边界要说清
-
-按 3.2 的 relaxed 写法跑两百万轮，统计消费者读到"`flag` 已置位但 `data` 还是旧值"的次数：
-
-```bash
-./conc-lab litmus pub relaxed 2000000
-./conc-lab litmus pub seq 2000000
-```
-
-```
-pub relaxed rounds=2000000 torn=0
-pub seq     rounds=2000000 torn=0
-```
-
-两百万轮一次都没命中。这不代表 relaxed 是安全的，只说明这台机器上两个核之间 store 传播的时间差小于一次读的间隔，窗口太窄，用计数抓不到。硬件 litmus 测试里这类违例常在百万分之一到十亿分之一量级，需要专门的对齐与放大手段才能稳定复现。
-
-所以这一节的结论来自指令和语义，不来自计数：`str` 没有顺序约束，`stlr` 有，这是编译器输出可以直接核对的事实；违例发生时的表现则是"消费者拿到半条消息"，在真实系统里表现为偶发的数据错乱，而不是每次必现。
-
-## 四、伪共享
-
-### 4.1 两个计数器相邻
-
-两个线程各自只写自己的计数器，逻辑上毫无关系。把它们放在一个结构体里相邻，与各占一条 cacheline，差别如下：
-
-```bash
-./conc-lab share pack 2 20000000
-./conc-lab share pad  2 20000000
-```
-
-```
-pack threads=2 iters=20000000 ns/op=3.09
-pad  threads=2 iters=20000000 ns/op=0.80
-```
-
-相邻时每次写 3.1 ns，填充后 0.8 ns，差约四倍。
-
-![两个计数器放在一条 cacheline 与各占一条](/p/linux-concurrency-programming/cacheline.svg)
-
-机制在图里：两个变量落在同一条 64 B 的行上，核 0 写 `a` 要先取得该行的独占权，核 1 手里的副本随之失效；核 1 再写 `b` 又要把行抢回去。两个线程没有共享任何逻辑数据，却在硬件层反复争夺同一条 cacheline，这叫伪共享（false sharing）。
-
-ARM64 的一级数据 cache 行也是 64 B，用 `getconf LEVEL1_DCACHE_LINESIZE` 可以确认。
-
-### 4.2 怎么判断，代价是什么
-
-判断依据是地址距离，不是字段类型：两个会被不同线程写的变量，地址差小于 64 B 就落在同一行。C11 的写法是给结构体成员加对齐：
+父子之间最省事的是匿名共享映射：
 
 ```c
-struct padded {
-        _Atomic long a;
-        char pad[64];        /* 让 b 落到下一条行 */
-        _Atomic long b;
-        char pad2[64];
-};
-```
-
-代价是内存。填充只该用在热点路径上的少数变量；一个每秒被写百万次的结构体值得，一个每次请求只改一次的结构体不值得。
-
-数组里也有同样的问题：`struct item arr[N]`，每个线程处理不同的元素，元素大小小于 64 B 时相邻元素仍然共享行。这时要么让 `item` 按 64 B 对齐并补齐，要么改成每个线程一份局部计数、最后合并。
-
-## 五、单生产者单消费者环
-
-### 5.1 谁写哪个指针
-
-一个固定容量的环形数组，一个生产者放、一个消费者取，可以做成完全无锁。关键是两个指针各只有一个写者：
-
-- `tail` 只由生产者写，消费者只读；
-- `head` 只由消费者写，生产者只读。
-
-![单生产者单消费者环的指针归属](/p/linux-concurrency-programming/spsc.svg)
-
-生产者把 `tail` 存在本地变量里，只在推进时写回；消费者对 `head` 同样处理。这样每次放入/取出只碰一次对方的指针，而不是每次都读自己的：
-
-生产者放入一条：
-
-```c
-for (;;) {
-        head = atomic_load_explicit(&r_head, memory_order_acquire);
-        if (tail - head < RING_CAP)
-                break;
-        sched_yield();
+struct shared *s = mmap(NULL, sizeof(*s), PROT_READ | PROT_WRITE,
+                        MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+if (s == MAP_FAILED) {
+        perror("mmap");
+        return -1;
 }
-rbuf[tail & RING_MASK] = v;
-atomic_store_explicit(&r_tail, tail + 1, memory_order_release);
 ```
 
-消费者取出：
+`MAP_SHARED` 是关键：fork 之后父子看到同一块物理页，一方写另一方立刻能看到。换成 `MAP_PRIVATE` 就退回成副本。
+
+无关进程之间用 `shm_open` 拿一个名字，再 `mmap` 上去，原理相同。
+
+### 8.2 进程共享的锁
+
+共享内存里的 mutex 默认只在本进程的线程间有效。要跨进程，初始化时就得声明：
 
 ```c
-for (;;) {
-        t = atomic_load_explicit(&r_tail, memory_order_acquire);
-        if (head != t)
-                break;
-        sched_yield();
-}
-v = rbuf[head & RING_MASK];
-atomic_store_explicit(&r_head, head + 1, memory_order_release);
+pthread_mutexattr_t attr;
+
+pthread_mutexattr_init(&attr);
+pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+pthread_mutex_init(&s->lock, &attr);
+pthread_mutexattr_destroy(&attr);
 ```
 
-`head` 和 `tail` 是无符号计数，一直递增、允许回绕，所以判断满不需要额外字段：`tail - head == RING_CAP` 就是满，`head == tail` 就是空。下标用 `& (RING_CAP - 1)` 取模，容量取 2 的幂。
+信号量更简单，`sem_init` 第二个参数传 1 就是进程共享：
 
-数据写入与指针推进之间是 3.2 的发布模式：先写 `rbuf`，再用 release 推进 `tail`；消费者用 acquire 读 `tail`，再读 `rbuf`。少了这一对，消费者可能读到还没写完的槽位。
-
-### 5.2 与加锁队列的对照
-
-```bash
-./conc-lab ring lock   2000000
-./conc-lab ring atomic 2000000
+```c
+sem_init(&s->lock, 1, 1);
 ```
 
-```
-lock   n=2000000 ns/msg=100.20 Mmsg/s=9.98
-atomic n=2000000 ns/msg=43.87 Mmsg/s=22.79
-```
-
-加锁版本每条消息约 100 ns，无锁版本 44 ns。加锁版本每条要做两次加锁、两次解锁、两次条件判断；无锁版本只有两次原子写和两次原子读。
-
-### 5.3 无锁不等于无等待
-
-队列满时生产者仍在循环，空时消费者仍在循环，只是等待方式从"睡在条件变量上"变成"自旋加让出"。`sched_yield()` 在满负载下会让出 CPU 又立刻被调度回来，实际效果取决于调度器；更常见的做法是短暂自旋后转入阻塞，或者干脆把容量设得足够大，让满/空不常发生。
-
-还有一个前提：只有单生产者单消费者才这么便宜。多生产者要么用 CAS 抢 `tail`，要么按生产者分片再合并；CAS 版本的成本会接近加锁版本，因为争用的还是同一条 cacheline。
-
-## 六、绑核与交接成本
-
-### 6.1 分核与同核
-
-同一对生产/消费线程，一个绑 CPU 0、一个绑 CPU 1，与两个都绑 CPU 0：
-
-```bash
-./conc-lab aff split 2000000
-./conc-lab aff same  2000000
-```
+`./ipc-lab pshm` 里父子各加十万次，用共享内存加进程共享信号量（[记录](/p/linux-concurrency-programming/ipc-pshm.txt)）：
 
 ```
-split n=2000000 ns/msg=28.96
-same  n=2000000 ns/msg=1.28
+counter=200000 expected=200000 ok
 ```
 
-分核每条消息约 29 ns，同核 1.3 ns，差二十倍。原因不是"同核更快"，而是这次交接的载体是一行 cacheline：分核时 `tail` 的每次推进都要把行从生产者核迁到消费者核，同核时两个线程轮流用同一份 L1 副本，交接几乎免费。
+两个地方都省了就会出错：锁只在自己进程里有效，对方根本不认，结果是丢更新，而且不会有任何报错。
 
-代价是并行度。同核时生产和消费只能轮流跑，在 2 vCPU 上这个微基准的瓶颈恰好就是交接本身，所以同核赢；一旦每一侧都有实际计算量，分核才能让两段计算重叠。
+### 8.3 fork 时带着锁会怎样
 
-### 6.2 什么时候该绑
+`fork` 只复制调用 `fork` 的那个线程，其他线程在子进程里不存在。如果 fork 的瞬间别的线程正持有一把锁，子进程里这把锁是"已加锁"状态，而持锁的线程没了——子进程再去 `lock` 就永远等下去。
 
-判断依据是"这份数据被几个核碰"：
+所以多线程程序里 fork 要谨慎：
 
-- 交接频繁、每次只有几十字节，且两侧计算都轻——同核或同一 CCX 内更划算；
-- 两侧都有重计算，交接只占一小部分——分核，接受每次几十纳秒的迁移成本；
-- 不确定时，先不绑，用 `perf stat` 看 `cache-misses` 与 `context-switches`，再决定。
+- fork 之前停掉其他线程，或者确保没有线程持锁；
+- 子进程里只调 async-signal-safe 的函数，然后尽快 `exec`；
+- 确实要在子进程里继续用锁，就在 fork 之后重新 `pthread_mutex_init`，覆盖掉继承来的状态。
 
-绑核还会和调度器的负载均衡冲突：绑死之后，核上出现更紧急的任务也无法迁移。生产环境里通常只给关键线程绑核，并留出至少一个核给其他工作。
+## 九、按场景选接口
 
-## 七、线程池
-
-### 7.1 每任务一个线程
-
-四千个短任务，每个新建一个线程、跑完 join：
-
-```bash
-./conc-lab pool 4000 0
-```
-
-```
-workers=0 tasks=4000 total=134145347 ns/task=33536
-```
-
-每个任务 33.5 µs。任务本身只有两千次浮点运算，绝大部分时间花在 `pthread_create` 与 `pthread_join` 上：分配栈、clone、等子线程退出、回收栈。
-
-### 7.2 固定 worker
-
-同一批任务交给固定数量的 worker，从队列里取：
-
-```bash
-./conc-lab pool 4000 2
-./conc-lab pool 4000 4
-```
-
-```
-workers=2 tasks=4000 ns/task=820
-workers=4 tasks=4000 ns/task=820
-```
-
-每任务 0.82 µs，比按需创建快约四十倍。4 个 worker 与 2 个完全相同，因为机器只有 2 个 vCPU，多出来的两个只是多两次上下文切换。
-
-线程池不是免费的：本例的任务队列本身是一把锁加热条件变量，任务很短时，取任务的争用会变成新的瓶颈。任务粒度越小、worker 越多，越需要考虑分片队列或无锁队列。经验上，单任务的计算量至少要达到几微秒，池的收益才稳定。
-
-## 八、协程与切换成本
-
-### 8.1 ucontext 换栈
-
-`ucontext` 提供用户态的上下文切换：保存当前寄存器与栈指针，换到另一块栈继续执行，不经过调度器。
-
-```bash
-./conc-lab switch ucontext 200000
-```
-
-```
-ucontext switches=400000 ns/switch=193.2
-```
-
-每次切换约 193 ns。这个数字比想象的高，原因可以用 strace 看到：
-
-```
-% time     seconds  usecs/call     calls    errors syscall
-100.00    0.138211           3     40001           rt_sigprocmask
-```
-
-两万次切换对应四万次 `rt_sigprocmask`：glibc 的 `swapcontext` 每次都要保存和恢复信号掩码，各一次系统调用。只保存 callee-saved 寄存器与栈指针的汇编切换通常只要几十纳秒，省掉的就是这部分。
-
-### 8.2 三种交接的量级
-
-![三种切换方式的单次成本](/p/linux-concurrency-programming/switch-cost.svg)
-
-```bash
-./conc-lab switch ucontext 200000
-./conc-lab switch spin     200000
-./conc-lab switch sem      200000
-```
-
-```
-ucontext switches=400000 ns/switch=193.2
-spin     rounds=200000 ns/round=188.0
-sem      rounds=200000 ns/round=20024.7
-```
-
-三者不是同一层的操作：
-
-- **193 ns**：同线程内换栈，寄存器与栈指针换掉，仍在同一个核上，不经过调度器；
-- **188 ns**：两个核各转各的，靠一行 store 通知对方，成本是 cacheline 跨核传播；
-- **20 µs**：一方睡进 futex，另一方唤醒它，等调度器把睡的一方选上来，成本包含两次上下文切换与调度延迟。
-
-从忙等到睡眠唤醒差一百倍，这个差距决定了"什么时候该自旋"：预期等待短于一次唤醒的成本，就自旋；否则睡。
-
-### 8.3 协程省什么，不省什么
-
-协程省下的是内核调度与线程栈：一个线程 8 MB 地址空间，一个协程栈可以只有几十 KB，切换不需要陷入内核。它不省的是数据交接——两个协程如果跑在不同线程上，传递数据仍然要付 6.1 的 cacheline 迁移成本；协程遇到阻塞 I/O 也仍然要把整个线程让出去，除非底下换成 io_uring 之类的异步接口。
-
-所以"协程比线程快"只在切换频率高、且切换本来就发生在同一线程内时成立。把它当成"把回调写成顺序代码"的工具，比当成性能手段更准确。
-
-## 九、按问题选工具
-
-| 问题 | 选择 | 主要代价 | 注意 |
-| --- | --- | --- | --- |
-| 单个数计数 | `atomic_fetch_add`，`relaxed` 或 `seq_cst` | 几纳秒，争同一行时更高 | 不要用普通变量；编译器会合并循环 |
-| 一段不变量 | mutex | 每次十几纳秒，争用时睡眠 | 临界区要短，锁的粒度按数据划分 |
-| 等一个条件 | 条件变量 | 唤醒约二十微秒 | 谓词必须用 while 重查 |
-| 两份数据同时更新 | mutex 或 `seq_cst` | 与上面同量级 | 不要用 acquire/release 拼双标志协议 |
-| 一对线程传消息 | SPSC 环 | 每条几十纳秒 | 只适用于单生产单消费者 |
-| 高频短任务 | 线程池 | 每任务不到一微秒 | worker 不超过核数，任务不能太碎 |
-| 大量并发等待 | 协程 + 异步 I/O | 每次切换百纳秒级 | 换栈不等于换线程，阻塞调用仍会占住线程 |
-| 两个变量被不同线程写 | 按 64 B 隔开 | 多占内存 | 先确认它们真的在热点路径上 |
+| 要解决的问题 | 用什么 | 关键点 |
+| --- | --- | --- |
+| 起一个新程序 | `fork` + `exec` | 子进程 exec 失败要 `_exit` |
+| 等子进程结束 | `wait` / `waitpid` | 不回收会留僵尸 |
+| 同进程内并行 | `pthread_create` | 参数不能传栈变量地址 |
+| 保护一段共享数据 | `pthread_mutex_t` | 谁加谁解，锁序固定 |
+| 读多写少 | `pthread_rwlock_t` | 注意写者饥饿 |
+| 等某个条件成立 | `pthread_cond_t` | while 重查，配同一把锁 |
+| 限制并发数量 | `sem_t` | 跨进程要放共享内存 |
+| 单个计数或标志 | `stdatomic.h` | 一组数据仍要锁 |
+| 发布一条消息 | release 写 + acquire 读 | 数据本身不必是原子类型 |
+| 进程之间共享数据 | `mmap(MAP_SHARED)` | 锁要设 `PTHREAD_PROCESS_SHARED` |
 
 ## 十、命令与接口速查
 
-| 目的 | 命令或接口 |
+| 目的 | 接口或命令 |
 | --- | --- |
-| 编译 | `gcc -O2 -pthread -Wall -Wextra conc-lab.c -o conc-lab` |
-| 观察线程栈范围与驻留 | `./conc-lab threads 8` |
-| 改线程栈大小 | `pthread_attr_setstacksize()`，检查返回值；小于最小值返回 `EINVAL` |
-| 计数器四种写法 | `./conc-lab counter plain\|mutex\|seq\|relaxed 2 5000000` |
-| 伪共享对照 | `./conc-lab share pack\|pad 2 20000000` |
-| 无锁环与加锁环 | `./conc-lab ring atomic\|lock 2000000` |
-| 线程池对照 | `./conc-lab pool 4000 0\|2\|4` |
-| 切换成本 | `./conc-lab switch ucontext\|spin\|sem 200000` |
-| 绑核对照 | `./conc-lab aff split\|same 2000000` |
-| 看生成的指令 | `objdump -d --no-show-raw-insn conc-lab`，或 `gcc -O2 -S memorder.c` |
-| 看协程切换的系统调用 | `strace -c -f -e trace=rt_sigprocmask ./conc-lab switch ucontext 10000` |
-| 确认 cacheline 大小 | `getconf LEVEL1_DCACHE_LINESIZE` |
-| 绑定 CPU | `taskset -c 0,1 ./prog`，或 `pthread_setaffinity_np()` |
-| 看缺页与上下文切换 | `/usr/bin/time -v ./prog`、`perf stat -e context-switches,cache-misses ./prog` |
+| 创建进程 | `pid_t fork(void)`，子进程返回 0，父进程返回子 pid |
+| 替换映像 | `int execve(const char *path, char *const argv[], char *const envp[])`，成功不返回 |
+| 回收子进程 | `pid_t wait(int *wstatus)`、`pid_t waitpid(pid_t pid, int *wstatus, int options)` |
+| 创建线程 | `int pthread_create(pthread_t *t, const pthread_attr_t *a, void *(*fn)(void *), void *arg)` |
+| 等待线程 | `int pthread_join(pthread_t t, void **retval)` |
+| 分离线程 | `int pthread_detach(pthread_t t)` |
+| 静态初始化锁 | `pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER` |
+| 动态初始化锁 | `pthread_mutex_init(&m, NULL)`、`pthread_mutex_destroy(&m)` |
+| 加锁解锁 | `pthread_mutex_lock`、`pthread_mutex_trylock`、`pthread_mutex_unlock` |
+| 读写锁 | `pthread_rwlock_rdlock`、`pthread_rwlock_wrlock`、`pthread_rwlock_unlock` |
+| 自旋锁 | `pthread_spin_lock`、`pthread_spin_unlock` |
+| 条件变量等待 | `int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m)` |
+| 唤醒 | `pthread_cond_signal`、`pthread_cond_broadcast` |
+| 信号量 | `sem_init(&s, pshared, value)`、`sem_wait`、`sem_post`、`sem_destroy` |
+| 原子加 | `atomic_fetch_add_explicit(&v, 1, memory_order_relaxed)` |
+| 发布与读取 | `atomic_store_explicit(&f, v, memory_order_release)`、`atomic_load_explicit(&f, memory_order_acquire)` |
+| 共享内存 | `mmap(NULL, len, PROT_READ\|PROT_WRITE, MAP_SHARED\|MAP_ANONYMOUS, -1, 0)` |
+| 进程共享锁属性 | `pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED)` |
+| 看线程 | `ps -eLf`、`top -H -p <pid>` |
+| 看锁与唤醒 | `strace -f -e trace=futex,clone ./ipc-lab cond` |
+| 看进程状态 | `ps -eo pid,ppid,stat,comm` |
 
 ## 十一、名词解释
 
-- **数据竞争**：两个线程访问同一内存位置、至少一个写、且没有同步；在 C11 里是未定义行为。
-- **顺序一致性（`seq_cst`）**：所有线程看到同一个全局操作顺序，最强的内存序。
+- **僵尸进程**：已结束但父进程还没 `wait` 的进程，只留退出状态。
+- **写时复制**：`fork` 后父子共享物理页，任一方写时才复制一份。
+- **tid**：线程号，同一进程的线程 pid 相同、tid 不同。
+- **临界区**：被锁保护、同一时刻只允许一个线程执行的那段代码。
+- **死锁**：两个以上线程各持一把锁、又都在等对方释放，谁也无法继续。
+- **虚假唤醒**：条件变量没有 signal 也可能返回，所以判断条件要用 while。
+- **内存序**：编译器和 CPU 对读写重排的约束程度，`relaxed` 最弱，`seq_cst` 最强。
 - **acquire / release**：一对单向约束。release 保证它之前的操作不会被观察到晚于它；acquire 保证它之后的操作不会被观察到早于它。
-- **`stlr` / `ldar`**：ARM64 上带 release / acquire 语义的存储与加载指令。
-- **cacheline**：CPU 与内存之间搬运的最小单位，这台机器上是 64 B。
-- **伪共享**：两个线程写同一条 cacheline 里的不同变量，硬件仍按整行处理，导致该行在核间反复迁移。
-- **SPSC**：单生产者单消费者。两个指针各只有一个写者，因此不需要 CAS。
-- **CAS**：compare-and-swap，读旧值、比较、相等才写入的原子指令；多写者场景用它抢占。
-- **futex**：内核提供的等待/唤醒机制，用户态先原子的比较，确认要睡才进内核。
-- **ucontext**：POSIX 的用户态上下文接口，`swapcontext` 换栈；glibc 实现里每次切换带两次信号掩码系统调用。
-- **自旋**：不睡眠、循环检查条件；适合预期等待极短的场景。
+- **`PTHREAD_PROCESS_SHARED`**：mutex 或条件变量的属性，设了才能跨进程用，对象本身要放在共享内存里。

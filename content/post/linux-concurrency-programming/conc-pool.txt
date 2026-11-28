@@ -1,3 +1,0 @@
-workers=0 tasks=4000 total=134145347 ns/task=33536
-workers=2 tasks=4000 total=3280520 ns/task=820
-workers=4 tasks=4000 total=3281313 ns/task=820

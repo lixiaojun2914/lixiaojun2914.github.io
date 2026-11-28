@@ -1,6 +1,0 @@
-lock n=2000000 total=205675925 ns/msg=102.84 Mmsg/s=9.72
-lock n=2000000 total=200402182 ns/msg=100.20 Mmsg/s=9.98
-lock n=2000000 total=197732749 ns/msg=98.87 Mmsg/s=10.11
-atomic n=2000000 total=86275170 ns/msg=43.14 Mmsg/s=23.18
-atomic n=2000000 total=93576217 ns/msg=46.79 Mmsg/s=21.37
-atomic n=2000000 total=87741929 ns/msg=43.87 Mmsg/s=22.79

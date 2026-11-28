@@ -1,0 +1,4 @@
+process pid=81349 main tid=81349
+thread 0 tid=81350 pid=81349
+thread 1 tid=81351 pid=81349
+thread 2 tid=81352 pid=81349
