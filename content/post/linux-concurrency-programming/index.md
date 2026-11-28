@@ -1,7 +1,7 @@
 ---
 title: "Linux 并发编程：线程、原子与交接的代价"
 slug: linux-concurrency-programming
-date: "2026-11-28T20:00:00+08:00"
+date: "2026-11-28T18:30:00+08:00"
 lastmod: "2026-11-28"
 draft: false
 description: "同一个计数器有三种写法，发布一条消息可以只多一条指令；差别最后落在 cacheline 归谁、栈有多大、一次唤醒要走多远。"
