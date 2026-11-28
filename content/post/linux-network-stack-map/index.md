@@ -30,7 +30,7 @@ tags:
 
 虚拟机接了两块 `e1000e`，分工是固定的：`enp2s0` 走 NAT，`192.168.126.135/24`，负责出网和 DNS；`enp10s0` 走仅主机网络，静态 `192.168.190.10/24`，Mac 从这里 SSH 进来，也就是实验流量走的那块。两块网卡参数相同：单收发队列、RX/TX 环形缓冲各 256、排队规则 `fq_codel`。这两块网卡怎么分的网段、静态地址怎么填，见[《Ubuntu Server 虚拟机安装及配置》](/p/ubuntu-server-vm-install/)（那篇装的是 24.04，双网卡布局与此相同）。
 
-路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。用到的文件有五个：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)，以及附录、块 D、第九节各用一个的 [tl3.bt](tl3.bt)、[gro3.bt](gro3.bt)、[hooks.bt](hooks.bt)。一并放到同一个工作目录，后面每条命令都在这里执行：
+路径实验跑在两个 network namespace 里，用一对 veth 相连，不碰物理网卡。用到的文件有六个：[netdemo.c](netdemo.c)、[lab.sh](lab.sh)，附录、块 D、第九节各用一个的 [tl3.bt](tl3.bt)、[gro3.bt](gro3.bt)、[hooks.bt](hooks.bt)，以及第二篇多路复用那节才用到的 [muxdemo.c](muxdemo.c)。一并放到同一个工作目录，后面每条命令都在这里执行：
 
 ```bash
 mkdir -p ~/nslab && cd ~/nslab
@@ -39,6 +39,7 @@ wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/lab.sh
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/tl3.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/gro3.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/hooks.bt
+wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/muxdemo.c
 # 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、nc、gcc 不一定齐
 sudo apt install -y bpftrace tcpdump nftables netcat-openbsd ethtool strace gcc
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
@@ -228,7 +229,7 @@ IP 层拿到包先查路由：目的地址是本机就本地交付，中间过 `
 
 | 命令 | 用途 | 关键输出 |
 | --- | --- | --- |
-| `wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c` | 取源码、建网脚本、三个 bt 脚本 | 落到当前目录，其余四个同理 |
+| `wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/netdemo.c` | 取源码、建网脚本、三个 bt 脚本、`muxdemo.c` | 落到当前目录，其余五个同理 |
 | `sudo bash lab.sh direct` | 建两个 netns 加一对 veth | `nslab-a` / `nslab-b`，`lab.sh clean` 清掉 |
 | `sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18082 1500` | 起服务端（前台） | `ready TCP`，接上后等 1500 ms 再 `received=5 bytes` |
 | `sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18082 5` | 发 5 字节 | 客户端 `write accepted=5 bytes`，服务端 `received=5 bytes` |

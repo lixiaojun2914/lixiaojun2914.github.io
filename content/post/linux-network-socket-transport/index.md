@@ -18,7 +18,7 @@ tags:
 
 这一篇展开[第一篇](/p/linux-network-stack-map/)的块 A、块 B 的前半和块 E：socket 与 sock 各自记住什么，字节在哪个队列上等待，接收侧怎样找到连接并叫醒应用，UDP 又为什么在这里与 TCP 分道。
 
-实验沿用第一篇的 C 程序与直连拓扑脚本。准备步骤（`lab.sh direct`、`wget` 取文件、编译）在第一篇 1.2 已经做过，这里只重复用到的命令。多路复用那一节另有一个程序 `muxdemo.c`，也在本篇目录，编译命令写在 5.4。实验机是 7.0.0-44，源码对照上游 `v7.0`。
+实验沿用第一篇的 C 程序与直连拓扑脚本。准备步骤（`lab.sh direct`、`wget` 取文件、编译）在第一篇 1.2 已经做过，这里只重复用到的命令。多路复用那一节另有一个程序 `muxdemo.c`，和 `netdemo.c` 一起在第一篇 1.2 下载，编译命令写在 5.2。实验机是 7.0.0-44，源码对照上游 `v7.0`。
 
 ![socket 对象与两条队列](/p/linux-network-socket-transport/objects.svg)
 
@@ -251,7 +251,7 @@ UDP 是报文：一次 `read()` 对应一条数据报，读不完的剩余部分
 
 边缘触发（ET）下，只在状态发生变化时报告一次：从空变成非空。应用必须一次读到 `EAGAIN`，把数据读干净；中途停下，没有新数据到来就不会再有通知，连接就卡在那里。
 
-差别要等一次读不完的时候才显出来。先编译本篇目录下的 `muxdemo.c`（`gcc -O2 -pthread -o muxdemo muxdemo.c`），它有三种收法，端口都取 18095。
+差别要等一次读不完的时候才显出来。先编译第一篇 1.2 里一并取下的 `muxdemo.c`（`gcc -O2 -pthread -o muxdemo muxdemo.c`），它有三种收法，端口都取 18095。
 
 终端一，接收端用水平触发，每次事件读一次：
 
@@ -317,7 +317,7 @@ ET 不是更快，是把"检查"的责任交给应用。它省掉的是重复报
 - 边缘触发的 `epoll_wait` 次数和水平触发几乎一样（10044 对 10049）。64 字节一条报文，每次到达都是一次"从空到非空"，没有重复通知可省；上一节那种一次写 256 KiB 的场景才省出 20 倍。哪个快取决于负载形状，不取决于触发方式的名字。
 - 多线程版每个 fd 必须带 `EPOLLONESHOT`，处理完再 `EPOLL_CTL_MOD` 重新武装。少了这一步，两个线程会同时被叫醒去读同一个 socket，一个读到数据，另一个白跑一趟。
 
-程序在[本目录](/p/linux-network-socket-transport/muxdemo.c)，`gcc -O2 -pthread -o muxdemo muxdemo.c` 编译。上面的计数都来自程序自己：服务端收到 `SIGUSR1` 打印 `accept`、`read`、`write`、`epoll_wait` 的次数，接收端的 `wakes` 是 `epoll_wait()` 有返回的次数。四次运行与三种接收策略的原始输出在[写法对照](/p/linux-network-socket-transport/mux-modes.txt)和[接收策略对照](/p/linux-network-socket-transport/mux-drain.txt)。
+程序是第一篇 1.2 一起下载的 [`muxdemo.c`](/p/linux-network-stack-map/muxdemo.c)，`gcc -O2 -pthread -o muxdemo muxdemo.c` 编译。上面的计数都来自程序自己：服务端收到 `SIGUSR1` 打印 `accept`、`read`、`write`、`epoll_wait` 的次数，接收端的 `wakes` 是 `epoll_wait()` 有返回的次数。四次运行与三种接收策略的原始输出在[写法对照](/p/linux-network-socket-transport/mux-modes.txt)和[接收策略对照](/p/linux-network-socket-transport/mux-drain.txt)。
 
 ## 六、命令与接口速查
 
