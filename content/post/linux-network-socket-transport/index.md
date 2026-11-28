@@ -24,37 +24,40 @@ tags:
 
 ## 一、场景：数据到了，没人读
 
-### 1.1 让接收队列压住不动
+这一节要三个终端，按顺序敲，全部动作都落在同一个 20 秒窗口里。
 
-`tcp-server` 的第四个参数是 `accept` 之后先睡多少毫秒：这段时间它不读，睡醒再一直读到对端关闭，然后打印总数。
+### 1.1 服务端先挂住
+
+`tcp-server` 的第四个参数是 `accept` 之后睡多少毫秒。这里给 20000：这段时间它不读，睡醒后一直读到对端关闭，才打印总数。窗口留这么长不是为了测延迟，是为了给后面两条命令腾出时间。
+
+终端一：
 
 ```bash
-sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18081 3500
-# ready TCP 10.77.1.2:18081
+sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18081 20000
 ```
 
-客户端请求 16384 字节 `SO_SNDBUF`，置 `O_NONBLOCK`，每次写 4096 字节发到发不动，再把描述符留四秒：
+```text
+ready TCP 10.77.1.2:18081
+```
+
+### 1.2 客户端填到发不动，然后挂住
+
+客户端请求 16384 字节 `SO_SNDBUF`，置 `O_NONBLOCK`，每次写 4096 字节直到发不动；第五个参数是发不动之后挂多久，给 30000，比服务端窗口长，保证观察时连接还在。
+
+终端二：
 
 ```bash
-sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.1.2 18081
+sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.1.2 18081 30000
 ```
 
 ```text
 SO_SNDBUF requested=16384
-accepted=120560 bytes; send=EAGAIN; holding fd 4000 ms
+accepted=120560 bytes; send=EAGAIN; holding fd 30000 ms
 ```
 
-3.5 s 后服务端醒来，把积压一次读走：
+### 1.3 趁窗口还没结束，看两端的队列
 
-```text
-received=120560 bytes
-```
-
-两个数相等，说明窗口里没丢字节，只是没人取。这个数每次不同，换机器或换窗口长度都是别的值，也不能拿它反推缓冲区容量：发送循环在跑的同时，协议栈一直在把数据送出去并获得确认，腾出的空间可以再用。
-
-### 1.2 两端的队列快照
-
-趁服务端还在睡，进服务端那个 netns 看这条连接：
+终端三，两条命令各进一个 netns：
 
 ```bash
 sudo ip netns exec nslab-b ss -tinm 'sport = :18081'
@@ -66,8 +69,6 @@ ESTAB 120560 0      10.77.1.2:18081    10.77.1.1:42716
 	 skmem:(r124400,rb131072,t0,tb87040,f2576,w0,o0,bl0,d1) cubic …
 ```
 
-再进客户端那个：
-
 ```bash
 sudo ip netns exec nslab-a ss -tinm 'dport = :18081'
 ```
@@ -78,8 +79,6 @@ ESTAB 0      0      10.77.1.1:42716    10.77.1.2:18081
 	 skmem:(r0,rb131072,t0,tb32768,f0,w0,o0,bl0,d0) cubic …
 ```
 
-`-t` 只列 TCP，`-i` 打内部信息（`cwnd`、`rtt`），`-n` 不解析名字，`-m` 打 `skmem`。两个 netns 各查各的：连接的两端在各自的命名空间里都是本机的 socket。
-
 | 观察端 | 状态 | Recv-Q | Send-Q |
 | --- | --- | --- | --- |
 | 服务端 nslab-b | `ESTAB` | 120560 | 0 |
@@ -87,9 +86,21 @@ ESTAB 0      0      10.77.1.1:42716    10.77.1.2:18081
 
 服务端的 `Recv-Q` 是它自己 socket 的接收队列——数据已经到了这台机器、在它自己的缓冲里，只是没有交给应用。客户端的发送队列此刻清空，因为这一侧的数据已经被确认并释放。
 
-`Recv-Q`、`Send-Q` 是队列深度；同一行下面 `-m` 打出的 `skmem` 是内存记账，`r124400` 比 `Recv-Q` 多出的部分是 skb 头与记账开销。两者描述不同对象，不能混用。
+`-t` 只列 TCP，`-i` 打内部信息（`cwnd`、`rtt`），`-n` 不解析名字，`-m` 打 `skmem`。`Recv-Q`、`Send-Q` 是队列深度；`skmem` 的 `r124400` 比 `Recv-Q` 的 120560 多出的是 skb 头与内存记账，两者描述不同对象，不能混用。
 
-`EAGAIN` 是先前某次调用的结果，`ss` 是稍后的快照。观察时 `Send-Q` 归零完全可能，再发一次也可能又有空间。快照不能反过来否定此前的瞬时条件。
+这条 `ss` 必须在前两个终端还挂着的时候跑。服务端 20 秒一到就把积压读走，`Recv-Q` 立刻归零，再查就只剩一条空队列。
+
+### 1.4 窗口结束，两端各自收尾
+
+服务端醒来读到对端关闭，打印总数：
+
+```text
+received=120560 bytes
+```
+
+三处数字相等：客户端的 `accepted`、窗口内服务端的 `Recv-Q`、服务端最后的 `received`。这条关系是可复现的部分；具体数值每次不同，另一次运行是 61520，取决于 `EAGAIN` 那一刻对端通告了多大窗口、已经确认掉多少。所以也不能拿这个数反推缓冲区容量：发送循环在跑的同时，协议栈一直在把数据送出去并获得确认，腾出的空间可以再用。
+
+`EAGAIN` 是先前某次调用的结果，`ss` 是稍后的快照。窗口内 `Send-Q` 归零完全可能，再发一次也可能又有空间，快照不能反过来否定此前的瞬时条件。
 
 ## 二、fd 后面的对象
 
@@ -274,7 +285,7 @@ ET 不是更快，是把"检查"的责任交给应用。它省掉的是重复报
 | 目的 | 命令 |
 | --- | --- |
 | 看队列深度与内存 | `ss -tinm 'sport = :18081'` |
-| 非阻塞发送到 EAGAIN | `./netdemo tcp-fill <ip> <port>` |
+| 非阻塞发送到 EAGAIN | `./netdemo tcp-fill <ip> <port> [hold_ms]` |
 | UDP 截断复现 | `./netdemo udp-server <ip> <port> 3` |
 | 观察系统调用 | `strace -f -e trace=network,read,write ./netdemo ...` |
 | 四写法对照 | `./muxdemo thread <port>`，`epoll-lt`、`epoll-et` 同参数；多线程用 `epoll-mt <port> 4` |

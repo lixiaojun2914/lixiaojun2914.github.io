@@ -14,7 +14,7 @@
  * 用法：
  *   netdemo tcp-server IP PORT [delay_ms]   accept 后先等 delay_ms 再读，读完打印总数
  *   netdemo tcp-client IP PORT [bytes]      connect 后写 bytes 字节（默认 5），打印耗时
- *   netdemo tcp-fill   IP PORT              把发送队列写满，停在 EAGAIN，然后挂 4 秒
+ *   netdemo tcp-fill   IP PORT [hold_ms]   把发送队列写满，停在 EAGAIN，然后挂 hold_ms（默认 4000）
  *   netdemo udp-server IP PORT [delay_ms]   收两个报文，打印各自长度与内容
  *   netdemo udp-client IP PORT              发两个报文：5 字节、2 字节
  *
@@ -123,8 +123,9 @@ int main(int argc, char **argv) {
             /* MSG_NOSIGNAL：对端先关时不要用 SIGPIPE 把进程打死，要的是 errno。 */
             while((n=send(s,buf,sizeof buf,MSG_NOSIGNAL))>0) total+=(size_t)n;
             if(errno!=EAGAIN && errno!=EWOULDBLOCK) die("send");
-            printf("accepted=%zu bytes; send=EAGAIN; holding fd 4000 ms\n",total);
-            pause_ms(4000);
+            int hold = argc>4 ? atoi(argv[4]) : 4000;
+            printf("accepted=%zu bytes; send=EAGAIN; holding fd %d ms\n",total,hold);
+            pause_ms(hold);
         } else {
             /* 普通客户端：写 bytes 个 'A'（默认 5）。
              * 注意 write 返回的是"内核收下了多少"，不是"对端收到了多少"：
