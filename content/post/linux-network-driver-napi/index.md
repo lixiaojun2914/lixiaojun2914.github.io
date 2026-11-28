@@ -42,7 +42,22 @@ supports-priv-flags: yes
 
 设备注册只让内核认识这个接口。真正收发还要三样东西：描述符环、缓冲区、事件处理。Rx 环告诉驱动哪些缓冲区已经有数据；Tx 环记录哪些提交的资源可以回收了。
 
-`enp2s0` 有独立的接收与发送中断向量（`enp2s0-rx-0`、`enp2s0-tx-0`），说明它用的是 MSI-X 多向量。一个设备可以有多个队列、多个 NAPI 实例，队列和中断怎样对应由驱动决定，不是内核统一规定。
+`enp2s0` 有独立的接收与发送中断向量，说明它用的是 MSI-X 多向量。这两条命令能把"几个队列、几条中断线"看清楚：
+
+```bash
+ls /sys/class/net/enp2s0/queues/
+grep enp2s0 /proc/interrupts
+```
+
+```text
+rx-0
+tx-0
+ 50:      46972          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
+ 51:       8696          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
+ 52:          2          0 GICv2m-PCI-MSIX-0000:02:00.0   2 Edge      enp2s0
+```
+
+两条队列、三条中断线：`rx-0`、`tx-0` 各一条，再一条给"其他"事件。一个设备可以有多个队列、多个 NAPI 实例，队列和中断怎样对应由驱动决定，不是内核统一规定；想知道这块网卡具体怎么分，只能看它自己的队列目录和中断表。
 
 ## 二、通知与预算
 
@@ -85,6 +100,31 @@ if (!tx_cleaned || work_done == budget)
 
 `struct napi_struct` 上挂着状态、poll 回调、所属设备和链表节点，驱动把它关联到 `net_device`。代码见 [e1000e/netdev.c](https://github.com/torvalds/linux/blob/v7.0/drivers/net/ethernet/intel/e1000e/netdev.c) 与 [netdevice.h](https://github.com/torvalds/linux/blob/v7.0/include/linux/netdevice.h)。
 
+### 2.3 软中断自己的额度
+
+一个 poll 有 64 的预算，可一轮软中断能把好几个实例的 poll 都跑一遍。它也有限度：
+
+```bash
+cat /proc/sys/net/core/netdev_budget
+cat /proc/sys/net/core/netdev_budget_usecs
+head -2 /proc/net/softnet_stat
+```
+
+```text
+300
+2000
+0005484a 00000000 00000206 00000000 00000000 00000000 00000000 ...
+00034fa0 00000000 00000001 00000000 00000000 00000000 00000000 ...
+```
+
+`net_rx_action()` 一轮最多处理 `netdev_budget` 个包、最多花 `netdev_budget_usecs` 微秒，哪个先到就跳出循环；没跑完的实例留在待处理链上，软中断结束时重新触发一次。所以"让出 CPU"不止发生在 poll 返回 `budget` 时，也发生在这一层。
+
+`/proc/net/softnet_stat` 每行一个 CPU，数字是十六进制。第一列是处理过的包数，第二列是超预算丢弃，第三列 `time_squeeze` 是"预算或时间用尽但还有活没干完"的次数。换算过来，CPU0 的 `time_squeeze` 是 `0x206`（518），CPU1 是 `0x1`：CPU0 承担了绝大部分收包，挤压次数也是 518 对 1。
+
+再往下还有一层：软中断积压到一定程度，`NET_RX` 会转给 `ksoftirqd` 线程执行，那时它和普通线程一样参与调度。`ps -eLo comm | grep -c ksoftirqd` 在这台 2 vCPU 的机器上是 2，每个 CPU 一个。
+
+三层额度叠在一起：每次 poll 的 `budget`（按实例）、每轮软中断的 300 包 / 2 ms（按 CPU）、以及 `ksoftirqd` 的调度权重。只记住其中一层，就会把"为什么让出"归到一个数字上。
+
 ## 三、低负载下的一次接收
 
 ### 3.1 三个计数各算什么
@@ -92,9 +132,9 @@ if (!tx_cleaned || work_done == budget)
 先取三条基线：
 
 ```bash
-grep -E 'NET_RX|NET_TX' /proc/softirqs
-grep -iE 'enp2s0' /proc/interrupts
-ip -s link show enp2s0
+grep -E 'NET_RX' /proc/softirqs
+grep enp2s0-rx-0 /proc/interrupts
+ip -s link show enp2s0 | sed -n '/RX:/,+1p'
 ```
 
 然后向默认网关发 15 个间隔 0.03 秒的 ping：
@@ -103,21 +143,55 @@ ip -s link show enp2s0
 ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
 ```
 
-ping 返回后，把上面那三条再跑一遍。两轮输出相减就是下表的差值——计数器只增不减，差值才是一次实验的增量。
+ping 返回后，把上面三条原样再跑一遍。计数器只增不减，两轮相减才是这一轮的增量：
 
 | 计数 | 前 | 后 | 差值 | 算的是什么 |
 | --- | ---: | ---: | ---: | --- |
-| CPU0 `NET_RX` | 68539 | 68563 | +24 | 这台 CPU 上 `NET_RX` 软中断被执行了多少次 |
-| `enp2s0-rx-0` | 15679 | 15695 | +16 | 这个中断向量触发了多少次 |
-| 设备 `RX packets` | 14622 | 14638 | +16 | 设备收了多少帧 |
+| CPU0 `NET_RX` | 401066 | 401083 | +17 | 这台 CPU 上 `NET_RX` 软中断被执行了多少次 |
+| `enp2s0-rx-0` | 47296 | 47312 | +16 | 这个中断向量触发了多少次 |
+| 设备 `RX packets` | 22152 | 22167 | +15 | 设备收了多少帧 |
 
 三个数分别取自：`/proc/softirqs` 里 `NET_RX:` 那一行的第一列（CPU0）；`/proc/interrupts` 里 `enp2s0-rx-0:` 那一行的第一列；`ip -s link show` 输出里 `RX:` 段的 `packets` 列。
 
-中断和帧数都是 16，比 ping 的 15 多一个——回程的 ICMP 请求之外还有一个别的帧（ARP 或迟到的响应）。低负载下每个帧都触发一次通知，两个计数才对得上。
+帧数是干净的：15 个请求、15 个应答，设备 `RX packets` 正好 +15。中断多一次，软中断又比中断多一次。连着跑四轮，这个差距还会变：
 
-`NET_RX` 多出 24 次，不等于多收了 24 个包。软中断计数是全局的，不分设备：这个 SSH 会话本身在 `enp10s0` 上产生的流量也算在里面。它记录的是"这个软中断被执行了几次"，不是"收了多少帧"。
+| 轮次 | `NET_RX` | `enp2s0-rx-0` | `RX packets` |
+| --- | ---: | ---: | ---: |
+| 1 | +17 | +16 | +15 |
+| 2 | +17 | +16 | +15 |
+| 3 | +15 | +15 | +15 |
+| 4 | +17 | +16 | +15 |
 
-所以三个数不必相等，相等也不是规律。背景流量、批处理、中断合并都能让它们分开；反过来用它们估算包数，只在负载足够低、设备足够单一时才成立。
+帧数每轮都稳在 15，中断在 15 和 16 之间，软中断在 15 和 17 之间。多出来的那几次并非每条都能对上账：一个来源是别的网卡——跑实验的这条 SSH 会话在 `enp10s0` 上就有 1 次中断（`grep enp10s0 /proc/interrupts` 能看前后差值），它同样计入 `NET_RX`；同一向量上也可能有不是收包的事件。所以这三个数只能看量级和趋势，不能拿等式去验算。
+
+要对账，用抓包裁决。另开一个终端：
+
+```bash
+sudo timeout 8 tcpdump -nn -i enp2s0 -c 30 icmp
+```
+
+`-c 30` 收满 30 个就自己退出，正好是 15 个请求加 15 个应答；ping 结束后它的最后一行是 `30 packets captured`，入向 15 个，和 `RX packets` 的 +15 严丝合缝。计数器的差值和抓到的帧数一致，说明"帧"这一层没漏也没多；不一致的是中断和软中断，那属于通知层面的统计。
+
+`NET_RX` 的计数是全局的，不分设备：这个 SSH 会话本身在 `enp10s0` 上产生的流量也算在里面。它记录的是"这个软中断被执行了几次"，不是"收了多少帧"。
+
+所以三个数可以相等，但那只是巧合，不是恒等式。背景流量、批处理、中断合并都能让它们分开；反过来用它们估算包数，只在负载足够低、设备足够单一时才成立。
+
+顺带试了"把中断合并调大，能不能让中断少于帧"。这块网卡只认 `rx-usecs` 一档：
+
+```bash
+sudo ethtool -c enp2s0             # rx-usecs: 3
+sudo ethtool -C enp2s0 rx-usecs 10000   # 10 ms，实测能写进去的最大值
+```
+
+100 个间隔 5 ms 的 ping，三档设置的对照：
+
+| `rx-usecs` | 收帧 | 中断 |
+| --- | ---: | ---: |
+| 3（默认） | 100 | 100 |
+| 1000 | 100 | 101 |
+| 10000 | 100 | 100 |
+
+参数回读得到 10000，中断次数却一动不动。也就是说这台虚拟网卡的 ITR 并没有真正参与合并，"调大就该少中断"在这里不成立。所以看到中断数明显少于帧数，再去考虑合并；差一两个数的时候，别拿合并当解释。这组对照换到物理网卡上才更有意义。[完整记录](/p/linux-network-driver-napi/napi-coalesce.txt)
 
 ### 3.2 poll 的工作量与预算
 
@@ -167,6 +241,8 @@ sudo bash -c 'cd /; rmdir /sys/kernel/tracing/instances/nslab'
 
 低负载这一轮的作用是确认路径和观察方法。加大负载后，比较 poll 返回量、软中断次数、中断频率和驱动统计，才有意义。
 
+这一篇的实测只到 15 个 ping 的量级：poll 每次都只处理 1 个包，既碰不到 64 的实例预算，也碰不到每轮 300 包的软中断额度。下表是负载上去以后的查法，本篇不给这些数字，真压出 `work 64` 和 `time_squeeze` 增长需要另一套实验。
+
 | 现象 | 往下查什么 |
 | --- | --- |
 | poll 多次返回 `budget` | 实例一直有活，结合 CPU、队列和丢弃看是否跟得上 |
@@ -184,8 +260,13 @@ NAPI 通常在软中断上下文跑，但也支持 busy polling 和线程化处�
 | --- | --- |
 | `ethtool -i DEV` | 驱动身份与固件版本 |
 | `ethtool -S DEV` | 驱动定义的统计字段 |
+| `ls /sys/class/net/DEV/queues/` | 队列与中断向量的命名 |
 | `/proc/interrupts` | 按 CPU 看中断累计次数 |
 | `/proc/softirqs` | 按 CPU 看软中断累计次数 |
+| `/proc/net/softnet_stat` | 按 CPU 看处理量、`dropped`、`time_squeeze` |
+| `/proc/sys/net/core/netdev_budget`、`netdev_budget_usecs` | 一轮软中断最多处理多少包、最多跑多久 |
+| `ethtool -c DEV` / `ethtool -C DEV rx-usecs N` | 查看、设置中断合并参数 |
+| `ps -eLo comm` 配 `grep -c ksoftirqd` | 线程化软中断的实例数，通常每 CPU 一个 |
 | `napi_schedule_prep()` / `__napi_schedule()` | 判断并申请一次 NAPI 处理 |
 | `napi_complete_done()` | 结束本轮，按结果恢复通知 |
 | `napi:napi_poll` | 观察实例、设备、返回工作量与预算 |
@@ -198,4 +279,6 @@ NAPI 通常在软中断上下文跑，但也支持 busy polling 和线程化处�
 | 接收环 | 驱动与设备用描述符组织的接收缓冲区结构 |
 | 中断合并 | 设备侧按策略合并通知，改变通知频率与延迟 |
 | 处理预算 | 限制一次接收工作量，避免单个实例长期占住处理机会 |
+| `time_squeeze` | 预算或时间用尽、但还有活没干完的次数 |
+| `ksoftirqd` | 软中断积压时接手执行的线程，每个 CPU 一个 |
 | MSI-X | 允许设备用多个独立中断向量的机制，队列多时常用 |

@@ -1,51 +1,72 @@
 enp2s0 低负载对照：15 个 ping，间隔 0.03 s
-环境：7.0.0-44-generic，aarch64，2 vCPU，e1000e，MSI-X 三向量
+环境：7.0.0-44-generic，aarch64，2 vCPU，e1000e（MSI-X 三向量），默认网关 192.168.126.2，本机 192.168.126.135
 
 ## 实验前
 
 $ grep -E 'NET_RX|NET_TX' /proc/softirqs | head -3
-      NET_TX:      27507         53
-      NET_RX:      68539        228
+      NET_TX:      58000       3050
+      NET_RX:     401066     211094
 
-$ grep -iE 'enp2s0' /proc/interrupts
- 50:      15679          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
- 51:       5615          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
+$ grep enp2s0 /proc/interrupts
+ 50:      47296          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
+ 51:       8997          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
  52:          2          0 GICv2m-PCI-MSIX-0000:02:00.0   2 Edge      enp2s0
 
-$ ip -s link show enp2s0
+$ ip -s link show enp2s0 | sed -n '/RX:/,+4p'
     RX:  bytes packets errors dropped  missed   mcast
-      16649640   14622      0       0       0       0
+      25833269   22152      0       0       0       0
     TX:  bytes packets errors dropped carrier collsns
-        536415    6850      0       0       0       0
+        823952   10761      0       0       0       0
+    altname enx000c293d848f
 
 ## 发送
 
 $ ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
-15 packets transmitted, 15 received, 0% packet loss, time 442ms
-rtt min/avg/max/mdev = 0.178/0.302/0.407/0.064 ms
+--- 192.168.126.2 ping statistics ---
+15 packets transmitted, 15 received, 0% packet loss, time 447ms
+rtt min/avg/max/mdev = 0.136/0.626/5.610/1.334 ms
 
 ## 实验后
 
 $ grep -E 'NET_RX|NET_TX' /proc/softirqs | head -3
-      NET_TX:      27531         53
-      NET_RX:      68563        228
+      NET_TX:      58015       3050
+      NET_RX:     401083     211094
 
-$ grep -iE 'enp2s0' /proc/interrupts
- 50:      15695          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
- 51:       5631          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
+$ grep enp2s0 /proc/interrupts
+ 50:      47312          0 GICv2m-PCI-MSIX-0000:02:00.0   0 Edge      enp2s0-rx-0
+ 51:       9012          0 GICv2m-PCI-MSIX-0000:02:00.0   1 Edge      enp2s0-tx-0
  52:          2          0 GICv2m-PCI-MSIX-0000:02:00.0   2 Edge      enp2s0
 
-$ ip -s link show enp2s0
+$ ip -s link show enp2s0 | sed -n '/RX:/,+4p'
     RX:  bytes packets errors dropped  missed   mcast
-      16651234   14638      0       0       0       0
+      25834799   22167      0       0       0       0
     TX:  bytes packets errors dropped carrier collsns
-        537927    6866      0       0       0       0
+        825422   10776      0       0       0       0
+    altname enx000c293d848f
 
 ## 差值
 
-NET_RX   CPU0  68539 -> 68563   +24
-NET_TX   CPU0  27507 -> 27531   +24
-enp2s0-rx-0   15679 -> 15695   +16
-enp2s0-tx-0    5615 ->  5631   +16
-RX packets     14622 ->  14638   +16
-TX packets      6850 ->   6866   +16
+NET_RX   CPU0  401066 -> 401083   +17
+enp2s0-rx-0     47296 ->  47312   +16
+RX packets      22152 ->  22167   +15
+
+## 同一组步骤连跑四轮
+
+run1: NET_RX +17   irq +16   rx +15
+run2: NET_RX +17   irq +16   rx +15
+run3: NET_RX +15   irq +15   rx +15
+run4: NET_RX +17   irq +16   rx +15
+
+帧数每轮都是 15；中断在 15/16 之间，软中断在 15/17 之间。
+多出的来源之一：同一时间段内 enp10s0（SSH 所在网卡）的中断也 +1，它同样计入 NET_RX。
+
+## 抓包对账
+
+$ sudo timeout 8 tcpdump -nn -i enp2s0 -c 30 icmp   # 另一终端执行，同时 ping
+...
+07:12:08.812016 IP 192.168.126.2 > 192.168.126.135: ICMP echo reply, id 21901, seq 15, length 64
+30 packets captured
+30 packets received by filter
+0 packets dropped by kernel
+
+15 个请求 + 15 个应答 = 30 个帧，入向 15 个，与 RX packets 的 +15 一致。

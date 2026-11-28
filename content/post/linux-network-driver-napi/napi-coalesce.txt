@@ -1,0 +1,23 @@
+中断合并对照：100 个 ping，间隔 0.005 s
+环境：7.0.0-44-generic，aarch64，2 vCPU，e1000e（虚拟机内），rx-usecs 可设范围 0–10000
+
+$ ethtool -c enp2s0 | sed -n '1,6p'
+Coalesce parameters for enp2s0:
+Adaptive RX: n/a  TX: n/a
+stats-block-usecs:	n/a
+sample-interval:	n/a
+pkt-rate-low:		n/a
+pkt-rate-high:		n/a
+
+$ sudo ethtool -C enp2s0 rx-usecs 10000    # 超过 10000 报 netlink error: Invalid argument
+
+== rx-usecs=3  回读: rx-usecs:	3
+   收帧 21851 -> 21951 (+100)   中断 46990 -> 47090 (+100)
+== rx-usecs=1000  回读: rx-usecs:	1000
+   收帧 21951 -> 22051 (+100)   中断 47090 -> 47191 (+101)
+== rx-usecs=10000  回读: rx-usecs:	10000
+   收帧 22051 -> 22151 (+100)   中断 47191 -> 47291 (+100)
+已恢复 rx-usecs=3
+
+结论：参数写得进、回读得到，但中断次数不随延迟档位下降。
+       这台虚拟网卡上 e1000e 的 ITR 未真正参与合并，不能用来解释"中断少于帧"。
