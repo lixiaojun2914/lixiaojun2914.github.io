@@ -243,18 +243,93 @@ sudo bash -c 'cd /; rmdir /sys/kernel/tracing/instances/nslab'
 
 ## 四、压力判断的四个落点
 
-低负载这一轮的作用是确认路径和观察方法。加大负载后，比较 poll 返回量、软中断次数、中断频率和驱动统计，才有意义。
+低负载这一轮的作用是确认路径和观察方法。加大负载后，比较 poll 返回量、软中断次数、中断频率和驱动统计，才有意义。下面各压一次：一次用 ping flood 逼 poll，一次用不读的接收端逼 socket 队列。
 
-这一篇的实测只到 15 个 ping 的量级：poll 每次都只处理 1 个包，既碰不到 64 的实例预算，也碰不到每轮 300 包的软中断额度。下表是负载上去以后的查法，本篇不给这些数字，真压出 `work 64` 和 `time_squeeze` 增长需要另一套实验。
+### 4.1 压到 50 万包每秒，预算还是没满
 
-| 现象 | 往下查什么 |
-| --- | --- |
-| poll 多次返回 `budget` | 实例一直有活，结合 CPU、队列和丢弃看是否跟得上 |
-| 接收中断变少而吞吐正常 | 是否发生了更有效的批处理或中断合并 |
-| 驱动 `rx_no_buffer_count`、`rx_missed_errors` 增长 | 接收缓冲供应与驱动处理压力 |
-| socket 丢弃增长而设备计数正常 | 协议栈或应用消费速度、内存限制 |
+```bash
+cd /home/lxj/nslab
+sudo bash lab.sh clean
+sudo bash lab.sh direct
+sudo bash -c '
+rmdir /sys/kernel/tracing/instances/nslab 2>/dev/null
+mkdir /sys/kernel/tracing/instances/nslab
+cd /sys/kernel/tracing/instances/nslab
+echo 32768 > buffer_size_kb
+echo 1 > events/napi/napi_poll/enable
+ip netns exec nslab-a ping -f -c 50000 10.77.1.2 | tail -2
+echo 0 > events/napi/napi_poll/enable
+echo "poll 条数: $(grep -c napi_poll trace)"
+grep napi_poll trace | grep -oE "work [0-9]+" | sort | uniq -c | sort -rn | head -3
+'
+```
 
-驱动统计的字段名由驱动定义，见[本机输出](/p/linux-network-driver-napi/napi-driver-stats.txt)，换一块网卡就未必还有这些名字。也不能因为这一轮 `dropped` 全是 0，就说路径上任何位置都不会丢。
+```text
+50000 packets transmitted, 50000 received, 0% packet loss, time 95ms
+   50000 work 2
+       2 work 1
+poll 条数: 50002
+```
+
+5 万个包往返只用 95 ms，两个方向合起来 10 万个包，落在 5 万次 poll 里——`work` 合计正好 100002，几乎每条都是 2，两轮复跑里最高也只到 4。64 的预算一次都没碰到，`/proc/net/softnet_stat` 的 `time_squeeze` 在这前后都是 537（CPU0）和 1（CPU1），一点没动。
+
+压不满的原因在拓扑本身：veth 没有真正的收发队列，一个包从 `a0` 出去就进对端的接收路径，NAPI 被调度时手边只有一两个包，取完就收尾。要让一轮 poll 攒到 64 个，得有真设备把包堆起来——多队列、高速率、接收端跟不上，三个条件同时成立。这台 2 vCPU 的虚拟机给不出这种场面。
+
+所以"预算用满 → 未完成的实例留在 `poll_list` → 重新触发软中断"这段路径，本篇只能按源码讲，给不出本机的数字。这也是为什么 2.3 那节把额度写成公式而不是实测值。
+
+### 4.2 丢在 socket，不在设备
+
+这条能造出来。让接收端只 `bind` 不 `read`，队列满了内核就开始丢：
+
+```bash
+cd /home/lxj/nslab
+sudo bash lab.sh clean
+sudo bash lab.sh direct
+sudo ip netns exec nslab-b python3 -c '
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(("10.77.1.2", 19999))
+time.sleep(40)
+'
+```
+
+另一个终端连发 2 万个 200 字节的数据报，然后看两处计数：
+
+```bash
+sudo ip netns exec nslab-a python3 -c '
+import socket
+s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+for i in range(20000):
+    s.sendto(b"x"*200,("10.77.1.2",19999))
+'
+sudo ip netns exec nslab-b ip -s link show b0 | sed -n '/RX:/,+1p'
+sudo ip netns exec nslab-b grep -A1 '^Udp:' /proc/net/snmp
+```
+
+```text
+    RX:  bytes packets errors dropped  missed   mcast
+       4840558   20007      0       0       0       0
+
+Udp: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors ...
+Udp:       0         0     19779        0        19779      ...
+```
+
+设备收了 20007 个包，`errors` 和 `dropped` 都是 0；同一时刻 UDP 层记了 19779 次 `RcvbufErrors`，也就是 2 万个数据报里有一大半根本没排进 socket 队列。`InDatagrams` 是 0，因为这些包没被应用取走，连"收到"都不算。
+
+这就是"设备计数正常、上层在丢"的样子：只盯 `ip -s link` 会得出"链路很干净"的错误结论，而问题在接受队列和消费速度上。
+
+### 4.3 四个落点各自怎么落
+
+| 现象 | 怎么看出来 | 本站能不能看到 |
+| --- | --- | --- |
+| poll 多次返回 `budget` | trace 里 `work` 逼近 64 | 压到 95 ms 5 万包仍是 2，看不到 |
+| 接收中断变少而吞吐正常 | 中断次数与 `RX packets` 的增量对比 | 虚拟网卡的合并参数不生效（3.1），本机看不到 |
+| 驱动 `rx_no_buffer_count`、`rx_missed_errors` 增长 | `ethtool -S DEV` | `veth` 没有这些字段；`enp2s0` 有，但压不满带宽 |
+| socket 丢弃增长而设备计数正常 | `/proc/net/snmp` 的 `Udp` 行对照 `ip -s link` | 能，4.2 就是 |
+
+四条里只有一条在这台机器上真出现了。这不是文章偷懒，而是判断压力本来就要先看"计数在谁那里涨"——涨在设备、涨在软中断、还是涨在 socket，对应的是完全不同的处理位置。两组的原始输出在[加压记录](/p/linux-network-driver-napi/napi-load.txt)。
+
+驱动统计的字段名由驱动定义，见[本机输出](/p/linux-network-driver-napi/napi-driver-stats.txt)，换一块网卡就未必还有这些名字。也不能因为低负载那一轮 `dropped` 全是 0，就说路径上任何位置都不会丢。
 
 NAPI 通常在软中断上下文跑，但也支持 busy polling 和线程化处理，所以它不等于 `NET_RX_SOFTIRQ` 本身。驱动接口的一般规则（Rx 预算、Tx 完成、budget 为 0 的特殊约束）见 [NAPI 文档](https://docs.kernel.org/7.0/networking/napi.html)。
 
@@ -268,6 +343,7 @@ NAPI 通常在软中断上下文跑，但也支持 busy polling 和线程化处�
 | `/proc/interrupts` | 按 CPU 看中断累计次数 |
 | `/proc/softirqs` | 按 CPU 看软中断累计次数 |
 | `/proc/net/softnet_stat` | 按 CPU 看处理量、`dropped`、`time_squeeze` |
+| `/proc/net/snmp` 的 `Udp` 行 | 在 netns 里看 `InErrors`、`RcvbufErrors`，判断丢在 socket 还是设备 |
 | `/proc/sys/net/core/netdev_budget`、`netdev_budget_usecs` | 一轮软中断最多处理多少包、最多跑多久 |
 | `ethtool -c DEV` / `ethtool -C DEV rx-usecs N` | 查看、设置中断合并参数 |
 | `ps -eLo comm` 配 `grep -c ksoftirqd` | 线程化软中断的实例数，通常每 CPU 一个 |
@@ -284,5 +360,6 @@ NAPI 通常在软中断上下文跑，但也支持 busy polling 和线程化处�
 | 中断合并 | 设备侧按策略合并通知，改变通知频率与延迟 |
 | 处理预算 | 限制一次接收工作量，避免单个实例长期占住处理机会 |
 | `time_squeeze` | 预算或时间用尽、但还有活没干完的次数 |
+| `RcvbufErrors` | 包已到协议栈、但 socket 接收队列放不下而丢弃的次数 |
 | `ksoftirqd` | 软中断积压时接手执行的线程，每个 CPU 一个 |
 | MSI-X | 允许设备用多个独立中断向量的机制，队列多时常用 |

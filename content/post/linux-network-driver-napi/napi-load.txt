@@ -1,0 +1,75 @@
+加压两组：一次逼 poll 预算，一次逼 socket 队列
+环境：7.0.0-44-generic，aarch64，2 vCPU，veth MTU 1500，netns 直连（lab.sh direct）
+
+## 一、ping flood
+
+$ sudo bash -c '
+  rmdir /sys/kernel/tracing/instances/nslab 2>/dev/null
+  mkdir /sys/kernel/tracing/instances/nslab
+  cd /sys/kernel/tracing/instances/nslab
+  echo 32768 > buffer_size_kb
+  echo 1 > events/napi/napi_poll/enable
+  ip netns exec nslab-a ping -f -c 50000 10.77.1.2 | tail -2
+  echo 0 > events/napi/napi_poll/enable
+  echo "poll 条数: $(grep -c napi_poll trace)"
+  grep napi_poll trace | grep -oE "work [0-9]+" | sort | uniq -c | sort -rn | head -3'
+
+run1:
+50000 packets transmitted, 50000 received, 0% packet loss, time 97ms
+poll 条数: 50000
+  work 2: 49999
+  work 4: 1
+work 合计 100002，最大值 4
+
+run2:
+50000 packets transmitted, 50000 received, 0% packet loss, time 95ms
+poll 条数: 50002
+  work 2: 50000
+  work 1: 2
+work 合计 100002，最大值 2
+
+trace 状态（run2）：# entries-in-buffer/entries-written: 50002/50002   #P:2，无 LOST 行。
+work 合计恰好是两个方向各 5 万个包。
+
+time_squeeze（/proc/net/softnet_stat 第 3 列，十六进制转十进制）：
+run1 前 537 / 1  →  后 537 / 1
+run2 前 537 / 1  →  后 537 / 1
+NET_RX（CPU0）run2：415806 → 465807（+50001）
+
+结论：5 万个包 95~97 ms 走完，每轮 poll 仍然只取 2 个，预算 64 一次没碰到，
+time_squeeze 不动。veth 没有真正的收发队列，NAPI 被调度时手边只有一两个包。
+
+## 二、只 bind 不 read 的 UDP 接收端
+
+$ sudo ip netns exec nslab-b python3 -c '
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(("10.77.1.2", 19999))
+time.sleep(40)'
+
+$ sudo ip netns exec nslab-a python3 -c '
+import socket
+s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+for i in range(20000):
+    s.sendto(b"x"*200,("10.77.1.2",19999))'
+
+发送前：
+
+$ sudo ip netns exec nslab-b ip -s link show b0 | sed -n '/RX:/,+1p'
+    RX:  bytes packets errors dropped  missed   mcast
+         266       3      0       0       0       0
+
+$ sudo ip netns exec nslab-b grep -A1 '^Udp:' /proc/net/snmp
+Udp: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors InCsumErrors IgnoredMulti MemErrors
+Udp:       0         0       0            0            0            0            0            0         0
+
+发送后：
+
+    RX:  bytes packets errors dropped  missed   mcast
+       4840558   20007      0       0       0       0
+
+Udp: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors InCsumErrors IgnoredMulti MemErrors
+Udp:       0         0   19779            0        19779            0            0            0         0
+
+设备侧 20007 个包、errors 0、dropped 0；UDP 层 RcvbufErrors 19779，
+2 万个数据报里 19779 个没排进 socket 队列；InDatagrams 仍是 0，因为应用没取走。
