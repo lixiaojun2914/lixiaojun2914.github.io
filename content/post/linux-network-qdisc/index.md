@@ -105,6 +105,79 @@ sudo ip netns exec nslab-a tc qdisc add dev a0 parent 1:1 handle 10: fq_codel li
 
 FQ 按流分队列，让一条大流不至于把别的流一直压在后面；CoDel 看的是排队驻留时间，超过 `target` 持续一段时间就丢包或标记。`target 5ms` 是控制的瞄准点，不是"每个 ping 必低于 5 ms"的承诺。
 
+### 2.3 句柄、类、过滤器与动作
+
+前面两条命令里的 `root handle 1:` 和 `parent 1:1 handle 10:`，拆开是这样的关系：
+
+| 写法 | 意思 |
+| --- | --- |
+| `root` | 挂在这台设备的根上，一台设备只有一个根队列 |
+| `handle 1:` | 给这个 qdisc 编号 `1:`，冒号后面是类编号，根这一层是 0 |
+| `parent 1:1` | 挂到 `1:` 的第 1 个子类下面 |
+| `handle 10:` | 子队列自己的编号 |
+
+tbf 这种 qdisc 不直接收包排队，它先按类组织，真正排队的是类下面挂的子队列。`tc class show` 能看到 tbf 自己建的那个类：
+
+```bash
+sudo ip netns exec nslab-a tc class show dev a0
+```
+
+```text
+class tbf 1:1 parent 1: leaf 10:
+```
+
+`leaf 10:` 正是 2.1 里挂上去的 pfifo，和 `tc qdisc show` 里那行 `qdisc pfifo 10: parent 1:1` 是同一件事的两头。所以 qdisc 分两类：pfifo、fq_codel、fq 没有类，包进来就排；tbf、htb、prio 有类，可以用过滤器把不同流量分进不同的类，每个类下面再挂自己的子队列。
+
+过滤器（filter）就是"按条件选类"，只对有类的 qdisc 有意义。设备上现在是 tbf 加 fq_codel，先删掉根换成 htb，开两个不同速率的类：
+
+```bash
+sudo ip netns exec nslab-a tc qdisc del dev a0 root
+sudo ip netns exec nslab-a tc qdisc add dev a0 root handle 1: htb default 20
+sudo ip netns exec nslab-a tc class add dev a0 parent 1: classid 1:10 htb rate 2mbit
+sudo ip netns exec nslab-a tc class add dev a0 parent 1: classid 1:20 htb rate 20mbit
+sudo ip netns exec nslab-a tc filter add dev a0 parent 1: protocol ip prio 1 u32 match ip dport 18085 0xffff flowid 1:10
+```
+
+`default 20` 指没被任何过滤器命中的流量落到哪个类；`prio` 决定同一父队列上多条规则的比较顺序；`flowid` 是命中去哪个类。发两个数据报，一个去 18085、一个去 18086，再看分类计数：
+
+```bash
+sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18085 &
+sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18086 &
+sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18085
+sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18086
+sudo ip netns exec nslab-a tc -s class show dev a0
+sudo pkill -x netdemo
+```
+
+两个 `udp-server` 是后台起的，最后一条按可执行文件名把它们一起收掉；如果这台机器上还跑着别的 `netdemo`，也会一并结束。
+
+```text
+class htb 1:10 root prio 0 rate 2Mbit ceil 2Mbit burst 1600b cburst 1600b
+ Sent 92 bytes 2 pkt (dropped 0, overlimits 0 requeues 0)
+class htb 1:20 root prio 0 rate 20Mbit ceil 20Mbit burst 1600b cburst 1600b
+ Sent 310 bytes 5 pkt (dropped 0, overlimits 0 requeues 0)
+```
+
+两个类各算各的：目的端口 18085 的数据报落到 `1:10`，其余——18086 的数据报加上链路上的邻居解析——落到默认类 `1:20`。字节数随当轮流量变，要看的是哪个类在涨：计数不在根上，在类上。
+
+动作（action）是另一层。命中的包除了交给某个类，还可以先执行一个动作：
+
+```bash
+sudo ip netns exec nslab-a tc filter add dev a0 parent 1: protocol ip prio 2 u32 match ip dport 18099 0xffff action drop
+sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18099
+sudo ip netns exec nslab-a tc -s filter show dev a0
+```
+
+```text
+	action order 1: gact action drop
+	Action statistics:
+	Sent 92 bytes 2 pkt (dropped 2, overlimits 0 requeues 0)
+```
+
+这条规则没有 `flowid`，命中就丢，计数记在 action 上；带 `flowid` 的规则负责分流，带 `action` 的规则负责执行动作，两者可以写在同一条里。常见的动作还有 `police`（超速就丢或打标）和 `mirred`（重定向到另一台设备）。
+
+`tc filter show` 里那几行 `match 000046a5/0000ffff at 20` 不是给人读的：18085 就是 `0x46a5`，`at 20` 指的是 IP 头往后 20 字节处的那个 16 位字段——端口。u32 把条件编译成偏移加掩码，读规则时知道这一点就够了。
+
 ## 三、延迟与积压
 
 ### 3.1 同一负载，两种策略
@@ -126,7 +199,7 @@ FIFO 那一列很直白：72 个包排在队列里，每个包都要等前面几
 
 FQ-CoDel 把队列压到 2 个包，代价是丢掉 4 个。丢的是大流的数据，TCP 会重传；换来的是 ping 能插进去。这就是 AQM 的取舍：用少量丢弃换排队时间。
 
-原始记录都在同目录：[空载 ping](/p/linux-network-qdisc/q-idle-ping.txt)、[FIFO 的 ping](/p/linux-network-qdisc/q-fifo-ping.txt)、[FIFO 的队列快照](/p/linux-network-qdisc/q-fifo-stats.txt)、[FQ-CoDel 的 ping](/p/linux-network-qdisc/q-fq_codel-ping.txt)、[FQ-CoDel 的队列快照](/p/linux-network-qdisc/q-fq_codel-stats.txt)、[两轮的写入与对端读取](/p/linux-network-qdisc/q-write.txt)。
+原始记录都在同目录：[空载 ping](/p/linux-network-qdisc/q-idle-ping.txt)、[类与过滤器的输出](/p/linux-network-qdisc/q-classes.txt)、[FIFO 的 ping](/p/linux-network-qdisc/q-fifo-ping.txt)、[FIFO 的队列快照](/p/linux-network-qdisc/q-fifo-stats.txt)、[FQ-CoDel 的 ping](/p/linux-network-qdisc/q-fq_codel-ping.txt)、[FQ-CoDel 的队列快照](/p/linux-network-qdisc/q-fq_codel-stats.txt)、[两轮的写入与对端读取](/p/linux-network-qdisc/q-write.txt)。
 
 这是单次样本，两台虚拟机之间的一次对照。它能说明机制的方向，不能当性能倍数用。真要下结论，得重复多次、固定负载和采样时机，同时看吞吐、时延分布和丢弃。
 
@@ -171,6 +244,11 @@ sudo bash lab.sh clean
 | --- | --- |
 | `tc qdisc add dev DEV root handle 1: tbf ...` | 设根队列、限速与句柄 |
 | `tc qdisc add dev DEV parent 1:1 handle 10: ...` | 挂到 TBF 的子队列位置 |
+| `tc class show dev DEV` | 看有类 qdisc 里的类与 `leaf`，对应 `parent` 指到哪 |
+| `tc filter add ... flowid 1:10` | 按条件把流量分进某个类 |
+| `tc filter add ... action drop` | 命中后执行动作，计数记在 action 上 |
+| `tc -s class show dev DEV` | 按类看 `Sent` 与丢弃，不在根上看 |
+| `tc -s filter show dev DEV` | 看规则与 action 的命中计数 |
 | `tc -s qdisc show dev DEV` | 看规则和统计，`backlog`/`dropped` 在这 |
 | `tc qdisc del dev DEV root` | 删掉出口规则，换子队列要连根一起删 |
 | `ss -tinm` | 看 socket 一侧的未确认数据、窗口与发送队列 |
@@ -181,6 +259,10 @@ sudo bash lab.sh clean
 | 名词 | 含义 |
 | --- | --- |
 | backlog | 当前还没被服务的排队数据 |
+| 句柄（handle） | qdisc 的编号，形如 `1:`；冒号前是队列号，后面是类号 |
+| 类（class） | 有类 qdisc 内部的分支，可挂子队列或由过滤器选中 |
+| 过滤器（filter） | 按协议、地址、端口等条件把包指向某个类的规则 |
+| 动作（action） | 挂在规则或 qdisc 上、对命中包执行的操作，如丢弃、限速、重定向 |
 | bufferbloat | 缓冲过大导致持续高延迟 |
 | 整形 | 通过安排发送时机控制出口速率 |
 | AQM | 主动队列管理，用丢弃或标记压制持续积压 |

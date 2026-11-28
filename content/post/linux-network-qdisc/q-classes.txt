@@ -1,0 +1,65 @@
+tc 的层级：句柄、类、过滤器与动作
+环境：7.0.0-44-generic，lab.sh clean + lab.sh direct
+
+## 2.1 之后：tbf 自己建的那个类
+
+$ sudo ip netns exec nslab-a tc class show dev a0
+class tbf 1:1 parent 1: leaf 10:
+
+$ sudo ip netns exec nslab-a tc qdisc show dev a0
+qdisc tbf 1: root refcnt 3 rate 5Mbit burst 16Kb lat 1s
+qdisc pfifo 10: parent 1:1 limit 1000p
+
+`parent 1:1` 指的就是这行 `class tbf 1:1`，`leaf 10:` 指的就是下面那个 pfifo。
+
+## htb 两档速率 + u32 按目的端口分流
+
+$ sudo ip netns exec nslab-a tc qdisc del dev a0 root
+$ sudo ip netns exec nslab-a tc qdisc add dev a0 root handle 1: htb default 20
+$ sudo ip netns exec nslab-a tc class add dev a0 parent 1: classid 1:10 htb rate 2mbit
+$ sudo ip netns exec nslab-a tc class add dev a0 parent 1: classid 1:20 htb rate 20mbit
+$ sudo ip netns exec nslab-a tc filter add dev a0 parent 1: protocol ip prio 1 u32 match ip dport 18085 0xffff flowid 1:10
+
+$ sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18085 &
+$ sudo ip netns exec nslab-b ./netdemo udp-server 10.77.1.2 18086 &
+$ sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18085
+sent datagrams: 6 bytes, 2 bytes
+$ sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18086
+sent datagrams: 6 bytes, 2 bytes
+
+$ sudo ip netns exec nslab-a tc -s class show dev a0
+class htb 1:10 root prio 0 rate 2Mbit ceil 2Mbit burst 1600b cburst 1600b
+ Sent 92 bytes 2 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+ lended: 2 borrowed: 0 giants: 0
+ tokens: 94616 ctokens: 94616
+
+class htb 1:20 root prio 0 rate 20Mbit ceil 20Mbit burst 1600b cburst 1600b
+ Sent 310 bytes 5 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+ lended: 5 borrowed: 0 giants: 0
+ tokens: 9462 ctokens: 9462
+
+## 同一条父队列上再加一条带 action 的规则
+
+$ sudo ip netns exec nslab-a tc filter add dev a0 parent 1: protocol ip prio 2 u32 match ip dport 18099 0xffff action drop
+$ sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 18099
+sent datagrams: 6 bytes, 2 bytes
+
+$ sudo ip netns exec nslab-a tc -s filter show dev a0
+filter parent 1: protocol ip pref 1 u32 chain 0
+filter parent 1: protocol ip pref 1 u32 chain 0 fh 800: ht divisor 1
+filter parent 1: protocol ip pref 1 u32 chain 0 fh 800::800 order 2048 key ht 800 bkt 0 flowid 1:10 not_in_hw
+  match 000046a5/0000ffff at 20
+filter parent 1: protocol ip pref 2 u32 chain 0
+filter parent 1: protocol ip pref 2 u32 chain 0 fh 801: ht divisor 1
+filter parent 1: protocol ip pref 2 u32 chain 0 fh 801::800 order 2048 key ht 801 bkt 0 terminal flowid not_in_hw
+  match 000046b3/0000ffff at 20
+	action order 1: gact action drop
+	 random type none pass val 0
+	 index 1 ref 1 bind 1 installed 0 sec used 0 sec firstused 0 sec
+	Action statistics:
+	Sent 92 bytes 2 pkt (dropped 2, overlimits 0 requeues 0)
+	backlog 0b 0p requeues 0
+
+18085 = 0x46a5，18099 = 0x46b3，`at 20` 是 IP 头之后 20 字节处的端口字段；u32 把条件编译成偏移加掩码。
