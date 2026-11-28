@@ -42,7 +42,10 @@ wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/hooks.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/muxdemo.c
 # 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、nc、gcc 不一定齐
 sudo apt install -y bpftrace tcpdump nftables netcat-openbsd ethtool strace gcc
+# netdemo 用 -O0 -g，bpftrace 挂函数时符号和行号才完整
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
+# muxdemo 要开线程，用 -O2，第二篇 5.2 直接用这个可执行文件
+gcc -O2 -pthread -Wall -Wextra muxdemo.c -o muxdemo
 sudo bash lab.sh direct
 ```
 
