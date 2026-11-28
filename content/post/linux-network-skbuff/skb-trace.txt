@@ -1,6 +1,10 @@
+# 跟踪实例 nslab 的 trace：A 向 B 的 19999 端口发两个数据报，B 上没有监听者
+# 环境：7.0.0-44-generic，lab.sh clean + lab.sh direct，netdemo udp-client 10.77.1.2 19999
+# 命令：sudo ip netns exec nslab-a ./netdemo udp-client 10.77.1.2 19999
+#
 # tracer: nop
 #
-# entries-in-buffer/entries-written: 1/1   #P:2
+# entries-in-buffer/entries-written: 2/2   #P:2
 #
 #                                _-----=> irqs-off/BH-disabled
 #                               / _----=> need-resched
@@ -10,4 +14,8 @@
 #                              |||| /     delay
 #           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
 #              | |         |   |||||     |         |
-         netdemo-1568850 [001] ..s1. 731777.685704: kfree_skb: skbaddr=000000004c32bef1 protocol=2048 location=__udp4_lib_rcv+0x440/0x738 reason: NO_SOCKET
+         netdemo-54771   [000] ..s1. 79957.001577: kfree_skb: skbaddr=00000000b66a5999 rx_sk=0000000000000000 protocol=2048 location=__udp4_lib_rcv+0x4f0/0x850 reason: NO_SOCKET
+     kworker/1:2-24477   [001] ..s1. 79957.415169: kfree_skb: skbaddr=000000008b127a42 rx_sk=0000000000000000 protocol=34525 location=ip6_pkt_drop.isra.0+0x170/0x360 reason: IP_INNOROUTES
+#
+# 第二条是同一窗口里 IPv6 路由器请求在 B 上无路可走的丢弃（protocol=34525 即 0x86dd，IP_INNOROUTES），与本实验无关。
+# 客户端输出：send: Connection refused / client exit=1（第二个数据报未离开本机，见正文说明）

@@ -92,35 +92,54 @@ sudo bash lab.sh clean
 sudo bash lab.sh direct
 ```
 
-另开一个 root shell，建一个专属跟踪实例（上一轮留下的同名实例先清掉，否则 `mkdir` 会报文件已存在）：
+另开一个 root shell，建一个专属跟踪实例。上一轮留下的同名实例先清掉，否则 `mkdir` 会报文件已存在，后面每一步都会跟着报错。
 
 ```bash
 sudo -i
 cd /home/lxj/nslab                       # 第一篇下载六个文件的目录，换成自己的
+rmdir /sys/kernel/tracing/instances/nslab 2>/dev/null
 mkdir /sys/kernel/tracing/instances/nslab
 cd /sys/kernel/tracing/instances/nslab
 echo 1 > events/skb/kfree_skb/enable
-ip netns exec nslab-a /home/lxj/nslab/netdemo udp-client 10.77.1.2 19999
+ip netns exec nslab-a /home/lxj/nslab/netdemo udp-client 10.77.1.2 19999; echo "client exit=$?"
+sleep 0.5
 echo 0 > events/skb/kfree_skb/enable
+grep -c 'reason: NO_SOCKET' trace
 grep 'reason: NO_SOCKET' trace
 ```
 
-`netdemo` 就是第一篇编译出来的那个程序。往没有监听者的 UDP 端口发，后续发送可能收到异步错误，命令本身不保证一定成功；这个实验只看第一份数据到达接收侧的结果。
-
-筛出来的那一行：
+`netdemo` 就是第一篇编译出来的那个程序。这一段屏幕上会出现两样东西，都不是故障：
 
 ```text
-         netdemo-1568850 [000] ..s1. 731777.685704: kfree_skb: skbaddr=000000004c32bef1 protocol=2048 location=__udp4_lib_rcv+0x440/0x738 reason: NO_SOCKET
+send: Connection refused
+client exit=1
 ```
+
+`udp-client` 发两个数据报，第一个正常出去，B 上没有监听者，B 的协议栈回一个 ICMP 端口不可达；第二个数据报还没离开本机，这次 `send` 就直接拿到 `ECONNREFUSED`，程序按约定退出码 1 结束。所以退出码非零是"端口没人收"的直接后果，不是环境搭错了。
+
+这个先后关系取决于 ICMP 回来的快慢：如果第二个数据报赶在错误回来之前也发出去了，`grep -c` 会是 2，事件行也多一条，结论不变——两次都是同一路径上的同一种丢弃。
+
+`sleep 0.5` 是给接收路径留一点时间：报文在软中断里被处理、事件写进 ring buffer，都需要一点时刻，写完立刻关 `enable` 有概率抢在它前面。`grep -c` 先给条数，`grep` 再给原文，两行合起来才说明"抓到了几条、长什么样"。这次是 1 条：
+
+```text
+         netdemo-54771   [000] ..s1. 79957.001577: kfree_skb: skbaddr=00000000b66a5999 rx_sk=0000000000000000 protocol=2048 location=__udp4_lib_rcv+0x4f0/0x850 reason: NO_SOCKET
+```
+
+`grep -c` 输出 0 就说明这条证据没拿到，按顺序查三件事：拓扑是不是 `direct` 且 `a0` 是 up 的（`ip netns exec nslab-a ping -c 1 10.77.1.2` 能通）；`enable` 是不是真写进去了（`cat events/skb/kfree_skb/enable` 应为 1）；B 的 19999 是不是确实没人监听（`ip netns exec nslab-b ss -lun` 里不该有这个端口）。
 
 | 字段 | 能说明什么 |
 | --- | --- |
 | `skbaddr` | 被记录的 skb 身份；地址可能被内核格式化隐藏 |
+| `rx_sk` | 接收侧关联的 socket；这里是 0，正对应"没找到" |
 | `protocol=2048` | 2048 即 `0x0800`，IPv4 以太类型 |
 | `location` | 丢弃发生的位置，这里在 UDP 接收函数里 |
 | `NO_SOCKET` | 丢弃原因：找不到接收 socket |
 
-"端口没监听"这个条件、UDP 接收的位置、`NO_SOCKET` 这个原因，三者一起才构成证据。只看某个释放计数在涨，说明不了同样的事。完整记录和事件格式见[事件文本](/p/linux-network-skbuff/skb-trace.txt)和[字段格式](/p/linux-network-skbuff/skb-format.txt)。
+`location` 后面那个 `+0x4f0/0x850` 是函数内偏移和函数长度，随内核构建与编译器变化；换台机器或换个内核版本，这两个数字会不一样，函数名 `__udp4_lib_rcv` 才是能跨版本对照的部分。
+
+"端口没监听"这个条件、UDP 接收的位置、`NO_SOCKET` 这个原因，三者一起才构成证据。只看某个释放计数在涨，说明不了同样的事。
+
+跟踪窗口开着的这半秒里，别的路径也可能往同一个 buffer 写事件——这轮就混进一条 IPv6 无路由的丢弃（`protocol=34525`，`reason: IP_INNOROUTES`，`location=ip6_pkt_drop.isra.0`），来源是本机发出的路由器请求在 B 上没有去处。所以这里用 `reason` 过滤，而不是把 buffer 里的第一行当结论。完整记录和事件格式见[事件文本](/p/linux-network-skbuff/skb-trace.txt)和[字段格式](/p/linux-network-skbuff/skb-format.txt)。
 
 清理：
 
