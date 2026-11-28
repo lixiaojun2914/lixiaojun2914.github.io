@@ -1,0 +1,76 @@
+四表五链的计数实验
+环境：7.0.0-44，iptables v1.8.11 (nf_tables)，lab.sh clean + lab.sh router
+
+## 一、iptables 建出来的是 nft 表
+
+$ sudo ip netns exec nslab-r nft list tables
+table ip raw
+table ip mangle
+table ip nat
+table ip filter
+
+$ sudo ip netns exec nslab-r nft list table ip filter
+table ip filter {
+	chain FORWARD {
+		type filter hook forward priority filter; policy accept;
+		counter packets 0 bytes 0 accept
+	}
+}
+
+## 二、五条链各放一个计数器，三种流量
+
+规则（每个都有计数）：
+  mangle: PREROUTING / INPUT / FORWARD / OUTPUT / POSTROUTING
+  filter: INPUT / FORWARD / OUTPUT
+  raw:    PREROUTING / OUTPUT
+  nat:    PREROUTING / POSTROUTING
+
+A 到 B 的 ping，3 个请求 3 个回包，共 6 个 IPv4 包转发：
+  raw    PREROUTING 6   OUTPUT 0
+  mangle PREROUTING 6   INPUT 0   FORWARD 6   OUTPUT 0   POSTROUTING 6
+  filter INPUT 0        FORWARD 6 OUTPUT 0
+
+R 自己 ping B，3 个请求 3 个回包：
+  raw    PREROUTING 3   OUTPUT 3
+  mangle PREROUTING 3   INPUT 3   FORWARD 0   OUTPUT 3   POSTROUTING 3
+  filter INPUT 3        FORWARD 0 OUTPUT 3
+
+B ping A，6 个包全部转发：
+  raw    PREROUTING 6   OUTPUT 0
+  mangle PREROUTING 6   INPUT 0   FORWARD 6   OUTPUT 0   POSTROUTING 6
+  filter INPUT 0        FORWARD 6 OUTPUT 0
+
+## 三、一条 TCP 100 KB 穿过四张表
+
+规则：raw PREROUTING 计数，mangle PREROUTING/FORWARD/POSTROUTING 计数，
+      nat PREROUTING 计数 + nat POSTROUTING 上 -o rb -j MASQUERADE，
+      filter FORWARD 计数。
+
+$ sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.2.2 18084
+$ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.2.2 18084 100000
+write accepted=100000 bytes in 0.356 ms
+received=100000 bytes
+
+raw PREROUTING      64 103K
+mangle PREROUTING   64 103K
+mangle FORWARD      64 103K
+mangle POSTROUTING  64 103K
+nat PREROUTING       1 60
+nat POSTROUTING      1 60
+filter FORWARD      64 103K
+
+nat 的 60 字节是 SYN：20 字节 IP 头 + 20 字节 TCP 头 + 20 字节选项。
+
+conntrack 条目：
+tcp      6 119 TIME_WAIT src=10.77.1.1 dst=10.77.2.2 sport=56908 dport=18084 src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=56908 [ASSURED] mark=0 use=1
+
+sysctl：
+net.netfilter.nf_conntrack_max = 65536
+net.netfilter.nf_conntrack_count = 1
+net.netfilter.nf_conntrack_tcp_timeout_established = 432000
+net.netfilter.nf_conntrack_tcp_timeout_time_wait = 120
+net.netfilter.nf_conntrack_udp_timeout = 30
+
+conntrack -S：
+cpu=0 found=0 invalid=0 insert=0 insert_failed=0 drop=0 early_drop=0 error=0 search_restart=0 clash_resolve=0 chaintoolong=0
+cpu=1 同上

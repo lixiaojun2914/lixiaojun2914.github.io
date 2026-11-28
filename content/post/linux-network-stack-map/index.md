@@ -40,8 +40,8 @@ wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/tl3.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/gro3.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/hooks.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/muxdemo.c
-# 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、conntrack、nc、gcc 不一定齐
-sudo apt install -y bpftrace tcpdump nftables conntrack-tools netcat-openbsd ethtool strace gcc
+# 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、iptables、conntrack、nc、gcc 不一定齐
+sudo apt install -y bpftrace tcpdump nftables iptables conntrack-tools netcat-openbsd ethtool strace gcc
 # netdemo 用 -O0 -g，bpftrace 挂函数时符号和行号才完整
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
 # muxdemo 要开线程，用 -O2，第二篇 5.2 直接用这个可执行文件

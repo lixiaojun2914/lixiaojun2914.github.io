@@ -1,0 +1,65 @@
+一条连接在 conntrack 里的一生
+环境：7.0.0-44，lab.sh clean + lab.sh router
+
+## 表什么时候才存在
+
+没有规则读 ct 时，转发的包照样通，但条目一条也没有：
+
+$ sudo ip netns exec nslab-r conntrack -L
+conntrack v1.4.9 (conntrack-tools): 0 flow entries have been shown.
+
+A ping B 通了（ttl=63，说明是转发），再看仍然是 0 条；这段时间
+conntrack -E 也收不到事件。
+
+装一条读 ct 的规则：
+
+$ sudo ip netns exec nslab-r iptables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+$ sudo ip netns exec nslab-a ping -n -c 2 10.77.2.2
+2 packets transmitted, 2 received, 0% packet loss
+
+$ sudo ip netns exec nslab-r conntrack -L
+icmp     1 29 src=10.77.1.1 dst=10.77.2.2 type=8 code=0 id=8264 src=10.77.2.2 dst=10.77.1.1 type=0 code=0 id=8264 mark=0 use=1
+
+$ sudo ip netns exec nslab-r sysctl net.netfilter.nf_conntrack_count
+net.netfilter.nf_conntrack_count = 1
+
+## 事件流：TCP 一对，UDP 一对
+
+窗口：
+$ sudo ip netns exec nslab-r timeout 16 conntrack -E -o timestamp
+
+流量：
+$ sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.2.2 18082
+$ sudo ip netns exec nslab-b ./netdemo udp-server 10.77.2.2 18083
+$ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.2.2 18082 20000
+$ sudo ip netns exec nslab-a ./netdemo udp-client 10.77.2.2 18083
+
+事件（只摘这对端口）：
+
+[1795861770.137476]	    [NEW] tcp      6 120 SYN_SENT src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 [UNREPLIED] src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578
+[1795861770.137551]	 [UPDATE] tcp      6 60 SYN_RECV src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578
+[1795861770.138681]	 [UPDATE] tcp      6 431999 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578 [ASSURED]
+[1795861770.139051]	 [UPDATE] tcp      6 120 FIN_WAIT src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578 [ASSURED]
+[1795861770.139158]	 [UPDATE] tcp      6 30 LAST_ACK src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578 [ASSURED]
+[1795861770.139166]	 [UPDATE] tcp      6 120 TIME_WAIT src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578 [ASSURED]
+[1795861770.142743]	    [NEW] udp      17 29 src=10.77.1.1 dst=10.77.2.2 sport=33727 dport=18083 [UNREPLIED] src=10.77.2.2 dst=10.77.1.1 sport=18083 dport=33727
+
+窗口结束后剩下的条目：
+
+$ sudo ip netns exec nslab-r conntrack -L
+udp      17 17 src=10.77.1.1 dst=10.77.2.2 sport=33727 dport=18083 [UNREPLIED] src=10.77.2.2 dst=10.77.1.1 sport=18083 dport=33727 mark=0 use=1
+tcp      6 107 TIME_WAIT src=10.77.1.1 dst=10.77.2.2 sport=36578 dport=18082 src=10.77.2.2 dst=10.77.1.1 sport=18082 dport=36578 [ASSURED] mark=0 use=1
+
+conntrack v1.4.9 (conntrack-tools): 2 flow entries have been shown.
+
+$ sudo ip netns exec nslab-r sysctl net.netfilter.nf_conntrack_count
+net.netfilter.nf_conntrack_count = 2
+
+事件里的超时值和 sysctl 对得上：
+  SYN_SENT 120    tcp_timeout_syn_sent
+  SYN_RECV 60     tcp_timeout_syn_recv
+  ESTABLISHED 431999   tcp_timeout_established 432000
+  FIN_WAIT 120    tcp_timeout_fin_wait
+  LAST_ACK 30     tcp_timeout_last_ack
+  TIME_WAIT 120   tcp_timeout_time_wait
+  UDP 29          udp_timeout 30
