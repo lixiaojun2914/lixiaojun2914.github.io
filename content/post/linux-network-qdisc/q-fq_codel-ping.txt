@@ -4,17 +4,17 @@ FQ-CoDel 子队列下，4 MiB 传输持续期间的 ping
 
 $ sudo ip netns exec nslab-a ping -n -c 10 -i 0.1 10.77.1.2
 PING 10.77.1.2 (10.77.1.2) 56(84) bytes of data.
-64 bytes from 10.77.1.2: icmp_seq=1 ttl=64 time=0.301 ms
-64 bytes from 10.77.1.2: icmp_seq=2 ttl=64 time=7.80 ms
-64 bytes from 10.77.1.2: icmp_seq=3 ttl=64 time=1.14 ms
-64 bytes from 10.77.1.2: icmp_seq=4 ttl=64 time=17.9 ms
-64 bytes from 10.77.1.2: icmp_seq=5 ttl=64 time=20.1 ms
-64 bytes from 10.77.1.2: icmp_seq=6 ttl=64 time=11.8 ms
-64 bytes from 10.77.1.2: icmp_seq=7 ttl=64 time=1.57 ms
-64 bytes from 10.77.1.2: icmp_seq=8 ttl=64 time=9.78 ms
-64 bytes from 10.77.1.2: icmp_seq=9 ttl=64 time=17.6 ms
-64 bytes from 10.77.1.2: icmp_seq=10 ttl=64 time=0.441 ms
+64 bytes from 10.77.1.2: icmp_seq=1 ttl=64 time=11.9 ms
+64 bytes from 10.77.1.2: icmp_seq=2 ttl=64 time=8.76 ms
+64 bytes from 10.77.1.2: icmp_seq=3 ttl=64 time=1.18 ms
+64 bytes from 10.77.1.2: icmp_seq=4 ttl=64 time=10.0 ms
+64 bytes from 10.77.1.2: icmp_seq=5 ttl=64 time=19.3 ms
+64 bytes from 10.77.1.2: icmp_seq=6 ttl=64 time=6.86 ms
+64 bytes from 10.77.1.2: icmp_seq=7 ttl=64 time=15.4 ms
+64 bytes from 10.77.1.2: icmp_seq=8 ttl=64 time=3.07 ms
+64 bytes from 10.77.1.2: icmp_seq=9 ttl=64 time=11.3 ms
+64 bytes from 10.77.1.2: icmp_seq=10 ttl=64 time=19.3 ms
 
 --- 10.77.1.2 ping statistics ---
-10 packets transmitted, 10 received, 0% packet loss, time 915ms
-rtt min/avg/max/mdev = 0.301/8.846/20.054/7.432 ms
+10 packets transmitted, 10 received, 0% packet loss, time 910ms
+rtt min/avg/max/mdev = 1.178/10.712/19.321/5.832 ms

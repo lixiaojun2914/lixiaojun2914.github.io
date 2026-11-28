@@ -2,7 +2,7 @@
 title: "Linux 网络栈（七）：Netlink 怎样把配置交给内核"
 slug: linux-network-netlink
 date: "2026-11-22T16:07:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "一次 ip addr add 发出的消息、到达的处理函数、返回的 ACK，以及订阅者收到的通知，四者不是一回事。"
 categories:
@@ -43,7 +43,7 @@ a0@if2           UP             10.77.1.1/24 10.77.1.9/24
 grep 'nlmsg_type=RTM_NEWADDR' netlink-trace.txt
 ```
 
-把这一行拆开：
+它命中两行：第 6 行是发出去的请求，第 8 行是回执里带回来的原消息头（`NLMSG_ERROR` 的 `msg=` 字段）。下面拆的是第 6 行：
 
 | 层次 | 字段 | 值 |
 | --- | --- | --- |
@@ -51,12 +51,12 @@ grep 'nlmsg_type=RTM_NEWADDR' netlink-trace.txt
 | 消息头 | `nlmsg_type` | `RTM_NEWADDR` |
 | 消息头 | `nlmsg_flags` | `REQUEST`、`ACK`、`EXCL`、`CREATE` |
 | 固定载荷 | `ifa_family` / `ifa_prefixlen` | `AF_INET` / `24` |
-| 固定载荷 | `ifa_index` | `if_nametoindex("a0")` 的返回值 |
+| 固定载荷 | `ifa_index` | `2`（`ip netns exec nslab-a cat /sys/class/net/a0/ifindex`；strace 里显示成 `if_nametoindex("a0")`） |
 | 属性 | `IFA_LOCAL` / `IFA_ADDRESS` | 都是 `10.77.1.9` |
 
 请求要带 `ACK`，内核才会回执；`EXCL` 和 `CREATE` 合起来表示"不存在才建，已存在就报错"。`ifa_index` 不是人填的，是用户态先用 `RTM_GETLINK` 查出来的。
 
-这也解释了一个容易看错的地方。跟踪里有 8 行（`grep -cE 'sendmsg|recvmsg' netlink-trace.txt` 数出来就是 8），第 3 行是 `RTM_GETLINK` 请求，第 5 行的回复里 `nlmsg_type=RTM_NEWLINK`、`nlmsg_flags=0`、`nlmsg_pid=-1`——那是一条**查询回复**，不是"新建了设备"。看到 `RTM_NEWLINK` 就断言建了链路，会错在这里。
+这也解释了一个容易看错的地方。跟踪文件一共 8 行，其中 `sendmsg`/`recvmsg` 占 6 行（`grep -cE 'sendmsg|recvmsg' netlink-trace.txt` 数出来是 6，剩下两行是两个 `socket()`）：第 3 行是 `RTM_GETLINK` 请求，第 5 行的回复里 `nlmsg_type=RTM_NEWLINK`、`nlmsg_flags=0`、`nlmsg_pid=-1529401053`——那是一条**查询回复**，不是"新建了设备"。看到 `RTM_NEWLINK` 就断言建了链路，会错在这里。`nlmsg_pid` 的负数也不是进程号，是内核端口 ID 的符号化显示，每次运行都不一样。
 
 属性是长度、类型、值三段，习惯叫 TLV，可以嵌套。好处是加参数不用改大结构体；但哪些属性合法仍由具体子系统规定，不是随便塞键值都能被接受。
 
@@ -112,33 +112,41 @@ recvmsg(3, {... [{nlmsg_len=36, nlmsg_type=NLMSG_ERROR, nlmsg_flags=NLM_F_CAPPED
 
 `nlmsg_seq` 把请求和回复对上；`nlmsg_pid` 是通信端点的标识，不要当成应用 PID。大查询还会拆成 multipart，用结束消息收尾。
 
-再执行一次同一条命令：
+再执行一次同一条命令，顺手把退出码打出来：
 
 ```bash
-sudo ip -n nslab-a addr add 10.77.1.9/24 dev a0
+sudo ip -n nslab-a addr add 10.77.1.9/24 dev a0; echo "exit=$?"
 ```
 
 ```text
 Error: ipv4: Address already assigned.
+exit=2
 ```
 
-退出码是 2。这个错误是内核回的，`ip` 只是转述；脚本里判断成败用退出码，不要去匹配这段英文。
+这个错误是内核回的，`ip` 只是转述；脚本里判断成败用退出码，不要去匹配这段英文。
 
 ### 3.2 订阅者收到的是事件
 
 终端一订阅，终端二删地址：
 
 ```bash
-sudo ip netns exec nslab-a timeout 10 ip monitor address
+sudo ip netns exec nslab-a timeout 20 ip monitor address
 ```
 
-`ip monitor` 会一直挂着，`timeout 10` 让它 10 秒后自己退出；先订阅、后删地址，顺序不能反。
+`ip monitor` 会一直挂着，`timeout 20` 让它 20 秒后自己退出；先订阅、后删地址，顺序不能反。窗口留够，是因为中间要切到另一个终端。
 
 ```bash
 sudo ip -n nslab-a addr del 10.77.1.9/24 dev a0
 ```
 
-监听者不是那条配置命令的调用者，它订阅的是状态变化。通知来得及时，但不能代替初始查询和错误处理：订阅之前发生了什么它不知道，事件也可能丢，缓存只能当近似视图。
+终端一收到的是事件，不是命令的回显：
+
+```text
+Deleted 2: a0    inet 10.77.1.9/24 scope global secondary a0
+       valid_lft forever preferred_lft forever
+```
+
+`2` 是接口索引，和请求里的 `ifa_index` 是同一个数；`Deleted` 表明这是一条状态变化通知。监听者不是那条配置命令的调用者，它订阅的是状态变化。通知来得及时，但不能代替初始查询和错误处理：订阅之前发生了什么它不知道，事件也可能丢，缓存只能当近似视图。
 
 ## 四、底座与其中的一种接口
 
@@ -164,6 +172,8 @@ sudo bash lab.sh clean
 | 命令 / 字段 | 用途 |
 | --- | --- |
 | `strace -e trace=socket,sendmsg,sendto,recvmsg` | 看管理程序真正发了什么 |
+| `grep -cE 'sendmsg|recvmsg' FILE` | 数请求与回复的条数，别把查询回复当操作 |
+| `cat /sys/class/net/DEV/ifindex` | 取接口索引，对应消息里的 `ifa_index` |
 | `ip monitor address` | 订阅地址变化 |
 | `RTM_NEWADDR` / `RTM_NEWLINK` | 地址新增、链路操作，要分清请求和回复 |
 | `NLMSG_ERROR` | 装错误，也装成功回执 |

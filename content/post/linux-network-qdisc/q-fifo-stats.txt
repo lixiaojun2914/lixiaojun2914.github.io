@@ -3,8 +3,8 @@ FIFO 子队列，传输进行中的队列快照
 
 $ sudo ip netns exec nslab-a tc -s qdisc show dev a0
 qdisc tbf 1: root refcnt 3 rate 5Mbit burst 16Kb lat 1s 
- Sent 1299816 bytes 876 pkt (dropped 0, overlimits 1716 requeues 0) 
- backlog 118092b 78p requeues 0
+ Sent 1308474 bytes 879 pkt (dropped 0, overlimits 1713 requeues 0) 
+ backlog 109008b 72p requeues 0
 qdisc pfifo 10: parent 1:1 limit 1000p
- Sent 1299816 bytes 876 pkt (dropped 0, overlimits 0 requeues 0) 
- backlog 118092b 78p requeues 0
+ Sent 1308474 bytes 879 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 109008b 72p requeues 0

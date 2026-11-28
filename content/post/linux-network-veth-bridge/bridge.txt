@@ -4,35 +4,53 @@
 ## 两次 ping
 
 $ sudo ip netns exec nslab-a ping -n -c 1 10.77.1.2
+PING 10.77.1.2 (10.77.1.2) 56(84) bytes of data.
+64 bytes from 10.77.1.2: icmp_seq=1 ttl=64 time=0.044 ms
+
+--- 10.77.1.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
-rtt min/avg/max/mdev = 0.039/0.039/0.039/0.000 ms
+rtt min/avg/max/mdev = 0.044/0.044/0.044/0.000 ms
 
 $ sudo ip netns exec nslab-c ping -n -c 1 10.77.1.1
+PING 10.77.1.1 (10.77.1.1) 56(84) bytes of data.
+64 bytes from 10.77.1.1: icmp_seq=1 ttl=64 time=0.020 ms
+
+--- 10.77.1.1 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
-rtt min/avg/max/mdev = 0.024/0.024/0.024/0.000 ms
+rtt min/avg/max/mdev = 0.020/0.020/0.020/0.000 ms
 
 ## FDB
 
-$ sudo ip netns exec nslab-r bridge fdb show br br0 | grep 02:00:00:77
+$ sudo ip netns exec nslab-r bridge fdb show br br0 | grep -E '02:00:00:77'
 02:00:00:77:01:01 dev pa master br0
 02:00:00:77:01:02 dev pb master br0
 02:00:00:77:01:03 dev pc master br0
 
 ## C 端抓包：清空 A 的邻居后从 A ping B
 
+窗口先开（终端一）：
+
+$ sudo ip netns exec nslab-c timeout 20 tcpdump -nn -e -i c0
+
+终端二清邻居再 ping：
+
 $ sudo ip -n nslab-a neigh flush dev a0
-$ sudo ip netns exec nslab-c tcpdump -nn -e -i c0 -c 10
+$ sudo ip netns exec nslab-a ping -n -c 2 10.77.1.2
 
-14:51:30.511333 02:00:00:77:01:01 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.2 tell 10.77.1.1, length 28
-14:51:32.302950 02:00:00:77:01:03 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::588e:4dff:fe02:fa21 > ff02::2: ICMP6, router solicitation, length 16
-14:51:32.815779 4e:f9:50:ba:48:65 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::90a4:dff:fec5:11c9 > ff02::2: ICMP6, router solicitation, length 16
-14:51:33.327536 02:00:00:77:01:01 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::849f:3bff:fe69:38b7 > ff02::2: ICMP6, router solicitation, length 16
-14:51:33.839144 e2:d1:cb:b3:9b:3d > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::e0d1:cbff:feb3:9b3d > ff02::2: ICMP6, router solicitation, length 16
-14:51:33.839173 02:00:00:77:01:02 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::b008:f4ff:fe77:a8fd > ff02::2: ICMP6, router solicitation, length 16
+终端一收到 19 帧，其中 ARP 只有一条：
 
-6 packets captured
+09:00:43.919897 02:00:00:77:01:01 > 33:33:00:00:00:16, ethertype IPv6 (0x86dd), length 90: fe80::40ca:fdff:fec9:3e86 > ff02::16: HBH ICMP6, multicast listener report v2, 1 group record(s), length 28
+09:00:43.919945 02:00:00:77:01:01 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::40ca:fdff:fec9:3e86 > ff02::2: ICMP6, router solicitation, length 16
+09:00:43.919979 02:00:00:77:01:02 > 33:33:00:00:00:16, ethertype IPv6 (0x86dd), length 90: fe80::49e:63ff:feed:df6f > ff02::16: HBH ICMP6, multicast listener report v2, 1 group record(s), length 28
+09:00:43.919979 02:00:00:77:01:02 > 33:33:00:00:00:02, ethertype IPv6 (0x86dd), length 70: fe80::49e:63ff:feed:df6f > ff02::2: ICMP6, router solicitation, length 16
+（中间若干条同类 IPv6 帧与一条 IGMP 报告，略）
+09:00:46.871131 02:00:00:77:01:01 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.2 tell 10.77.1.1, length 28
 
-说明：只有 A 的 ARP 广播与几条 IPv6 路由请求，没有 ARP 应答，也没有 ICMP 单播。
+19 packets captured
+19 packets received by filter
+0 packets dropped by kernel
+
+说明：19 帧里只有这一条 ARP 广播，没有 ARP 应答，也没有 ICMP 单播。A 发往 B 的 ARP 请求是广播，FDB 未知或广播都会泛洪到 pc，所以 C 看得见；B 的应答是单播，FDB 已知 B 在 pb，只从 pb 发出，C 看不到。其余 18 帧是刚建好接口的端点发出来的 IPv6 组播侦听报告、邻居请求、路由请求和一条 IGMP 报告，与实验无关。
 
 $ sudo ip -n nslab-a neigh
 10.77.1.2 dev a0 lladdr 02:00:00:77:01:02 REACHABLE

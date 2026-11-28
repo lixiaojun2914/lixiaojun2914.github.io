@@ -2,7 +2,7 @@
 title: "Linux 网络栈（九）：veth、bridge 与二层转发"
 slug: linux-network-veth-bridge
 date: "2026-11-22T16:09:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "一对 veth 把两个环境接起来，bridge 再把三个端口组织成广播域；学习靠源 MAC，转发靠 FDB。"
 categories:
@@ -80,7 +80,14 @@ sudo ip netns exec nslab-r bridge fdb show br br0 | grep -E '02:00:00:77'
 02:00:00:77:01:03 dev pc master br0
 ```
 
-FDB 是转发数据库，一条表项的意思是"到这个 MAC，从哪个端口出去"。它不是路由表，也不是 ARP 表。两次 ping 都有回应，TTL 是 64——二层转发不消耗 IP 跳数。
+FDB 是转发数据库，一条表项的意思是"到这个 MAC，从哪个端口出去"。它不是路由表，也不是 ARP 表。两次 ping 的回包：
+
+```text
+64 bytes from 10.77.1.2: icmp_seq=1 ttl=64 time=0.044 ms
+64 bytes from 10.77.1.1: icmp_seq=1 ttl=64 time=0.020 ms
+```
+
+第一行来自 A ping B，第二行来自 C ping A，两边的 `ttl` 都是 64：二层转发不消耗 IP 跳数。
 
 ## 三、学习与转发
 
@@ -101,10 +108,10 @@ FDB 是转发数据库，一条表项的意思是"到这个 MAC，从哪个端�
 在 C 上抓包，清掉 A 的邻居，再从 A ping B：
 
 ```bash
-sudo ip netns exec nslab-c timeout 5 tcpdump -nn -e -i c0
+sudo ip netns exec nslab-c timeout 20 tcpdump -nn -e -i c0
 ```
 
-这里不按协议过滤，要把 C 端口上的一切都看一遍；`timeout 5` 到点自动停，比盯着屏幕数秒按 Ctrl-C 可靠。
+这里不按协议过滤，要把 C 端口上的一切都看一遍；`timeout 20` 到点自动停，比盯着屏幕数秒按 Ctrl-C 可靠，窗口也够切回另一个终端清邻居、敲 ping。只想看 ARP 的话，把末尾换成 `arp`。
 
 ```bash
 sudo ip -n nslab-a neigh flush dev a0
@@ -114,10 +121,10 @@ sudo ip netns exec nslab-a ping -n -c 2 10.77.1.2
 C 侧看到的是：
 
 ```text
-14:51:30.511333 02:00:00:77:01:01 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.2 tell 10.77.1.1, length 28
+09:00:46.871131 02:00:00:77:01:01 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.2 tell 10.77.1.1, length 28
 ```
 
-一条 ARP 广播，`ff:ff:ff:ff:ff:ff` 是广播地址佐证。后面那几条 `33:33:00:00:00:02` 是 IPv6 路由请求，和本实验无关，属于环境噪音。
+一条 ARP 广播，`ff:ff:ff:ff:ff:ff` 是广播地址佐证。整个窗口 `19 packets captured`，剩下的 18 帧是环境噪音：IPv6 的组播侦听报告、邻居请求、路由请求，还有一条 IGMP 报告，都来自刚建好接口的端点，和本实验无关。所以看这段抓包要按协议挑，别指望输出只有一条。
 
 没有看到 ARP 应答，也没有看到后面的 ICMP 单播。原因就在 FDB：A 在 `pa`、B 在 `pb`，应答按单播只发到 `pb`，C 的 `pc` 上自然看不到。广播能看到、单播看不到，这就是学习的直接后果。
 

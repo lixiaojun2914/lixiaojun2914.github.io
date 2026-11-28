@@ -1,0 +1,20 @@
+两轮的写入与对端读取，4 MiB / 5 Mbit 出口
+环境：7.0.0-44-generic，lab.sh clean + lab.sh direct
+
+## FIFO 子队列
+
+$ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18083 4194304
+write accepted=4194304 bytes in 5904.625 ms
+
+$ sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18083
+ready TCP 10.77.1.2:18083
+received=4194304 bytes
+
+## FQ-CoDel 子队列
+
+$ sudo ip netns exec nslab-a ./netdemo tcp-client 10.77.1.2 18083 4194304
+write accepted=4194304 bytes in 6499.407 ms
+
+$ sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.1.2 18083
+ready TCP 10.77.1.2:18083
+received=4194304 bytes

@@ -2,7 +2,7 @@
 title: "Linux 网络栈（一）：一个包的完整路径地图"
 slug: linux-network-stack-map
 date: "2026-11-22T16:01:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "把一次五字节发送切成五块：谁拿着数据、做了什么、交给谁；数据只在内核边界搬两次，其余都在原地动指针。"
 categories:
@@ -40,8 +40,8 @@ wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/tl3.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/gro3.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/hooks.bt
 wget -q https://lixiaojun2914.github.io/p/linux-network-stack-map/muxdemo.c
-# 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、nc、gcc 不一定齐
-sudo apt install -y bpftrace tcpdump nftables netcat-openbsd ethtool strace gcc
+# 新装的 Ubuntu Server 上 bpftrace、tcpdump、nft、conntrack、nc、gcc 不一定齐
+sudo apt install -y bpftrace tcpdump nftables conntrack-tools netcat-openbsd ethtool strace gcc
 # netdemo 用 -O0 -g，bpftrace 挂函数时符号和行号才完整
 gcc -O0 -g -Wall -Wextra netdemo.c -o netdemo
 # muxdemo 要开线程，用 -O2，第二篇 5.2 直接用这个可执行文件

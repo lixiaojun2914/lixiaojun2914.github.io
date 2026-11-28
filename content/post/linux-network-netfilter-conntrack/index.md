@@ -2,7 +2,7 @@
 title: "Linux 网络栈（十）：Netfilter、连接跟踪与 NAT"
 slug: linux-network-netfilter-conntrack
 date: "2026-11-22T16:10:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "路由通过、规则丢弃、NAT 改地址：三件事分别由谁决定，以及本机发送、接收与转发三条路径最后怎样收拢。"
 categories:
@@ -83,7 +83,13 @@ sudo ip netns exec nslab-r nft list table inet demo
 
 顺序不能反：跟踪窗口必须开在流量之前，否则这两个包根本不会出现在 trace 里；接收端先起着，B 那边才有一个真正准备好的 UDP socket，不至于让丢弃原因掺进别的分支。`timeout 30` 是为了让终端一自己收尾——`nft monitor trace` 本身不会退出，手按 Ctrl-C 也能停。发完两个数据报、等终端一退出，再在终端三读计数。
 
-客户端会打印发送成功，B 那边什么也没有。这就是第二篇讲过的接口语义：UDP 的 `sendto` 返回只说明本机收下了。
+客户端的输出是：
+
+```text
+sent datagrams: 6 bytes, 2 bytes
+```
+
+B 那边什么也没有，只有 `ready UDP 10.77.2.2:18082`。这就是第二篇讲过的接口语义：UDP 的 `sendto` 返回只说明本机收下了。
 
 顺带提醒一个显示差异：文件里写 `priority -301` 和 `priority 0`，`nft list` 会显示成 `priority raw - 1` 和 `priority filter`，是同一优先级的符号写法，不是规则被改了。
 
@@ -140,13 +146,13 @@ sudo ip netns exec nslab-r nft add rule ip natdemo post ip saddr 10.77.1.0/24 oi
 
 在 `rb` 出口把来自 `10.77.1.0/24` 的源地址换成 R 的 `10.77.2.254`。
 
-终端一跑 B，第二个参数 20000 让它在 `accept` 之后先睡 20 秒再读：
+先在一个终端起 B，第二个参数 20000 让它在 `accept` 之后先睡 20 秒再读：
 
 ```bash
 sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.2.2 18084 20000
 ```
 
-终端二跑 A，`tcp-fill` 写满发送缓冲后再挂 30 秒才关：
+再在另一个终端起 A，`tcp-fill` 写满发送缓冲后再挂 30 秒才关：
 
 ```bash
 sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.2.2 18084 30000
@@ -154,7 +160,7 @@ sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.2.2 18084 30000
 
 这两个时长是给观察留的窗口：服务端 20 秒内不取数据，客户端 30 秒内不退出，中间这 20 秒里查 conntrack 和 `ss` 都来得及。
 
-传输进行中查两处：
+传输进行中，回到第一个终端的前台或另开一个终端，查两处：
 
 ```bash
 sudo ip netns exec nslab-r conntrack -L -p tcp --dport 18084
@@ -162,8 +168,7 @@ sudo ip netns exec nslab-b ss -tn '( sport = :18084 )'
 ```
 
 ```text
-tcp 6 431996 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=42864 dport=18084
-    src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=42864 [ASSURED] mark=0 use=1
+tcp 6 431996 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=42864 dport=18084 src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=42864 [ASSURED] mark=0 use=1
 ```
 
 ```text
@@ -182,6 +187,8 @@ B 看到的对端是 `10.77.2.254:42864`，不是 A 的 `10.77.1.1`。临时端�
 | 转换前，A 发出 | `10.77.1.1:42864` | `10.77.2.2:18084` |
 | B 看到的连接 | `10.77.2.254:42864` | `10.77.2.2:18084` |
 | 条目里的回复方向 | `10.77.2.2:18084` | `10.77.2.254:42864` |
+
+表里的 `42864` 是这一轮 A 用的临时端口，每次重跑都不一样；换成新的一轮，三行的端口要一起变。
 
 条目里这两组地址是原始方向和回复方向，不是两条连接，也不是一个包里出现过的所有地址。有状态 NAT 在首包上建立关联，后续包复用状态并改写，回复方向按同一份状态还原。
 

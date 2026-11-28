@@ -2,7 +2,7 @@
 title: "Linux 网络栈（八）：网络命名空间的状态与生命周期"
 slug: linux-network-namespace
 date: "2026-11-22T16:08:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "一个只有 lo 的网络环境从哪来、名字为什么不是对象本身、删掉名字之后对象为什么还活着。"
 categories:
@@ -37,7 +37,7 @@ sudo ip -n nslab-a route
 lo               DOWN           00:00:00:00:00:00 <LOOPBACK>
 ```
 
-路由表是空的。
+`ip -n nslab-a route` 一行也没有，路由表是空的。
 
 新的网络命名空间不会继承宿主机的网卡、默认路由和外网。这里的 `lo` 是它自己的回环设备，而且默认是 DOWN 的——所以新环境里 ping 127.0.0.1 也不通。
 
@@ -88,8 +88,10 @@ sudo ip netns exec nslab-a ping -n -c 1 127.0.0.1
 ```bash
 sudo ip netns del nslab-a
 sudo ip netns add nslab-a
-sudo ip netns exec nslab-a sleep 300 &
+sudo -v
+sudo ip netns exec nslab-a sleep 300 >/dev/null 2>&1 &
 PID=$(sudo ip netns pids nslab-a | head -n 1)
+echo "PID=$PID"
 sudo readlink /proc/$PID/ns/net
 sudo ip netns del nslab-a
 sudo ip netns list
@@ -97,13 +99,13 @@ sudo readlink /proc/$PID/ns/net
 sudo nsenter -t "$PID" -n ip -br link
 ```
 
-`sleep 300` 是刻意开长的：中间要插好几条 `sudo` 命令，窗口太短会在你敲命令的中途断掉。这个 `sleep` 挂在当前终端后台，清理时按 PID 杀掉。
+`sleep 300` 是刻意开长的：中间要插好几条 `sudo` 命令，窗口太短会在你敲命令的中途断掉。`sudo -v` 先把凭证时间戳刷新一遍，`>/dev/null 2>&1` 让后台任务不占着终端输出，否则切走再回来容易看到一串密码提示。这个 `sleep` 挂在当前终端后台，清理时按 PID 杀掉。
 
 这台机器上只有这一个命名入口，删除后列表是空的；两次 `readlink` 和最后的接口输出：
 
 ```text
-net:[4026532692]
-net:[4026532692]
+net:[4026532797]
+net:[4026532797]
 lo               DOWN           00:00:00:00:00:00 <LOOPBACK>
 ```
 
@@ -121,6 +123,8 @@ wait
 进程退出只是放掉它那一份引用。如果还有别的引用，对象仍然不会立即销毁；最终释放和各子系统的退出由引用计数驱动，不是工具"把里面的东西一次删干净"。
 
 ## 四、已有 socket 的归属
+
+这一节讲机制，不设观测：判断 socket 归属要读创建它的那一行代码，`ss` 之类工具看到的只是它当前所在的环境，分不出这个 socket 是谁建的。
 
 普通 socket 在创建时绑定到某个网络命名空间，这个归属不会因为线程后来 `setns()` 就改掉。进程还可以通过继承或 fd 传递，持有别的环境里创建的 socket。
 

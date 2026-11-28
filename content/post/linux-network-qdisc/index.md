@@ -2,7 +2,7 @@
 title: "Linux 网络栈（六）：出口排队、qdisc 与延迟控制"
 slug: linux-network-qdisc
 date: "2026-11-22T16:06:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "同样 5 Mbit 的出口，换个队列策略，ping 从 134 ms 回到 9 ms：等待堆在哪里，怎么把它排掉。"
 categories:
@@ -39,16 +39,34 @@ tags:
 
 ### 2.1 测试条件
 
-用第一篇的程序和脚本建直连拓扑，在 A 的出口挂 TBF 限速，子队列先放 FIFO：
+用第一篇的程序和脚本建直连拓扑。下面所有命令都在 `lab.sh` 和 `netdemo` 所在的目录里执行：
 
 ```bash
 sudo bash lab.sh clean
 sudo bash lab.sh direct
-sudo ip netns exec nslab-a tc qdisc add dev a0 root handle 1: tbf rate 5mbit burst 16kb latency 1000ms
-sudo ip netns exec nslab-a tc qdisc add dev a0 parent 1:1 handle 10: pfifo limit 1000
 ```
 
 `lab.sh` 拒绝在已有 `nslab-*` 命名空间上再建一套，所以前面先 `clean`。
+
+还没挂任何限速，先量一次空载往返：
+
+```bash
+sudo ip netns exec nslab-a ping -n -c 10 -i 0.1 10.77.1.2
+```
+
+```text
+10 packets transmitted, 10 received, 0% packet loss, time 938ms
+rtt min/avg/max/mdev = 0.014/0.060/0.088/0.024 ms
+```
+
+零点零几毫秒，比后面两轮的百毫秒低三个数量级。这就是没有排队时的底数。
+
+在 A 的出口挂 TBF 限速，子队列先放 FIFO：
+
+```bash
+sudo ip netns exec nslab-a tc qdisc add dev a0 root handle 1: tbf rate 5mbit burst 16kb latency 1000ms
+sudo ip netns exec nslab-a tc qdisc add dev a0 parent 1:1 handle 10: pfifo limit 1000
+```
 
 TBF（令牌桶）把出口压到 5 Mbit/s；`burst` 是允许的突发额度；`latency` 只用于 TBF 自己算默认队列长度，挂上自定义子队列后实际限制由子队列的 `limit` 决定，不是"每个包等一秒"。
 
@@ -71,7 +89,7 @@ cat cli.txt
 
 这样安排是为了不跟时间抢：4 MiB 走 5 Mbit/s 只有六秒上下，人先等客户端跑完再切终端去敲 `ping`，多半已经错过窗口。客户端在后台占着发送路径，`ping` 和 `tc` 就一定落在传输进行中；`wait` 等到它退出，`cat` 再把它的输出补上。
 
-客户端的 `write accepted=4194304 bytes in 5197 ms` 只说明本机 socket 收下了这么多；服务端的 `received=4194304 bytes` 才是对端应用读完。
+客户端的 `write accepted=4194304 bytes in 5904.625 ms` 只说明本机 socket 收下了这么多；服务端的 `received=4194304 bytes` 才是对端应用读完。
 
 ### 2.2 只换子队列
 
@@ -91,24 +109,24 @@ FQ 按流分队列，让一条大流不至于把别的流一直压在后面；Co
 
 ### 3.1 同一负载，两种策略
 
-| 指标 | FIFO | FQ-CoDel |
-| --- | ---: | ---: |
-| ping 平均 RTT | 132.4 ms | 8.8 ms |
-| ping 最大 RTT | 169.5 ms | 20.1 ms |
-| ping 收到 / 发送 | 10 / 10 | 10 / 10 |
-| 采样时子队列 backlog | 118092 B，78 包 | 30280 B，2 包 |
-| 累计 dropped | 0 | 5 |
-| 4 MiB 写入耗时 | 5198 ms | 6416 ms |
+| 指标 | 空载 | FIFO | FQ-CoDel |
+| --- | ---: | ---: | ---: |
+| ping 平均 RTT | 0.060 ms | 130.7 ms | 10.7 ms |
+| ping 最大 RTT | 0.088 ms | 175.3 ms | 19.3 ms |
+| ping 收到 / 发送 | 10 / 10 | 10 / 10 | 10 / 10 |
+| 采样时子队列 backlog | — | 109008 B，72 包 | 24224 B，2 包 |
+| 累计 dropped | — | 0 | 4 |
+| 4 MiB 写入耗时 | — | 5905 ms | 6499 ms |
 
-平均和最大值取自 `ping` 最后一行的 `min/avg/max/mdev`；backlog 和 dropped 取自 `tc -s qdisc show dev a0` 里子队列那一段的 `backlog` 与 `dropped`；写入耗时取自 `cat cli.txt` 那行 `write accepted=... in ... ms`。
+平均和最大值取自 `ping` 最后一行的 `min/avg/max/mdev`（`130.659` 与 `175.255` 这样的原值，表里只保留一位小数），收发数取自同一文件上一行的 `10 packets transmitted, 10 received`；backlog 和 dropped 取自 `tc -s qdisc show dev a0` 里子队列那一段的 `backlog <字节>b <包数>p` 与 `dropped`；写入耗时取自客户端输出的 `write accepted=... in 5904.625 ms`，表里四舍五入到毫秒。
 
-空载时这段 veth 的 ping 是零点几毫秒；两轮的服务速率相同，写入耗时都在六秒上下，说明吞吐没变，变的只是等待怎么分配。
+两轮的服务速率相同，写入耗时都在六秒上下，说明吞吐没变，变的只是等待怎么分配。空载那一列是挂 TBF 之前量的，用来标出这段 veth 自己的底噪。
 
-FIFO 那一列很直白：78 个包排在队列里，每个包都要等前面几十个发完，ping 的往返自然被拉到百毫秒级。dropped 是 0——它没丢，它只是在等。
+FIFO 那一列很直白：72 个包排在队列里，每个包都要等前面几十个发完，ping 的往返自然被拉到百毫秒级。dropped 是 0——它没丢，它只是在等。
 
-FQ-CoDel 把队列压到 2 个包，代价是丢掉 5 个。丢的是大流的数据，TCP 会重传；换来的是 ping 能插进去。这就是 AQM 的取舍：用少量丢弃换排队时间。
+FQ-CoDel 把队列压到 2 个包，代价是丢掉 4 个。丢的是大流的数据，TCP 会重传；换来的是 ping 能插进去。这就是 AQM 的取舍：用少量丢弃换排队时间。
 
-原始记录都在同目录：[FIFO 的 ping](/p/linux-network-qdisc/q-fifo-ping.txt)、[FIFO 的队列快照](/p/linux-network-qdisc/q-fifo-stats.txt)、[FQ-CoDel 的 ping](/p/linux-network-qdisc/q-fq_codel-ping.txt)、[FQ-CoDel 的队列快照](/p/linux-network-qdisc/q-fq_codel-stats.txt)。
+原始记录都在同目录：[空载 ping](/p/linux-network-qdisc/q-idle-ping.txt)、[FIFO 的 ping](/p/linux-network-qdisc/q-fifo-ping.txt)、[FIFO 的队列快照](/p/linux-network-qdisc/q-fifo-stats.txt)、[FQ-CoDel 的 ping](/p/linux-network-qdisc/q-fq_codel-ping.txt)、[FQ-CoDel 的队列快照](/p/linux-network-qdisc/q-fq_codel-stats.txt)、[两轮的写入与对端读取](/p/linux-network-qdisc/q-write.txt)。
 
 这是单次样本，两台虚拟机之间的一次对照。它能说明机制的方向，不能当性能倍数用。真要下结论，得重复多次、固定负载和采样时机，同时看吞吐、时延分布和丢弃。
 
@@ -151,10 +169,12 @@ sudo bash lab.sh clean
 
 | 命令 | 用途 |
 | --- | --- |
-| `tc -s qdisc show dev DEV` | 看规则和统计 |
-| `root handle 1:` | 设根队列与句柄 |
-| `parent 1:1 handle 10:` | 挂到 TBF 的子队列位置 |
-| `tc qdisc del dev DEV root` | 删掉出口规则 |
+| `tc qdisc add dev DEV root handle 1: tbf ...` | 设根队列、限速与句柄 |
+| `tc qdisc add dev DEV parent 1:1 handle 10: ...` | 挂到 TBF 的子队列位置 |
+| `tc -s qdisc show dev DEV` | 看规则和统计，`backlog`/`dropped` 在这 |
+| `tc qdisc del dev DEV root` | 删掉出口规则，换子队列要连根一起删 |
+| `ss -tinm` | 看 socket 一侧的未确认数据、窗口与发送队列 |
+| `ping -c 10 -i 0.1 DEST` | 传输进行中量往返，`-i` 压低间隔好落在同一窗口 |
 
 ## 六、名词解释
 
