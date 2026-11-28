@@ -2,7 +2,7 @@
 title: "Linux 网络栈（三）：sk_buff 的数据视图、共享与释放"
 slug: linux-network-skbuff
 date: "2026-11-22T16:03:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "从 headroom 到页片段：边界怎么动、共享怎么算、什么时候不得不真复制，以及为什么抓包看到的长度不等于一个 skb 的长度。"
 categories:
@@ -49,7 +49,26 @@ refcount_t users;
 | `data_len` | 非线性部分长度，线性部分等于 `len - data_len` |
 | `truesize` | 内存记账量，不是报文有效字节数 |
 
-`tail` 和 `end` 的类型是 `sk_buff_data_t`。开着 `NET_SKBUFF_DATA_USES_OFFSET` 时它们是相对 `head` 的偏移；另一个分支里才是指针。所以图里的四个箭头不能直接抄成四个 C 指针，访问要走 `skb_tail_pointer()` 这类 helper。字段定义和 helper 都在 [skbuff.h](https://github.com/torvalds/linux/blob/v7.0/include/linux/skbuff.h)。
+`tail` 和 `end` 的类型是 `sk_buff_data_t`。64 位内核上 `NET_SKBUFF_DATA_USES_OFFSET` 恒被定义（条件是 `BITS_PER_LONG > 32`），所以这两个字段是相对 `head` 的偏移；32 位才有指针那一支。因此图里的四个箭头不能直接抄成四个 C 指针，访问要走 `skb_tail_pointer()` 这类 helper。字段定义和 helper 都在 [skbuff.h](https://github.com/torvalds/linux/blob/v7.0/include/linux/skbuff.h)。
+
+`truesize` 记的不是有效字节。v7.0 里它在 `__finalize_skb_around()` 中一次算定：
+
+```c
+size -= SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
+skb->truesize = SKB_TRUESIZE(size);
+```
+
+`SKB_TRUESIZE(X)` 展开是 `X + SKB_DATA_ALIGN(sizeof(struct sk_buff)) + SKB_DATA_ALIGN(sizeof(struct skb_shared_info))`，三部分都要按缓存行对齐。描述对象本身多大，本机能直接看：
+
+```bash
+grep skbuff_head_cache /proc/slabinfo
+```
+
+```text
+skbuff_head_cache    847    848    256   16    1 : tunables    0    0    0 : slabdata     53     53      0
+```
+
+第四列 `256` 就是对齐后的 `sizeof(struct sk_buff)`，第二列是当前活跃对象数。也就是说，一个 100 字节的包，记账要算上 256 字节的元数据、一段 `skb_shared_info` 和按缓存行取整的余量，量级是有效字节的好几倍。小包场景下按"包长乘个数"估内存，永远偏低。
 
 ### 1.2 预留空间与边界移动
 
@@ -71,13 +90,17 @@ refcount_t users;
 
 ![两个 skb 描述对象可以共享同一缓冲区，改写前需满足所有权要求](/p/linux-network-skbuff/sharing.svg)
 
-`skb->users` 管的是 skb 这个描述对象本身的引用。`skb_clone()` 造出的是另一个描述对象，两者指向同一份数据存储，而这份存储还有自己的引用计数。
+`skb->users` 管的是 skb 这个描述对象本身的引用。`skb_clone()` 造出的是另一个描述对象，两者指向同一份数据存储，而这份存储还有自己的引用计数——`skb_shared_info` 里的 `dataref`。一个是"描述对象还剩几个引用"，一个是"这份数据还能不能被改写"。
 
 这是两个问题：这个描述对象能不能释放，和这份共享数据能不能释放或改写。TCP 为重传留数据、协议栈要分出不同视图，靠的都是后者省下的一次整份复制。共享不等于随便改——头部可写性和数据引用还要再判断一次。实现看 [skbuff.c](https://github.com/torvalds/linux/blob/v7.0/net/core/skbuff.c)。
+
+这一节讲的是机制，本站没有对 `users` 和 `dataref` 做直接观测：它们没有现成的 tracepoint，`kfree_skb` 只报"谁被释放了"，不报还剩几个引用。所以本篇能拿出的硬证据只有第三章那条释放事件，共享关系靠读源码对照。
 
 ### 2.2 存储的三个来源
 
 `alloc_skb()` 把 skb 和它的缓冲区一起分配出来，是最常见的一条路。`build_skb()` 一类接口把已有、布局合适的缓冲区挂上去，不再新分配数据区。非线性片段可以指向某个页里的一段范围——所以"一份 payload 必定经过一次 `kmalloc()`"不成立。
+
+头部的分配也分了两条：小的头区优先走 `skbuff_small_head` 这块专用缓存，本机 `/proc/slabinfo` 里它的 objsize 是 704，超过这个尺寸才回落到通用的 kmalloc 缓存。把 1.1 那条 `grep skbuff_head_cache` 放宽成 `grep -E '^skbuff' /proc/slabinfo`，两行并排就能看到 256 和 704——描述对象和它的数据区各记各的账。
 
 驱动还会用 page_pool 复用接收缓冲页，省掉反复分配和 DMA 映射。页池是存储复用设施，skb 是网络数据描述，两者不在一个层次上。页池存在也不等于应用能零拷贝拿到数据。接口说明见 [Page Pool 文档](https://docs.kernel.org/7.0/networking/page_pool.html)。
 
@@ -160,14 +183,59 @@ sudo bash lab.sh clean
 
 ## 四、对象数与帧数为什么不一致
 
+一次写、一个数据报，各自数一遍帧。还是直连拓扑：
+
+```bash
+sudo bash lab.sh clean
+sudo bash lab.sh direct
+```
+
+TCP 先来，接收端：
+
+```bash
+sudo ip netns exec nslab-b /home/lxj/nslab/netdemo tcp-server 10.77.1.2 18084 0
+```
+
+另一个终端在 `nslab-a` 里抓包，再写 1 MB：
+
+```bash
+sudo ip netns exec nslab-a tcpdump -nn -i a0 -c 200 'tcp and port 18084'
+sudo ip netns exec nslab-a /home/lxj/nslab/netdemo tcp-client 10.77.1.2 18084 1000000
+```
+
+发送侧抓到 131 个带数据的 TCP 帧，长度加起来正好 1000000 字节；其中 122 个超过 1500 的 MTU，最长 65160 字节。MTU 是 1500，帧却有 65 KB——抓包看到的是内核交给设备之前的大对象，不是线上真正跑的小帧。这就是 GSO。
+
+UDP 换个数据报。接收端改成 `udp-server`，抓包这次不加过滤：
+
+```bash
+sudo ip netns exec nslab-b /home/lxj/nslab/netdemo udp-server 10.77.1.2 19999 100 0
+sudo ip netns exec nslab-a tcpdump -nn -i a0
+sudo ip netns exec nslab-a python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);print(s.sendto(b"x"*60000,("10.77.1.2",19999)))'
+```
+
+同样 60000 字节，这次是 41 个帧，每个都不超过 1500：第一片带着 UDP 头（`UDP, length 60000`），后面 40 片只剩 `ip-proto-17`。单个大 UDP 数据报没有 TCP 那样的分段卸载可用，只能按 MTU 分成 IP 分片，接收端再拼回去——服务端打印的仍是 `len=60000`。
+
+这里有个容易踩的坑：抓包时若加 `'udp and port 19999'`，只会数到 1 个帧，后面 40 片没有 UDP 头，过滤条件不匹配。数帧就不要带上层过滤。
+
+校验和同理。给抓包加上 `-vv`，同一批数据帧里打出来的是：
+
+```text
+Flags [P.], cksum 0x26c3 (incorrect -> 0x5939), seq 4096:8192, ... length 4096
+```
+
+不是包坏了，是卸载把校验和的计算推到了后面，而抓包点在它之前。
+
 | 机制 | 改变什么 | 观察上的后果 |
 | --- | --- | --- |
-| GSO | 大对象延后分段 | 发送侧能看见超过单帧大小的对象 |
+| GSO | 大对象延后分段 | 发送侧能看见超过单帧大小的对象（1 MB 写：131 帧里 122 帧超 MTU） |
+| IP 分片 | 超过 MTU 的报文在 IP 层切开 | 一个数据报变成多个帧，只有第一片带上层头 |
 | GRO | 接收侧先合并再上交 | 一个上层对象对应多个接收帧 |
 | 校验和卸载 | 校验推给后续阶段或设备 | 本地抓包可能看到还没填完的校验和 |
 | 克隆与重传 | 多个描述或多次发送指向同一份字节 | 对象数、发送次数与业务字节数不一一对应 |
 
-这些机制不改变协议语义，改变的是内核处理和工具观察的单位。要问"到底发了几个包"，得先说清问的是应用写了几次、几个 skb、几条抓包记录，还是几个设备帧。
+第一、二、四行这轮都量到了，成本就是两条命令加一个 `python3` 的 `sendto`。GRO 和克隆没量：GRO 的效果要在接收侧看，veth 上合并的规模不明显；`users` 和 `dataref` 没有现成的 tracepoint，得挂钩子，不在本篇范围内。
+
+这些机制不改变协议语义，改变的是内核处理和工具观察的单位。要问"到底发了几个包"，得先说清问的是应用写了几次、几条抓包记录，还是几个设备帧——在 UDP 那个例子里，三者分别是 1 次、41 条（带 UDP 过滤时 1 条）、41 个。两段抓包的原始输出在[帧数与卸载记录](/p/linux-network-skbuff/skb-frames.txt)。
 
 ## 五、命令与接口速查
 
@@ -177,6 +245,9 @@ sudo bash lab.sh clean
 | `skb_clone()` | 造一个共享数据的描述对象 |
 | `events/skb/kfree_skb` | 观察 skb 释放或丢弃事件 |
 | `instances/NAME` | 把跟踪配置放进专属实例，不动全局设置 |
+| `/proc/slabinfo` | skb 元数据缓存与头区缓存的 objsize、活跃对象数 |
+| `ethtool -k DEV` / `ethtool -K DEV …` | 看、改分段与校验和卸载能力 |
+| `tcpdump -nn -i IF`（不加过滤） | 数帧；带 `udp and port` 会漏掉后续分片 |
 
 ## 六、名词解释
 
@@ -187,3 +258,6 @@ sudo bash lab.sh clean
 | page_pool | 面向接收等场景的页复用设施 |
 | 线性化 | 把需要的数据变成连续可访问区域的操作 |
 | `users` | skb 描述对象自身的引用计数，与数据存储的引用是两回事 |
+| `dataref` | `skb_shared_info` 里的数据区引用计数，决定这份字节还能不能被改写 |
+| GSO | 发送侧把大对象推迟到交给设备前再分段，抓包会看到超过 MTU 的帧 |
+| IP 分片 | 报文超过 MTU 时在 IP 层切开，只有第一片带上层协议头 |

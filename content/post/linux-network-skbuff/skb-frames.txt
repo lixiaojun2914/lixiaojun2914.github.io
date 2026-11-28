@@ -1,0 +1,87 @@
+两种"包数"口径：一次 1 MB 的 TCP 写，一个 60000 字节的 UDP 数据报
+环境：7.0.0-44-generic，aarch64，2 vCPU，veth MTU 1500，netns 直连（lab.sh direct）
+
+## 一、TCP 1 MB
+
+接收端（nslab-b）：
+
+$ sudo ip netns exec nslab-b /home/lxj/nslab/netdemo tcp-server 10.77.1.2 18084 0
+ready TCP 10.77.1.2:18084
+
+抓包（nslab-a）：
+
+$ sudo ip netns exec nslab-a tcpdump -nn -i a0 -c 200 'tcp and port 18084'
+...
+202 packets received by filter
+0 packets dropped by kernel
+
+发送端：
+
+$ sudo ip netns exec nslab-a /home/lxj/nslab/netdemo tcp-client 10.77.1.2 18084 1000000
+write accepted=1000000 bytes in 1.977 ms
+
+抓包统计：
+
+带数据的 TCP 帧        131
+这些帧 length 之和     1000000
+超过 MTU（1500）的帧   122
+最长一帧               65160
+
+样例：
+
+07:19:41.971341 IP 10.77.1.1.40466 > 10.77.1.2.18084: Flags [S], seq 4224751712, win 64240, options [mss 1460,sackOK,TS val 2644559648 ecr 0,nop,wscale 9], length 0
+07:19:41.971382 IP 10.77.1.1.40466 > 10.77.1.2.18084: Flags [.], ack 1, win 126, options [nop,nop,TS val 2644559648 ecr 3376614176], length 0
+
+服务端：
+
+received=1000000 bytes
+
+## 二、UDP 60000 字节
+
+接收端：
+
+$ sudo ip netns exec nslab-b /home/lxj/nslab/netdemo udp-server 10.77.1.2 19999 100 0
+ready UDP 10.77.1.2:19999
+
+抓包（不加过滤）：
+
+$ sudo ip netns exec nslab-a tcpdump -nn -i a0
+
+发送：
+
+$ ip netns exec nslab-a python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);print(s.sendto(b"x"*60000,("10.77.1.2",19999)))'
+sendto 60000
+
+抓到的 IPv4 帧：41
+
+07:19:05.360794 IP 10.77.1.1.39884 > 10.77.1.2.19999: UDP, length 60000
+07:19:05.360814 IP 10.77.1.1 > 10.77.1.2: ip-proto-17
+...（共 40 条 ip-proto-17）
+07:19:05.360867 IP 10.77.1.1 > 10.77.1.2: ip-proto-17
+
+同一轮里换成带过滤的抓法：
+
+$ sudo ip netns exec nslab-a tcpdump -nn -i a0 'udp and port 19999'
+→ 只数到 1 个（第一片带 UDP 头，后面 40 片没有）
+
+服务端：
+
+recv[0] len=60000 copied=100
+
+## 三、校验和
+
+$ sudo ip netns exec nslab-a tcpdump -nn -vv -i a0 -c 3 'tcp and port 18084 and greater 2000'
+
+    10.77.1.1.58048 > 10.77.1.2.18084: Flags [P.], cksum 0x26c3 (incorrect -> 0x5939), seq 4096:8192, ack 1, win 126, options [nop,nop,TS val 1889834975 ecr 3222381533], length 4096
+
+## 四、卸载开关
+
+默认（veth 新建后）：
+
+$ sudo ip netns exec nslab-a ethtool -k a0 | grep -E '^(tcp-segmentation|generic-segmentation|tx-udp-segmentation)'
+tcp-segmentation-offload: on
+generic-segmentation-offload: on
+tx-udp-segmentation: on
+
+把这三个关掉后再发同一个 60000 字节数据报，仍是 41 个帧——单个大 UDP 数据报按 MTU 分片，
+与这三个开关无关。UDP 的分段卸载要靠 UDP_SEGMENT 一类接口，普通 sendto 用不上。
