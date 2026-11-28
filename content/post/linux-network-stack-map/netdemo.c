@@ -90,7 +90,8 @@ int main(int argc, char **argv) {
              * MSG_TRUNC 让 recv 返回整条报文的长度，缓冲区里只放得下前 rcv 个字节，
              * 于是"本来多大、拿到多少"能一次打印出来。 */
             int rcv = argc>4 ? atoi(argv[4]) : 3;
-            if (rcv<1) rcv=1; if (rcv>(int)sizeof buf) rcv=(int)sizeof buf;
+            if (rcv < 1) rcv = 1;
+            if (rcv > (int)sizeof buf) rcv = (int)sizeof buf;
             if (argc>5) pause_ms(atoi(argv[5]));
             for (int i=0;i<2;i++) {
                 ssize_t n=recv(s,buf,(size_t)rcv,MSG_TRUNC); if(n<0) die("recv");
