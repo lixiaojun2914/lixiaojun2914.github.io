@@ -89,20 +89,29 @@ if (!tx_cleaned || work_done == budget)
 
 ### 3.1 三个计数各算什么
 
-先取基线，向默认网关发 15 个间隔 0.03 秒的 ping，再取一次：
+先取三条基线：
 
 ```bash
 grep -E 'NET_RX|NET_TX' /proc/softirqs
 grep -iE 'enp2s0' /proc/interrupts
 ip -s link show enp2s0
+```
+
+然后向默认网关发 15 个间隔 0.03 秒的 ping：
+
+```bash
 ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
 ```
+
+ping 返回后，把上面那三条再跑一遍。两轮输出相减就是下表的差值——计数器只增不减，差值才是一次实验的增量。
 
 | 计数 | 前 | 后 | 差值 | 算的是什么 |
 | --- | ---: | ---: | ---: | --- |
 | CPU0 `NET_RX` | 68539 | 68563 | +24 | 这台 CPU 上 `NET_RX` 软中断被执行了多少次 |
 | `enp2s0-rx-0` | 15679 | 15695 | +16 | 这个中断向量触发了多少次 |
 | 设备 `RX packets` | 14622 | 14638 | +16 | 设备收了多少帧 |
+
+三个数分别取自：`/proc/softirqs` 里 `NET_RX:` 那一行的第一列（CPU0）；`/proc/interrupts` 里 `enp2s0-rx-0:` 那一行的第一列；`ip -s link show` 输出里 `RX:` 段的 `packets` 列。
 
 中断和帧数都是 16，比 ping 的 15 多一个——回程的 ICMP 请求之外还有一个别的帧（ARP 或迟到的响应）。低负载下每个帧都触发一次通知，两个计数才对得上。
 
@@ -112,17 +121,21 @@ ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
 
 ### 3.2 poll 的工作量与预算
 
-在专属实例里跟踪 poll：
+在专属实例里跟踪 poll（同样是上一轮留下的实例先清掉）：
 
 ```bash
 sudo -i
+rmdir /sys/kernel/tracing/instances/nslab 2>/dev/null
 mkdir /sys/kernel/tracing/instances/nslab
 cd /sys/kernel/tracing/instances/nslab
 echo 1 > events/napi/napi_poll/enable
 ping -n -I enp2s0 -c 15 -i 0.03 192.168.126.2
 echo 0 > events/napi/napi_poll/enable
 grep 'device enp2s0' trace | head -n 1
+grep -c 'device enp2s0' trace
 ```
+
+最后一条 `grep -c` 数出这次跟踪里有多少条 `enp2s0` 的 poll 记录，文中说的"15 条"就是它的输出。
 
 ```text
           <idle>-0       [000] .Ns1. 23128.599083: napi_poll: napi poll on napi struct 0000000052ea44aa for device enp2s0 work 1 budget 64

@@ -1,9 +1,15 @@
 SNAT 之后 R 上的连接跟踪条目
-环境：7.0.0-44-generic，lab.sh router，natdemo 表
+环境：7.0.0-44-generic，lab.sh clean + lab.sh router，natdemo 表
+
+服务端：sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.2.2 18084 20000
+客户端：sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.2.2 18084 30000（连接建立后约 4 秒取样）
 
 $ sudo ip netns exec nslab-r conntrack -L -p tcp --dport 18084
-tcp      6 431998 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=45466 dport=18084 src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=45466 [ASSURED] mark=0 use=1
+tcp      6 431996 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=42864 dport=18084 src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=42864 [ASSURED] mark=0 use=1
 conntrack v1.4.9 (conntrack-tools): 1 flow entries have been shown.
 
-客户端：accepted=120560 bytes; send=EAGAIN; holding fd 4000 ms
-服务端：ready TCP 10.77.2.2:18084 / received=120560 bytes
+6 秒后再取一次，超时从 431996 降到 431990，说明这一列是剩余超时，每次取到的值都不同：
+tcp      6 431990 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=42864 dport=18084 src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=42864 [ASSURED] mark=0 use=1
+
+客户端：accepted=120560 bytes; send=EAGAIN; holding fd 30000 ms
+服务端：ready TCP 10.77.2.2:18084 / received=120560 bytes（20 秒后开始读，读完打印）

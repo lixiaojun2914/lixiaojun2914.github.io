@@ -85,11 +85,18 @@ refcount_t users;
 
 ### 3.1 跟踪实例与事件行
 
-用第一篇的直连拓扑，但 B 的 19999 端口故意不启动接收端。另开一个 root shell，建一个专属跟踪实例：
+用第一篇的直连拓扑，但 B 的 19999 端口故意不启动接收端。
+
+```bash
+sudo bash lab.sh clean
+sudo bash lab.sh direct
+```
+
+另开一个 root shell，建一个专属跟踪实例（上一轮留下的同名实例先清掉，否则 `mkdir` 会报文件已存在）：
 
 ```bash
 sudo -i
-cd /home/lxj/nslab                       # 第一篇下载五个文件的目录，换成自己的
+cd /home/lxj/nslab                       # 第一篇下载六个文件的目录，换成自己的
 mkdir /sys/kernel/tracing/instances/nslab
 cd /sys/kernel/tracing/instances/nslab
 echo 1 > events/skb/kfree_skb/enable

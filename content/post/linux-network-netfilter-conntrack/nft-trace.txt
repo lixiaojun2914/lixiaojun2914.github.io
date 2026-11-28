@@ -1,17 +1,19 @@
 nft monitor trace：A→B 的两个 UDP 数据报在 R 上被 forward 丢弃
-环境：7.0.0-44-generic，lab.sh router，rules.nft 见同目录
+环境：7.0.0-44-generic，lab.sh clean + lab.sh router，rules.nft 见同目录
+命令：sudo ip netns exec nslab-r timeout 30 nft monitor trace
+客户端：sudo ip netns exec nslab-a ./netdemo udp-client 10.77.2.2 18082（发 6 字节 ABCDEF 和 2 字节 FG）
 
-trace id 8730ba45 inet demo pre packet: iif "ra" ... ip saddr 10.77.1.1 ip daddr 10.77.2.2 ip ttl 64 ip protocol udp ip length 33 udp sport 43514 udp dport 18082 udp length 13
-trace id 8730ba45 inet demo pre rule ip saddr 10.77.1.1 meta nftrace set 1 (verdict continue)
-trace id 8730ba45 inet demo pre policy accept
-trace id 8730ba45 inet demo forward packet: iif "ra" oif "rb" ... ip ttl 63 ip protocol udp ip length 33 udp sport 43514 udp dport 18082 udp length 13
-trace id 8730ba45 inet demo forward rule udp dport 18082 counter packets 0 bytes 0 drop (verdict drop)
+trace id 58b2f195 inet demo pre packet: iif "ra" ether saddr 46:43:73:94:2b:aa ether daddr 22:54:c1:04:41:d3 ip saddr 10.77.1.1 ip daddr 10.77.2.2 ip dscp cs0 ip ecn not-ect ip ttl 64 ip id 37926 ip protocol udp ip length 34 udp sport 43705 udp dport 18082 udp length 14 udp checksum 6076
+trace id 58b2f195 inet demo pre rule ip saddr 10.77.1.1 meta nftrace set 1 (verdict continue)
+trace id 58b2f195 inet demo pre policy accept
+trace id 58b2f195 inet demo forward packet: iif "ra" oif "rb" ether saddr 46:43:73:94:2b:aa ether daddr 22:54:c1:04:41:d3 ip saddr 10.77.1.1 ip daddr 10.77.2.2 ip dscp cs0 ip ecn not-ect ip ttl 63 ip id 37926 ip protocol udp ip length 34 udp sport 43705 udp dport 18082 udp length 14 udp checksum 6076
+trace id 58b2f195 inet demo forward rule udp dport 18082 counter packets 0 bytes 0 drop (verdict drop)
 
-trace id 8730ba45 inet demo pre packet: iif "ra" ... ip saddr 10.77.1.1 ip daddr 10.77.2.2 ip ttl 64 ip protocol udp ip length 30 udp sport 43514 udp dport 18082 udp length 10
-trace id 8730ba45 inet demo pre rule ip saddr 10.77.1.1 meta nftrace set 1 (verdict continue)
-trace id 8730ba45 inet demo pre policy accept
-trace id 8730ba45 inet demo forward packet: iif "ra" oif "rb" ... ip ttl 63 ip protocol udp ip length 30 udp sport 43514 udp dport 18082 udp length 10
-trace id 8730ba45 inet demo forward rule udp dport 18082 counter packets 0 bytes 0 drop (verdict drop)
+trace id 58b2f195 inet demo pre packet: iif "ra" ether saddr 46:43:73:94:2b:aa ether daddr 22:54:c1:04:41:d3 ip saddr 10.77.1.1 ip daddr 10.77.2.2 ip dscp cs0 ip ecn not-ect ip ttl 64 ip id 37927 ip protocol udp ip length 30 udp sport 43705 udp dport 18082 udp length 10 udp checksum 6072
+trace id 58b2f195 inet demo pre rule ip saddr 10.77.1.1 meta nftrace set 1 (verdict continue)
+trace id 58b2f195 inet demo pre policy accept
+trace id 58b2f195 inet demo forward packet: iif "ra" oif "rb" ether saddr 46:43:73:94:2b:aa ether daddr 22:54:c1:04:41:d3 ip saddr 10.77.1.1 ip daddr 10.77.2.2 ip dscp cs0 ip ecn not-ect ip ttl 63 ip id 37927 ip protocol udp ip length 30 udp sport 43705 udp dport 18082 udp length 10 udp checksum 6072
+trace id 58b2f195 inet demo forward rule udp dport 18082 counter packets 0 bytes 0 drop (verdict drop)
 
 ## 规则计数（同一轮结束后）
 
@@ -24,8 +26,15 @@ table inet demo {
 
 	chain forward {
 		type filter hook forward priority filter; policy accept;
-		udp dport 18082 counter packets 2 bytes 63 drop
+		udp dport 18082 counter packets 2 bytes 64 drop
 	}
 }
+
+## 接收端
+
+$ sudo ip netns exec nslab-b ./netdemo udp-server 10.77.2.2 18082
+ready UDP 10.77.2.2:18082
+
+（没有后续输出：两个数据报都在 forward 上被丢掉，一个字节也没到 B）
 
 说明：规则文件里写的是 priority -301 和 priority 0，nft list 会显示成 raw - 1 和 filter，是同一优先级的符号写法。

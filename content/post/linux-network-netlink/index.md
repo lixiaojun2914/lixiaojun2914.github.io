@@ -25,6 +25,7 @@ tags:
 ### 1.1 命令与结果
 
 ```bash
+sudo bash lab.sh clean
 sudo bash lab.sh direct
 sudo ip netns exec nslab-a strace -qq -v -s 160 -e trace=socket,sendmsg,sendto,recvmsg -o netlink-trace.txt ip addr add 10.77.1.9/24 dev a0
 sudo ip -n nslab-a -4 -br addr show dev a0
@@ -55,7 +56,7 @@ grep 'nlmsg_type=RTM_NEWADDR' netlink-trace.txt
 
 请求要带 `ACK`，内核才会回执；`EXCL` 和 `CREATE` 合起来表示"不存在才建，已存在就报错"。`ifa_index` 不是人填的，是用户态先用 `RTM_GETLINK` 查出来的。
 
-这也解释了一个容易看错的地方。跟踪里有 8 行，第 3 行是 `RTM_GETLINK` 请求，第 5 行的回复里 `nlmsg_type=RTM_NEWLINK`、`nlmsg_flags=0`、`nlmsg_pid=-1`——那是一条**查询回复**，不是"新建了设备"。看到 `RTM_NEWLINK` 就断言建了链路，会错在这里。
+这也解释了一个容易看错的地方。跟踪里有 8 行（`grep -cE 'sendmsg|recvmsg' netlink-trace.txt` 数出来就是 8），第 3 行是 `RTM_GETLINK` 请求，第 5 行的回复里 `nlmsg_type=RTM_NEWLINK`、`nlmsg_flags=0`、`nlmsg_pid=-1`——那是一条**查询回复**，不是"新建了设备"。看到 `RTM_NEWLINK` 就断言建了链路，会错在这里。
 
 属性是长度、类型、值三段，习惯叫 TLV，可以嵌套。好处是加参数不用改大结构体；但哪些属性合法仍由具体子系统规定，不是随便塞键值都能被接受。
 
@@ -128,8 +129,10 @@ Error: ipv4: Address already assigned.
 终端一订阅，终端二删地址：
 
 ```bash
-sudo ip netns exec nslab-a ip monitor address
+sudo ip netns exec nslab-a timeout 10 ip monitor address
 ```
+
+`ip monitor` 会一直挂着，`timeout 10` 让它 10 秒后自己退出；先订阅、后删地址，顺序不能反。
 
 ```bash
 sudo ip -n nslab-a addr del 10.77.1.9/24 dev a0

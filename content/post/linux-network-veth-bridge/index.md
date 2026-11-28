@@ -101,8 +101,10 @@ FDB 是转发数据库，一条表项的意思是"到这个 MAC，从哪个端�
 在 C 上抓包，清掉 A 的邻居，再从 A ping B：
 
 ```bash
-sudo ip netns exec nslab-c tcpdump -nn -e -i c0
+sudo ip netns exec nslab-c timeout 5 tcpdump -nn -e -i c0
 ```
+
+这里不按协议过滤，要把 C 端口上的一切都看一遍；`timeout 5` 到点自动停，比盯着屏幕数秒按 Ctrl-C 可靠。
 
 ```bash
 sudo ip -n nslab-a neigh flush dev a0

@@ -41,8 +41,11 @@ Netfilter 只提供挂点；nftables 用表、链、规则把条件和动作接�
 ### 2.1 规则只放进实验路由器
 
 ```bash
+sudo bash lab.sh clean
 sudo bash lab.sh router
 ```
+
+上一轮的拓扑没拆就再建，`lab.sh` 会报 `nslab namespace exists` 直接退出，所以要带上前一条 `clean`。
 
 把下面这段存成 `rules.nft`：
 
@@ -59,21 +62,26 @@ table inet demo {
 }
 ```
 
+装载规则，然后按顺序开三个终端：**终端二**先起 B 的接收端，它会在 `recvfrom` 里一直等；**终端一**开跟踪，`timeout 30` 让它在 30 秒后自己退出；**终端三**再从 A 发两个数据报。
+
 ```bash
 sudo ip netns exec nslab-r nft -f rules.nft
-sudo ip netns exec nslab-r nft monitor trace
 ```
-
-最后一条留在终端一。终端二起 B 的 UDP 服务，终端三从 A 发两个数据报：
 
 ```bash
 sudo ip netns exec nslab-b ./netdemo udp-server 10.77.2.2 18082
 ```
 
 ```bash
+sudo ip netns exec nslab-r timeout 30 nft monitor trace
+```
+
+```bash
 sudo ip netns exec nslab-a ./netdemo udp-client 10.77.2.2 18082
 sudo ip netns exec nslab-r nft list table inet demo
 ```
+
+顺序不能反：跟踪窗口必须开在流量之前，否则这两个包根本不会出现在 trace 里；接收端先起着，B 那边才有一个真正准备好的 UDP socket，不至于让丢弃原因掺进别的分支。`timeout 30` 是为了让终端一自己收尾——`nft monitor trace` 本身不会退出，手按 Ctrl-C 也能停。发完两个数据报、等终端一退出，再在终端三读计数。
 
 客户端会打印发送成功，B 那边什么也没有。这就是第二篇讲过的接口语义：UDP 的 `sendto` 返回只说明本机收下了。
 
@@ -85,14 +93,16 @@ trace 里一个数据报走成这样：
 
 | 位置 | 看到什么 |
 | --- | --- |
-| prerouting | `iif "ra"`，源 A、目的 B，TTL 64，`ip length 33` |
+| prerouting | `iif "ra"`，源 A、目的 B，TTL 64，`ip length 34`，`udp length 14` |
 | pre 规则 | `meta nftrace set 1`，verdict continue |
 | forward | `iif "ra" oif "rb"`，TTL 63，已经选定出口 |
 | forward 规则 | `udp dport 18082 ... drop`，verdict drop |
 
 TTL 从 64 变 63，说明它确实经过了转发，不是本机收下。
 
-两条数据报的负载是 5 字节和 2 字节，IP 长度分别是 33 和 30。规则计数为 `packets 2 bytes 63`，正好是 33 加 30。计数字节是 IP 长度之和，既不是业务负载，也不是以太帧全长。
+两条数据报的负载是 6 字节和 2 字节（`udp-client` 发的是 `ABCDEF` 和 `FG`），IP 长度分别是 34 和 30——20 字节 IP 头加 8 字节 UDP 头，再加负载。规则计数是 `packets 2 bytes 64`，正好 34 加 30。计数字节是 IP 长度之和，既不是业务负载，也不是以太帧全长。
+
+表里这两个值分别来自 trace 行里的 `ip length` 和 `nft list table inet demo` 计数行里的 `bytes`，原始输出见[跟踪记录](/p/linux-network-netfilter-conntrack/nft-trace.txt)。
 
 `nft monitor` 看的是对象变化，包路径要用 `nft monitor trace`，而且得先用 `meta nftrace` 把那部分流量圈出来。用法见 [nftables 跟踪文档](https://wiki.nftables.org/wiki-nftables/index.php/Ruleset_debug/tracing)。
 
@@ -130,17 +140,19 @@ sudo ip netns exec nslab-r nft add rule ip natdemo post ip saddr 10.77.1.0/24 oi
 
 在 `rb` 出口把来自 `10.77.1.0/24` 的源地址换成 R 的 `10.77.2.254`。
 
-终端一跑 B：
+终端一跑 B，第二个参数 20000 让它在 `accept` 之后先睡 20 秒再读：
 
 ```bash
-sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.2.2 18084 1500
+sudo ip netns exec nslab-b ./netdemo tcp-server 10.77.2.2 18084 20000
 ```
 
-终端二跑 A：
+终端二跑 A，`tcp-fill` 写满发送缓冲后再挂 30 秒才关：
 
 ```bash
-sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.2.2 18084
+sudo ip netns exec nslab-a ./netdemo tcp-fill 10.77.2.2 18084 30000
 ```
+
+这两个时长是给观察留的窗口：服务端 20 秒内不取数据，客户端 30 秒内不退出，中间这 20 秒里查 conntrack 和 `ss` 都来得及。
 
 传输进行中查两处：
 
@@ -150,16 +162,16 @@ sudo ip netns exec nslab-b ss -tn '( sport = :18084 )'
 ```
 
 ```text
-tcp 6 431998 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=45466 dport=18084
-    src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=45466 [ASSURED] mark=0 use=1
+tcp 6 431996 ESTABLISHED src=10.77.1.1 dst=10.77.2.2 sport=42864 dport=18084
+    src=10.77.2.2 dst=10.77.2.254 sport=18084 dport=42864 [ASSURED] mark=0 use=1
 ```
 
 ```text
 State Recv-Q Send-Q Local Address:Port  Peer Address:Port
-ESTAB 120560 0      10.77.2.2:18084     10.77.2.254:45466
+ESTAB 120560 0      10.77.2.2:18084     10.77.2.254:42864
 ```
 
-B 看到的对端是 `10.77.2.254:45466`，不是 A 的 `10.77.1.1`。临时端口和剩余超时每次都不一样。
+B 看到的对端是 `10.77.2.254:42864`，不是 A 的 `10.77.1.1`。临时端口和剩余超时每次都不一样。两条命令的原始输出见[conntrack 条目](/p/linux-network-netfilter-conntrack/conntrack.txt)和[B 上的 ss](/p/linux-network-netfilter-conntrack/nat-peer.txt)。
 
 ### 4.2 两组元组
 
@@ -167,9 +179,9 @@ B 看到的对端是 `10.77.2.254:45466`，不是 A 的 `10.77.1.1`。临时端�
 
 | 位置 / 方向 | 源 | 目的 |
 | --- | --- | --- |
-| 转换前，A 发出 | `10.77.1.1:45466` | `10.77.2.2:18084` |
-| B 看到的连接 | `10.77.2.254:45466` | `10.77.2.2:18084` |
-| 条目里的回复方向 | `10.77.2.2:18084` | `10.77.2.254:45466` |
+| 转换前，A 发出 | `10.77.1.1:42864` | `10.77.2.2:18084` |
+| B 看到的连接 | `10.77.2.254:42864` | `10.77.2.2:18084` |
+| 条目里的回复方向 | `10.77.2.2:18084` | `10.77.2.254:42864` |
 
 条目里这两组地址是原始方向和回复方向，不是两条连接，也不是一个包里出现过的所有地址。有状态 NAT 在首包上建立关联，后续包复用状态并改写，回复方向按同一份状态还原。
 

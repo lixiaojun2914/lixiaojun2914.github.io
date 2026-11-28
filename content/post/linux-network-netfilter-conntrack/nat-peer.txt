@@ -1,6 +1,12 @@
 B 上看到的连接对端是 R 的转换后地址
-环境：7.0.0-44-generic
+环境：7.0.0-44-generic，lab.sh clean + lab.sh router，natdemo 表
 
-$ sudo ip netns exec nslab-b ss -tn sport = :18084
+服务端：./netdemo tcp-server 10.77.2.2 18084 20000
+客户端：./netdemo tcp-fill 10.77.2.2 18084 30000
+
+$ sudo ip netns exec nslab-b ss -tn '( sport = :18084 )'
 State Recv-Q Send-Q Local Address:Port  Peer Address:Port
-ESTAB 120560 0      10.77.2.2:18084     10.77.2.254:45466
+ESTAB 120560 0      10.77.2.2:18084     10.77.2.254:42864
+
+Recv-Q 里的 120560 是 socket 接收队列里等应用取走的字节；服务端这 20 秒还没调用 read，
+所以它和客户端 accepted 的字节数相等。临时端口每次不同。

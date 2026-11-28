@@ -24,7 +24,10 @@ tags:
 
 ### 1.1 创建
 
+先清掉前面实验留下的命名空间——`lab.sh` 建的几个也叫 `nslab-*`，不清会和本节要建的名字撞上：
+
 ```bash
+sudo bash lab.sh clean
 sudo ip netns add nslab-a
 sudo ip -n nslab-a -br link
 sudo ip -n nslab-a route
@@ -85,7 +88,7 @@ sudo ip netns exec nslab-a ping -n -c 1 127.0.0.1
 ```bash
 sudo ip netns del nslab-a
 sudo ip netns add nslab-a
-sudo ip netns exec nslab-a sleep 60 &
+sudo ip netns exec nslab-a sleep 300 &
 PID=$(sudo ip netns pids nslab-a | head -n 1)
 sudo readlink /proc/$PID/ns/net
 sudo ip netns del nslab-a
@@ -93,6 +96,8 @@ sudo ip netns list
 sudo readlink /proc/$PID/ns/net
 sudo nsenter -t "$PID" -n ip -br link
 ```
+
+`sleep 300` 是刻意开长的：中间要插好几条 `sudo` 命令，窗口太短会在你敲命令的中途断掉。这个 `sleep` 挂在当前终端后台，清理时按 PID 杀掉。
 
 这台机器上只有这一个命名入口，删除后列表是空的；两次 `readlink` 和最后的接口输出：
 

@@ -1,10 +1,10 @@
 FIFO 子队列，传输进行中的队列快照
-环境：7.0.0-44-generic
+环境：7.0.0-44-generic，lab.sh clean + lab.sh direct，a0 上 tbf 5Mbit + pfifo limit 1000
 
 $ sudo ip netns exec nslab-a tc -s qdisc show dev a0
-qdisc tbf 1: root refcnt 3 rate 5Mbit burst 16Kb lat 1s
- Sent 1332916 bytes 898 pkt (dropped 0, overlimits 1763 requeues 0)
- backlog 112036b 74p requeues 0
+qdisc tbf 1: root refcnt 3 rate 5Mbit burst 16Kb lat 1s 
+ Sent 1299816 bytes 876 pkt (dropped 0, overlimits 1716 requeues 0) 
+ backlog 118092b 78p requeues 0
 qdisc pfifo 10: parent 1:1 limit 1000p
- Sent 1332916 bytes 898 pkt (dropped 0, overlimits 0 requeues 0)
- backlog 112036b 74p requeues 0
+ Sent 1299816 bytes 876 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 118092b 78p requeues 0

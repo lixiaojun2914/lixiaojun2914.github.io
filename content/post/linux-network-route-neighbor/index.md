@@ -99,8 +99,10 @@ MAC 是当前链路的端点标识。A 的 IP 包目的地仍然是 B，但这�
 终端一抓 ARP，终端二清邻居再 ping：
 
 ```bash
-sudo ip netns exec nslab-a tcpdump -nn -e -i a0 arp
+sudo ip netns exec nslab-a timeout 5 tcpdump -nn -e -i a0 arp
 ```
+
+`timeout 5` 让抓包在 5 秒后自己收尾，不用切回去按 Ctrl-C；`arp` 过滤掉 IPv6 邻居发现之类的无关帧。
 
 ```bash
 sudo ip -n nslab-a neigh flush dev a0
