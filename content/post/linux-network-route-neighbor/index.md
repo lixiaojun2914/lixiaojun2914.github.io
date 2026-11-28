@@ -2,7 +2,7 @@
 title: "Linux 网络栈（五）：IP 路由、下一跳与邻居解析"
 slug: linux-network-route-neighbor
 date: "2026-11-22T16:05:00+08:00"
-lastmod: "2026-11-27"
+lastmod: "2026-11-28"
 draft: false
 description: "默认网关配好了，为什么还会直接去找目的 IP 的 MAC；路由查得到，为什么包还是发不出去。"
 categories:
@@ -61,7 +61,45 @@ A 的结果是从 `a0` 发，源地址选 `10.77.1.1`，下一跳是 R。R 对�
 
 ### 2.2 规则在前，表在后
 
-`ip rule` 显示的是查找次序，规则可以按源地址、防火墙标记等条件挑表。默认配置里常见的顺序是 `local`、`main`、`default`，每条规则命中后是继续还是终止，看它的动作。
+查路由不是"拿一张表从长到短比一遍"，而是先按规则挑表：
+
+```bash
+sudo ip -n nslab-a rule
+sudo ip -n nslab-r rule
+```
+
+```text
+0:	from all lookup local
+32766:	from all lookup main
+32767:	from all lookup default
+```
+
+A 和 R 都是这三条，前缀数字小的先查。`local` 装本机地址和广播地址，`main` 是 `ip route add/del` 默认动的那张表，`default` 空着。先看 `local`：
+
+```bash
+sudo ip -n nslab-a route show table local
+```
+
+```text
+local 10.77.1.1 dev a0 proto kernel scope host src 10.77.1.1
+broadcast 10.77.1.255 dev a0 proto kernel scope link src 10.77.1.1
+local 127.0.0.0/8 dev lo proto kernel scope host src 127.0.0.1
+local 127.0.0.1 dev lo proto kernel scope host src 127.0.0.1
+broadcast 127.255.255.255 dev lo proto kernel scope link src 127.0.0.1
+```
+
+再看 `main`：
+
+```bash
+sudo ip -n nslab-a route show table main
+```
+
+```text
+default via 10.77.1.254 dev a0
+10.77.1.0/24 dev a0 proto kernel scope link src 10.77.1.1
+```
+
+目的地址落在 `local` 表里就是本机的，这决定了收上来的包走本地交付而不是转发，第五节的接收侧分支在这一层已经有答案。规则还能按源地址、防火墙标记等条件挑别的表，命中后是继续还是终止，看规则的动作。
 
 选定表之后才轮到最长前缀匹配：`/32` 比 `/24` 具体，`/0` 最宽。规则优先级、同前缀候选的属性、下一跳是否可达，都是另外的维度，"数字小的赢"概括不了路由选择。
 
@@ -99,21 +137,23 @@ MAC 是当前链路的端点标识。A 的 IP 包目的地仍然是 B，但这�
 终端一抓 ARP，终端二清邻居再 ping：
 
 ```bash
-sudo ip netns exec nslab-a timeout 5 tcpdump -nn -e -i a0 arp
+sudo ip netns exec nslab-a tcpdump -nn -e -i a0 -c 2 arp
 ```
 
-`timeout 5` 让抓包在 5 秒后自己收尾，不用切回去按 Ctrl-C；`arp` 过滤掉 IPv6 邻居发现之类的无关帧。
+`-c 2` 收满一问一答两帧就自己退出，不用切回终端一按 Ctrl-C，也不用和窗口抢手速；`arp` 过滤掉 IPv6 邻居发现之类的无关帧。等抓包停在待命状态，再去终端二：
 
 ```bash
 sudo ip -n nslab-a neigh flush dev a0
 sudo ip netns exec nslab-a ping -n -c 1 10.77.2.2
 ```
 
-抓到的两帧：
+两帧到手，tcpdump 末尾会自己打一行 `2 packets captured`（帧里的 MAC 与 3.1 同一轮拓扑，重建后会换）：
 
 ```text
 14:49:32.047170 aa:0c:53:73:c3:89 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 10.77.1.254 tell 10.77.1.1, length 28
 14:49:32.047186 76:dd:b1:88:8d:af > aa:0c:53:73:c3:89, ethertype ARP (0x0806), length 42: Reply 10.77.1.254 is-at 76:dd:b1:88:8d:af, length 28
+
+2 packets captured
 ```
 
 问的是 `who-has 10.77.1.254`，不是 `10.77.2.2`。这一句就把"为什么找网关的 MAC"钉死了。
@@ -153,18 +193,60 @@ sudo ip -n nslab-a neigh
 
 默认网关一直在，也一直可达，只是这一次没被选中。这就是"路由查到了"和"能发出去"的差别：前者由 FIB 回答，后者还要目的链路层地址能解析出来。
 
-删掉错误路由并清理：
+删掉错误路由：
 
 ```bash
 sudo ip -n nslab-a route del 10.77.2.2/32 dev a0
-sudo bash lab.sh clean
 ```
+
+拓扑先留着，下一节还要用它。全部做完再统一清理。
 
 ## 五、接收侧的本地交付与转发
 
-发送方向的条件（源地址、出接口）由应用和路由共同决定；接收方向要先判断目的地址是不是自己。普通 IPv4 接收从 `ip_rcv()` 进路由判断，然后分两路：本地交付走 `ip_local_deliver()`，否则进转发，还要过转发开关、TTL、MTU、过滤这些条件。
+发送方向的条件（源地址、出接口）由应用和路由共同决定；接收方向同样先查路由：普通 IPv4 接收从 `ip_rcv()` 进路由判断，目的地址落在 `local` 表就走 `ip_local_deliver()`，否则进转发，还要过转发开关、TTL、MTU、过滤这些条件。
 
-这一轮 ping 的回复 TTL 是 63，过一跳掉一，和拓扑对得上。它不是路径证明，只是几个证据里的一条。
+转发开关在 R 自己的命名空间里，A 和 B 上都是关的：
+
+```bash
+sudo ip netns exec nslab-r sysctl net.ipv4.ip_forward
+sudo ip netns exec nslab-a sysctl net.ipv4.ip_forward
+sudo ip netns exec nslab-b sysctl net.ipv4.ip_forward
+```
+
+```text
+net.ipv4.ip_forward = 1
+net.ipv4.ip_forward = 0
+net.ipv4.ip_forward = 0
+```
+
+包究竟是被 R 转发的，还是绕别处送到的，`/proc/net/snmp` 的 `Ip:` 行给了直接答案。这一行里 `Forwarding` 是第一个数值、`InReceives` 第三个、`ForwDatagrams` 第六个；`awk` 把行名算作 `$1`，所以后两者落在 `$4`、`$7`：
+
+```bash
+sudo ip netns exec nslab-r awk '/^Ip:/{getline; print "InReceives="$4, "ForwDatagrams="$7}' /proc/net/snmp
+sudo ip netns exec nslab-a ping -n -c 3 10.77.2.2
+sudo ip netns exec nslab-r awk '/^Ip:/{getline; print "InReceives="$4, "ForwDatagrams="$7}' /proc/net/snmp
+sudo ip netns exec nslab-a awk '/^Ip:/{getline; print "InReceives="$4, "ForwDatagrams="$7}' /proc/net/snmp
+```
+
+```text
+InReceives=4 ForwDatagrams=4
+64 bytes from 10.77.2.2: icmp_seq=1 ttl=63 time=0.056 ms
+64 bytes from 10.77.2.2: icmp_seq=2 ttl=63 time=0.066 ms
+64 bytes from 10.77.2.2: icmp_seq=3 ttl=63 time=0.069 ms
+3 packets transmitted, 3 received, 0% packet loss, time 2048ms
+InReceives=10 ForwDatagrams=10
+InReceives=5 ForwDatagrams=0
+```
+
+三来三回，R 上 `InReceives` 和 `ForwDatagrams` 各涨 6，A 上 `ForwDatagrams` 从头到尾是 0。包经 R 转发这件事，到这里不是推断。计数是累计值，起头那两个数随这套命名空间之前跑过多少流量而变，要看的是前后差值。
+
+`ttl=63` 是另一条独立线索：A 的请求以默认 TTL 64 发出，过 R 掉一；B 的回复以自己的 64 起跳，回程再过 R 又掉一，于是 A 看到 63。它只说明回程路上有一跳，不指认是哪一台，转发计数补的正是这一格。
+
+收尾：
+
+```bash
+sudo bash lab.sh clean
+```
 
 IPv6 用邻居发现而不是 ARP，对象和实现都不一样，这里的 IPv4 函数名不能直接套过去。源码分工见 [ip_input.c](https://github.com/torvalds/linux/blob/v7.0/net/ipv4/ip_input.c) 和 [fib_rules.c](https://github.com/torvalds/linux/blob/v7.0/net/ipv4/fib_rules.c)。
 
@@ -175,7 +257,10 @@ IPv6 用邻居发现而不是 ARP，对象和实现都不一样，这里的 IPv4
 | `ip route get DEST` | 按给定条件查路由结果，附加条件要显式给 |
 | `ip rule` / `ip route show table NAME` | 看策略规则与指定表 |
 | `ip neigh` / `ip neigh flush dev DEV` | 看邻居与状态，清掉以复现解析 |
-| `tcpdump -nn -e -i DEV arp` | 同时看链路层头和 ARP |
+| `tcpdump -nn -e -i DEV -c N arp` | 同时看链路层头和 ARP，收满 N 帧自停 |
+| `sysctl net.ipv4.ip_forward` | 看某个命名空间的转发开关 |
+| `/proc/net/snmp` 的 `Ip:` 行 | `InReceives`、`ForwDatagrams` 等转发计数 |
+| `ping` 回复里的 `ttl` | 跳数线索，`64` 减去实际跳数 |
 
 ## 七、名词解释
 
@@ -185,4 +270,5 @@ IPv6 用邻居发现而不是 ARP，对象和实现都不一样，这里的 IPv4
 | 最长前缀匹配 | 在多条匹配路由中优先选前缀更具体的 |
 | 邻居项 | 某个设备上"网络层地址 → 链路层地址"的可达状态 |
 | 转发 | 内核为非本机的目的地选路并再次发送 |
+| 转发开关 | `net.ipv4.ip_forward`，非 0 时内核才做转发 |
 | `INCOMPLETE` | 邻居项已建、ARP 还没有应答 |

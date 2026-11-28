@@ -34,3 +34,62 @@ $ sudo ip netns exec nslab-a tcpdump -nn -e -i a0 arp -c 2
 14:49:32.047186 76:dd:b1:88:8d:af > aa:0c:53:73:c3:89, ethertype ARP (0x0806), length 42: Reply 10.77.1.254 is-at 76:dd:b1:88:8d:af, length 28
 
 2 packets captured
+
+## 规则与表
+
+$ sudo ip -n nslab-a rule
+0:	from all lookup local
+32766:	from all lookup main
+32767:	from all lookup default
+
+$ sudo ip -n nslab-r rule
+0:	from all lookup local
+32766:	from all lookup main
+32767:	from all lookup default
+
+$ sudo ip -n nslab-a route show table local
+local 10.77.1.1 dev a0 proto kernel scope host src 10.77.1.1
+broadcast 10.77.1.255 dev a0 proto kernel scope link src 10.77.1.1
+local 127.0.0.0/8 dev lo proto kernel scope host src 127.0.0.1
+local 127.0.0.1 dev lo proto kernel scope host src 127.0.0.1
+broadcast 127.255.255.255 dev lo proto kernel scope link src 127.0.0.1
+
+$ sudo ip -n nslab-a route show table main
+default via 10.77.1.254 dev a0
+10.77.1.0/24 dev a0 proto kernel scope link src 10.77.1.1
+
+## 转发开关与转发计数
+
+按正文顺序跑完 3.1 的 ping 与第四节 /32 之后
+
+$ sudo ip netns exec nslab-r sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 1
+
+$ sudo ip netns exec nslab-a sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 0
+
+$ sudo ip netns exec nslab-b sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 0
+
+$ sudo ip netns exec nslab-r awk '/^Ip:/{getline; print "InReceives="$4, "ForwDatagrams="$7}' /proc/net/snmp
+InReceives=4 ForwDatagrams=4
+
+$ sudo ip netns exec nslab-a ping -n -c 3 10.77.2.2
+PING 10.77.2.2 (10.77.2.2) 56(84) bytes of data.
+64 bytes from 10.77.2.2: icmp_seq=1 ttl=63 time=0.056 ms
+64 bytes from 10.77.2.2: icmp_seq=2 ttl=63 time=0.066 ms
+64 bytes from 10.77.2.2: icmp_seq=3 ttl=63 time=0.069 ms
+
+--- 10.77.2.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2048ms
+rtt min/avg/max/mdev = 0.056/0.063/0.069/0.005 ms
+
+$ sudo ip netns exec nslab-r awk '/^Ip:/{getline; print "InReceives="$4, "ForwDatagrams="$7}' /proc/net/snmp
+InReceives=10 ForwDatagrams=10
+
+$ sudo ip netns exec nslab-a awk '/^Ip:/{getline; print "InReceives="$4, "ForwDatagrams="$7}' /proc/net/snmp
+InReceives=5 ForwDatagrams=0
+
+注：这三个计数是累计值，起头的数随命名空间此前跑过多少流量而变，看的是前后差值（本例 R 的 InReceives 与 ForwDatagrams 各 +6，A 的 ForwDatagrams 恒 0）。
+
+注：Veth 的 MAC 由系统分配，重建拓扑会换一批（几轮里 10.77.1.254 分别是 76:dd:b1:88:8d:af、2a:fd:bf:e2:ae:47、72:36:0a:53:97:ba），上面邻居输出里的值以当次 ip neigh 为准；规则、表内容、转发开关与计数不受影响。
